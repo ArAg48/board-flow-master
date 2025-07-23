@@ -11,6 +11,8 @@ import Dashboard from "@/pages/Dashboard";
 import HardwareOrders from "@/pages/Manager/HardwareOrders";
 import PTLOrders from "@/pages/Manager/PTLOrders";
 import AccountManagement from "@/pages/Manager/AccountManagement";
+import OrderOverview from "@/pages/Manager/OrderOverview";
+import LogHistory from "@/pages/Manager/LogHistory";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,7 +56,7 @@ const App = () => (
               } />
               <Route path="order-overview" element={
                 <ProtectedRoute requiredRole="manager">
-                  <div>Order Overview Page - Coming Soon</div>
+                  <OrderOverview />
                 </ProtectedRoute>
               } />
               <Route path="account-management" element={
@@ -64,7 +66,7 @@ const App = () => (
               } />
               <Route path="log-history" element={
                 <ProtectedRoute requiredRole="manager">
-                  <div>Log History Page - Coming Soon</div>
+                  <LogHistory />
                 </ProtectedRoute>
               } />
               
