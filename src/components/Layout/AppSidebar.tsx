@@ -28,7 +28,7 @@ const managerItems = [
   { title: 'Hardware Orders', url: '/hardware-orders', icon: Package },
   { title: 'PTL Orders', url: '/ptl-orders', icon: ClipboardList },
   { title: 'Order Overview', url: '/order-overview', icon: Search },
-  { title: 'Technician Management', url: '/technician-management', icon: Users },
+  { title: 'Account Management', url: '/account-management', icon: Users },
   { title: 'Log History', url: '/log-history', icon: History },
 ];
 
