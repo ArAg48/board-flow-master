@@ -13,6 +13,7 @@ import PTLOrders from "@/pages/Manager/PTLOrders";
 import AccountManagement from "@/pages/Manager/AccountManagement";
 import OrderOverview from "@/pages/Manager/OrderOverview";
 import LogHistory from "@/pages/Manager/LogHistory";
+import ScanValidator from "@/pages/Technician/ScanValidator";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,7 +74,7 @@ const App = () => (
               {/* Technician Routes */}
               <Route path="scan-validator" element={
                 <ProtectedRoute requiredRole="technician">
-                  <div>Scan Validator Page - Coming Soon</div>
+                  <ScanValidator />
                 </ProtectedRoute>
               } />
               <Route path="repair-log" element={
