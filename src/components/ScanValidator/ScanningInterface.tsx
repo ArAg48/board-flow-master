@@ -19,6 +19,7 @@ interface ScanningInterfaceProps {
   onPause: () => void;
   onBreak: () => void;
   onResume: () => void;
+  onFinishPTL: () => void;
   isActive: boolean;
   isBreakMode: boolean;
 }
@@ -31,6 +32,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   onPause,
   onBreak,
   onResume,
+  onFinishPTL,
   isActive,
   isBreakMode
 }) => {
@@ -57,10 +59,53 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     setScanInputs(newInputs);
 
     // Auto-process when QR code is complete (assuming newline or specific length)
-    if (value.length >= 8 && value.includes('\n')) {
+    if (value.length >= 8 && (value.includes('\n') || value.length >= 12)) {
       const cleanQrCode = value.trim();
       processScan(boxIndex, cleanQrCode);
     }
+  };
+
+  const handleManualFail = (boxIndex: number) => {
+    const qrCode = scanInputs[boxIndex].trim();
+    if (!qrCode) {
+      toast({
+        title: "No QR Code",
+        description: "Please scan a QR code first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const isValid = validateQRFormat(qrCode);
+    if (!isValid) {
+      toast({
+        title: "Invalid QR Format",
+        description: `Code doesn't match expected format: ${ptlOrder.expectedFormat}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setFailureDialog({ open: true, boxIndex, qrCode });
+  };
+
+  const handlePassAllBoards = () => {
+    const entriesWithBoards = scannedEntries.filter(entry => entry.qrCode);
+    entriesWithBoards.forEach(entry => {
+      if (entry.testResult !== 'pass') {
+        const updatedEntry: ScanEntry = {
+          ...entry,
+          testResult: 'pass',
+          timestamp: new Date()
+        };
+        onScanEntry(updatedEntry);
+      }
+    });
+
+    toast({
+      title: "All Boards Passed",
+      description: `${entriesWithBoards.length} boards marked as passed`,
+    });
   };
 
   const processScan = (boxIndex: number, qrCode: string) => {
@@ -186,28 +231,37 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
             {Array.from({ length: testerConfig.scanBoxes }, (_, i) => {
               const stats = getBoxStats(i);
               return (
-                <div key={i} className="space-y-2">
-                  <Label className="text-sm font-medium">Box {i + 1}</Label>
-                  <Input
-                    value={scanInputs[i]}
-                    onChange={(e) => handleScanInput(i, e.target.value)}
-                    placeholder="Scan QR code..."
-                    className={`text-center ${activeBox === i ? 'ring-2 ring-primary' : ''}`}
-                    disabled={!isActive}
-                  />
-                  <div className="text-xs text-center space-y-1">
-                    <div>Total: {stats.total}</div>
-                    <div className="flex justify-center gap-2">
-                      <span className="text-green-600">✓{stats.passed}</span>
-                      <span className="text-red-600">✗{stats.failed}</span>
-                    </div>
-                  </div>
-                </div>
+                 <div key={i} className="space-y-2">
+                   <Label className="text-sm font-medium">Box {i + 1}</Label>
+                   <Input
+                     value={scanInputs[i]}
+                     onChange={(e) => handleScanInput(i, e.target.value)}
+                     placeholder="Scan QR code..."
+                     className={`text-center ${activeBox === i ? 'ring-2 ring-primary' : ''}`}
+                     disabled={!isActive}
+                   />
+                   <Button
+                     size="sm"
+                     variant="destructive"
+                     onClick={() => handleManualFail(i)}
+                     disabled={!isActive || !scanInputs[i].trim()}
+                     className="w-full text-xs"
+                   >
+                     Fail
+                   </Button>
+                   <div className="text-xs text-center space-y-1">
+                     <div>Total: {stats.total}</div>
+                     <div className="flex justify-center gap-2">
+                       <span className="text-green-600">✓{stats.passed}</span>
+                       <span className="text-red-600">✗{stats.failed}</span>
+                     </div>
+                   </div>
+                 </div>
               );
             })}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {isActive ? (
               <>
                 <Button onClick={onPause} variant="outline">
@@ -217,6 +271,21 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                 <Button onClick={onBreak} variant="secondary">
                   <Coffee className="h-4 w-4 mr-2" />
                   Take Break
+                </Button>
+                <Button 
+                  onClick={handlePassAllBoards} 
+                  variant="default"
+                  disabled={scannedEntries.length === 0}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Pass All Boards
+                </Button>
+                <Button 
+                  onClick={onFinishPTL} 
+                  variant="default"
+                  disabled={scannedEntries.length === 0}
+                >
+                  Finish PTL
                 </Button>
               </>
             ) : (

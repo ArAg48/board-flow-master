@@ -95,6 +95,12 @@ const ScanValidator: React.FC = () => {
     }
   };
 
+  const handleFinishPTL = () => {
+    if (currentSession) {
+      setCurrentSession({ ...currentSession, status: 'post-test' });
+    }
+  };
+
   const handlePostTestComplete = () => {
     if (currentSession) {
       const updatedSession = {
@@ -236,12 +242,13 @@ const ScanValidator: React.FC = () => {
           onPause={handlePause}
           onBreak={handleBreak}
           onResume={handleResume}
+          onFinishPTL={handleFinishPTL}
           isActive={currentSession.status === 'scanning'}
           isBreakMode={currentSession.status === 'break'}
         />
       )}
 
-      {currentSession?.status === 'scanning' && stats.total >= currentSession.ptlOrder.expectedCount && (
+      {currentSession?.status === 'post-test' && (
         <PostTestVerificationComponent
           verification={{
             finalCount: stats.total,
