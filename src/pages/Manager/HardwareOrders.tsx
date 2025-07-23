@@ -62,6 +62,8 @@ const HardwareOrders: React.FC = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<HardwareOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<HardwareOrder | null>(null);
+  const [viewPTLOrders, setViewPTLOrders] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<HardwareOrderForm>({
@@ -89,31 +91,87 @@ const HardwareOrders: React.FC = () => {
     try {
       const endingSequence = calculateEndingSequence(data.startingSequence, data.quantity);
       
-      const newOrder: HardwareOrder = {
-        id: Date.now().toString(),
-        ...data,
-        endingSequence,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        createdBy: 'Current User', // Replace with actual user
-      };
-
-      setOrders(prev => [newOrder, ...prev]);
-      setIsDialogOpen(false);
-      form.reset();
+      if (editingOrder) {
+        // Update existing order
+        const updatedOrder: HardwareOrder = {
+          ...editingOrder,
+          ...data,
+          endingSequence,
+        };
+        setOrders(prev => prev.map(order => order.id === editingOrder.id ? updatedOrder : order));
+        toast({
+          title: 'Hardware Order Updated',
+          description: `Order ${data.poNumber} has been updated successfully.`,
+        });
+      } else {
+        // Create new order
+        const newOrder: HardwareOrder = {
+          id: Date.now().toString(),
+          ...data,
+          endingSequence,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          createdBy: 'Current User',
+        };
+        setOrders(prev => [newOrder, ...prev]);
+        toast({
+          title: 'Hardware Order Created',
+          description: `Order ${data.poNumber} has been created successfully.`,
+        });
+      }
       
-      toast({
-        title: 'Hardware Order Created',
-        description: `Order ${data.poNumber} has been created successfully.`,
-      });
+      setIsDialogOpen(false);
+      setEditingOrder(null);
+      form.reset();
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create hardware order.',
+        description: editingOrder ? 'Failed to update hardware order.' : 'Failed to create hardware order.',
         variant: 'destructive',
       });
     }
   };
+
+  const handleEdit = (order: HardwareOrder) => {
+    setEditingOrder(order);
+    form.reset({
+      poNumber: order.poNumber,
+      quantity: order.quantity,
+      assemblyNumber: order.assemblyNumber,
+      revision: order.revision,
+      startingSequence: order.startingSequence,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleViewPTLOrders = (order: HardwareOrder) => {
+    setSelectedOrder(order);
+    setViewPTLOrders(true);
+  };
+
+  // Mock PTL orders for demonstration
+  const getPTLOrdersForHardware = (hardwareOrderId: string) => [
+    {
+      id: '1',
+      ptlOrderNumber: 'PTL-2024-001',
+      saleCode: '1234-ABC',
+      firmwareRevision: '1.3',
+      boardsToTest: 50,
+      dateCode: '2401',
+      status: 'active' as const,
+      createdAt: '2024-01-15T11:00:00Z'
+    },
+    {
+      id: '2', 
+      ptlOrderNumber: 'PTL-2024-003',
+      saleCode: '5678-DEF',
+      firmwareRevision: '1.4',
+      boardsToTest: 25,
+      dateCode: '2401',
+      status: 'completed' as const,
+      createdAt: '2024-01-20T09:00:00Z'
+    }
+  ];
 
   const getStatusColor = (status: HardwareOrder['status']) => {
     switch (status) {
@@ -133,7 +191,13 @@ const HardwareOrders: React.FC = () => {
           <p className="text-muted-foreground">Manage hardware orders that will be used for PTL testing</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingOrder(null);
+            form.reset();
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -142,7 +206,7 @@ const HardwareOrders: React.FC = () => {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Create Hardware Order</DialogTitle>
+              <DialogTitle>{editingOrder ? 'Edit Hardware Order' : 'Create Hardware Order'}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -233,10 +297,14 @@ const HardwareOrders: React.FC = () => {
                 )}
                 
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setIsDialogOpen(false);
+                    setEditingOrder(null);
+                    form.reset();
+                  }}>
                     Cancel
                   </Button>
-                  <Button type="submit">Create Order</Button>
+                  <Button type="submit">{editingOrder ? 'Update Order' : 'Create Order'}</Button>
                 </div>
               </form>
             </Form>
@@ -286,10 +354,10 @@ const HardwareOrders: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleViewPTLOrders(order)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                     </div>
@@ -300,6 +368,68 @@ const HardwareOrders: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* PTL Orders Dialog */}
+      <Dialog open={viewPTLOrders} onOpenChange={setViewPTLOrders}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>PTL Orders for {selectedOrder?.poNumber}</DialogTitle>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">Hardware Order</Label>
+                  <p className="text-sm">{selectedOrder.poNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Assembly</Label>
+                  <p className="text-sm">{selectedOrder.assemblyNumber}{selectedOrder.revision}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Quantity</Label>
+                  <p className="text-sm">{selectedOrder.quantity}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Badge className={getStatusColor(selectedOrder.status)}>{selectedOrder.status}</Badge>
+                </div>
+              </div>
+              
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>PTL Order</TableHead>
+                    <TableHead>Sale Code</TableHead>
+                    <TableHead>Firmware Rev</TableHead>
+                    <TableHead>Boards to Test</TableHead>
+                    <TableHead>Date Code</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {getPTLOrdersForHardware(selectedOrder.id).map((ptlOrder) => (
+                    <TableRow key={ptlOrder.id}>
+                      <TableCell className="font-medium">{ptlOrder.ptlOrderNumber}</TableCell>
+                      <TableCell>{ptlOrder.saleCode}</TableCell>
+                      <TableCell>{ptlOrder.firmwareRevision}</TableCell>
+                      <TableCell>{ptlOrder.boardsToTest}</TableCell>
+                      <TableCell>{ptlOrder.dateCode}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(ptlOrder.status)}>
+                          {ptlOrder.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(ptlOrder.createdAt).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

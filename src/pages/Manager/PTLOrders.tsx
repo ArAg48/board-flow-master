@@ -76,6 +76,9 @@ const PTLOrders: React.FC = () => {
   ]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<PTLOrder | null>(null);
+  const [viewOrderDetails, setViewOrderDetails] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<PTLOrderForm>({
@@ -99,31 +102,64 @@ const PTLOrders: React.FC = () => {
     try {
       const selectedHardwareOrder = hardwareOrders.find(h => h.id === data.hardwareOrderId);
       
-      const newOrder: PTLOrder = {
-        id: Date.now().toString(),
-        ptlOrderNumber: generatePTLOrderNumber(),
-        hardwareOrderPO: selectedHardwareOrder?.poNumber || '',
-        ...data,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        createdBy: 'Current User', // Replace with actual user
-      };
+      if (editingOrder) {
+        // Update existing order
+        const updatedOrder: PTLOrder = {
+          ...editingOrder,
+          ...data,
+          hardwareOrderPO: selectedHardwareOrder?.poNumber || editingOrder.hardwareOrderPO,
+        };
+        setOrders(prev => prev.map(order => order.id === editingOrder.id ? updatedOrder : order));
+        toast({
+          title: 'PTL Order Updated',
+          description: `Order ${editingOrder.ptlOrderNumber} has been updated successfully.`,
+        });
+      } else {
+        // Create new order
+        const newOrder: PTLOrder = {
+          id: Date.now().toString(),
+          ptlOrderNumber: generatePTLOrderNumber(),
+          hardwareOrderPO: selectedHardwareOrder?.poNumber || '',
+          ...data,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          createdBy: 'Current User',
+        };
+        setOrders(prev => [newOrder, ...prev]);
+        toast({
+          title: 'PTL Order Created',
+          description: `Order ${newOrder.ptlOrderNumber} has been created successfully.`,
+        });
+      }
 
-      setOrders(prev => [newOrder, ...prev]);
       setIsDialogOpen(false);
+      setEditingOrder(null);
       form.reset();
-      
-      toast({
-        title: 'PTL Order Created',
-        description: `Order ${newOrder.ptlOrderNumber} has been created successfully.`,
-      });
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create PTL order.',
+        description: editingOrder ? 'Failed to update PTL order.' : 'Failed to create PTL order.',
         variant: 'destructive',
       });
     }
+  };
+
+  const handleEdit = (order: PTLOrder) => {
+    setEditingOrder(order);
+    form.reset({
+      hardwareOrderId: order.hardwareOrderId,
+      saleCode: order.saleCode,
+      firmwareRevision: order.firmwareRevision,
+      boardsToTest: order.boardsToTest,
+      dateCode: order.dateCode,
+      notes: order.notes || '',
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleViewDetails = (order: PTLOrder) => {
+    setSelectedOrder(order);
+    setViewOrderDetails(true);
   };
 
   const getStatusColor = (status: PTLOrder['status']) => {
@@ -144,7 +180,13 @@ const PTLOrders: React.FC = () => {
           <p className="text-muted-foreground">Create and manage PTL orders linked to hardware orders</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setEditingOrder(null);
+            form.reset();
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -153,7 +195,7 @@ const PTLOrders: React.FC = () => {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Create PTL Order</DialogTitle>
+              <DialogTitle>{editingOrder ? 'Edit PTL Order' : 'Create PTL Order'}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -265,10 +307,14 @@ const PTLOrders: React.FC = () => {
                 />
                 
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setIsDialogOpen(false);
+                    setEditingOrder(null);
+                    form.reset();
+                  }}>
                     Cancel
                   </Button>
-                  <Button type="submit">Create Order</Button>
+                  <Button type="submit">{editingOrder ? 'Update Order' : 'Create Order'}</Button>
                 </div>
               </form>
             </Form>
@@ -321,10 +367,10 @@ const PTLOrders: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                     </div>
@@ -335,6 +381,80 @@ const PTLOrders: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Order Details Dialog */}
+      <Dialog open={viewOrderDetails} onOpenChange={setViewOrderDetails}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>PTL Order Details - {selectedOrder?.ptlOrderNumber}</DialogTitle>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">PTL Order Number</Label>
+                  <p className="text-sm font-mono">{selectedOrder.ptlOrderNumber}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Hardware Order</Label>
+                  <p className="text-sm">{selectedOrder.hardwareOrderPO}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Sale Code</Label>
+                  <p className="text-sm">{selectedOrder.saleCode}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Firmware Revision</Label>
+                  <p className="text-sm">{selectedOrder.firmwareRevision}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Boards to Test</Label>
+                  <p className="text-sm">{selectedOrder.boardsToTest}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Date Code</Label>
+                  <p className="text-sm">{selectedOrder.dateCode}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Badge className={getStatusColor(selectedOrder.status)}>
+                    {selectedOrder.status}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Created</Label>
+                  <p className="text-sm">{new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+              
+              {selectedOrder.notes && (
+                <div>
+                  <Label className="text-sm font-medium">Notes</Label>
+                  <p className="text-sm mt-1 p-3 bg-muted rounded-md">{selectedOrder.notes}</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Testing Progress</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600">25</p>
+                    <p className="text-sm text-muted-foreground">Tested</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold text-green-600">22</p>
+                    <p className="text-sm text-muted-foreground">Passed</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold text-red-600">3</p>
+                    <p className="text-sm text-muted-foreground">Failed</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
