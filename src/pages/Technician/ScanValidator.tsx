@@ -10,6 +10,7 @@ import PreTestVerificationComponent from '@/components/ScanValidator/PreTestVeri
 import TesterConfiguration from '@/components/ScanValidator/TesterConfiguration';
 import ScanningInterface from '@/components/ScanValidator/ScanningInterface';
 import PostTestVerificationComponent from '@/components/ScanValidator/PostTestVerification';
+import RealTimeTracking from '@/components/ScanValidator/RealTimeTracking';
 
 const ScanValidator: React.FC = () => {
   const [currentSession, setCurrentSession] = useState<ValidationSession | null>(null);
@@ -234,18 +235,21 @@ const ScanValidator: React.FC = () => {
       )}
 
       {(currentSession?.status === 'scanning' || currentSession?.status === 'paused' || currentSession?.status === 'break') && (
-        <ScanningInterface
-          testerConfig={currentSession.testerConfig}
-          ptlOrder={currentSession.ptlOrder}
-          scannedEntries={currentSession.scannedEntries}
-          onScanEntry={handleScanEntry}
-          onPause={handlePause}
-          onBreak={handleBreak}
-          onResume={handleResume}
-          onFinishPTL={handleFinishPTL}
-          isActive={currentSession.status === 'scanning'}
-          isBreakMode={currentSession.status === 'break'}
-        />
+        <div className="space-y-6">
+          <RealTimeTracking session={currentSession} />
+          <ScanningInterface
+            testerConfig={currentSession.testerConfig}
+            ptlOrder={currentSession.ptlOrder}
+            scannedEntries={currentSession.scannedEntries}
+            onScanEntry={handleScanEntry}
+            onPause={handlePause}
+            onBreak={handleBreak}
+            onResume={handleResume}
+            onFinishPTL={handleFinishPTL}
+            isActive={currentSession.status === 'scanning'}
+            isBreakMode={currentSession.status === 'break'}
+          />
+        </div>
       )}
 
       {currentSession?.status === 'post-test' && (

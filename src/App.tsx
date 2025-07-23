@@ -14,6 +14,8 @@ import AccountManagement from "@/pages/Manager/AccountManagement";
 import OrderOverview from "@/pages/Manager/OrderOverview";
 import LogHistory from "@/pages/Manager/LogHistory";
 import ScanValidator from "@/pages/Technician/ScanValidator";
+import RepairLog from "@/pages/Technician/RepairLog";
+import ScanHistory from "@/pages/Technician/ScanHistory";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -79,12 +81,12 @@ const App = () => (
               } />
               <Route path="repair-log" element={
                 <ProtectedRoute requiredRole="technician">
-                  <div>Repair Log Page - Coming Soon</div>
+                  <RepairLog />
                 </ProtectedRoute>
               } />
               <Route path="scan-history" element={
                 <ProtectedRoute requiredRole="technician">
-                  <div>Scan History Page - Coming Soon</div>
+                  <ScanHistory />
                 </ProtectedRoute>
               } />
             </Route>

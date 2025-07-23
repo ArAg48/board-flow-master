@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { TesterConfig, ScanEntry, PTLOrder } from '@/types/scan-validator';
+import { RepairEntry } from '@/types/repair-log';
 import { Scan, CheckCircle, XCircle, Coffee, Pause, Play, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
