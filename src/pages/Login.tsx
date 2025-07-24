@@ -92,11 +92,11 @@ const Login: React.FC = () => {
         .from('board_data')
         .select(`
           *,
-          ptl_orders!inner(ptl_order_number, board_type),
+          ptl_orders(ptl_order_number, board_type),
           profiles(full_name)
         `)
         .eq('qr_code', boardId.trim())
-        .single();
+        .maybeSingle();
 
       if (error || !data) {
         setLookupError('Board ID not found');
