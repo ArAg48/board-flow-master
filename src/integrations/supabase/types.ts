@@ -14,6 +14,76 @@ export type Database = {
   }
   public: {
     Tables: {
+      board_data: {
+        Row: {
+          assembly_number: string
+          board_type: string
+          created_at: string
+          hardware_order_id: string | null
+          id: string
+          ptl_order_id: string | null
+          qr_code: string
+          sequence_number: string
+          technician_id: string | null
+          test_date: string | null
+          test_results: Json | null
+          test_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          assembly_number: string
+          board_type: string
+          created_at?: string
+          hardware_order_id?: string | null
+          id?: string
+          ptl_order_id?: string | null
+          qr_code: string
+          sequence_number: string
+          technician_id?: string | null
+          test_date?: string | null
+          test_results?: Json | null
+          test_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assembly_number?: string
+          board_type?: string
+          created_at?: string
+          hardware_order_id?: string | null
+          id?: string
+          ptl_order_id?: string | null
+          qr_code?: string
+          sequence_number?: string
+          technician_id?: string | null
+          test_date?: string | null
+          test_results?: Json | null
+          test_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_data_hardware_order_id_fkey"
+            columns: ["hardware_order_id"]
+            isOneToOne: false
+            referencedRelation: "hardware_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_data_ptl_order_id_fkey"
+            columns: ["ptl_order_id"]
+            isOneToOne: false
+            referencedRelation: "ptl_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_data_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hardware_orders: {
         Row: {
           assembly_number: string
@@ -78,7 +148,7 @@ export type Database = {
           created_at?: string
           email: string
           full_name?: string | null
-          id: string
+          id?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           username: string
