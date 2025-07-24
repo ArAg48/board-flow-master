@@ -46,12 +46,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('Auth state changed:', event, session);
         setSession(session);
         
-        if (session?.user) {
-          // Defer profile fetching to avoid deadlock
-          setTimeout(() => {
-            fetchUserProfile(session.user);
-          }, 0);
-        } else {
+        // Don't fetch profile for anonymous sessions - we handle user data differently
+        if (!session) {
           setUser(null);
           setIsLoading(false);
         }
@@ -61,50 +57,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session?.user) {
-        fetchUserProfile(session.user);
-      } else {
+      if (!session) {
         setIsLoading(false);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
-    try {
-      // Check if profile exists
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        setIsLoading(false);
-        return;
-      }
-
-      if (profile) {
-        // Profile exists, use it
-        const userProfile: User = {
-          id: profile.id,
-          username: profile.username || 'user',
-          role: profile.role || 'technician',
-          firstName: profile.full_name?.split(' ')[0] || 'User',
-          lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
-          email: supabaseUser.email || `${profile.username}@ptl.local`,
-          createdAt: profile.created_at,
-        };
-        setUser(userProfile);
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -119,6 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) {
         console.error('Authentication error:', error);
+        setIsLoading(false);
         return false;
       }
       
@@ -130,29 +90,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (authError) {
           console.error('Session creation error:', authError);
+          setIsLoading(false);
           return false;
         }
 
-        // Create user profile in state
+        // Create user profile in state using the authenticated user data
         const userProfile: User = {
           id: user_id,
           username: username,
           role: user_role,
-          firstName: username === 'manager' ? 'Manager' : 'Tech',
+          firstName: username === 'manager' ? 'Manager' : username.charAt(0).toUpperCase() + username.slice(1),
           lastName: 'User',
           email: `${username}@ptl.local`,
           createdAt: new Date().toISOString(),
         };
         setUser(userProfile);
+        setIsLoading(false);
         return true;
       }
       
+      setIsLoading(false);
       return false;
     } catch (error) {
       console.error('Login error:', error);
-      return false;
-    } finally {
       setIsLoading(false);
+      return false;
     }
   };
 
