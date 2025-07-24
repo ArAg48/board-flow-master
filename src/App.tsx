@@ -11,6 +11,7 @@ import Dashboard from "@/pages/Dashboard";
 import HardwareOrders from "@/pages/Manager/HardwareOrders";
 import PTLOrders from "@/pages/Manager/PTLOrders";
 import PTLOrderDetails from "@/pages/Manager/PTLOrderDetails";
+import HardwareOrderDetails from "@/pages/Manager/HardwareOrderDetails";
 import AccountManagement from "@/pages/Manager/AccountManagement";
 import OrderOverview from "@/pages/Manager/OrderOverview";
 import LogHistory from "@/pages/Manager/LogHistory";
@@ -61,6 +62,11 @@ const App = () => (
               <Route path="manager/ptl-orders/:id" element={
                 <ProtectedRoute requiredRole="manager">
                   <PTLOrderDetails />
+                </ProtectedRoute>
+              } />
+              <Route path="manager/hardware-orders/:id" element={
+                <ProtectedRoute requiredRole="manager">
+                  <HardwareOrderDetails />
                 </ProtectedRoute>
               } />
               <Route path="order-overview" element={
