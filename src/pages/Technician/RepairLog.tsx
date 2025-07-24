@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,103 +8,149 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Wrench, Search, Filter, Plus, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { RepairEntry, RepairFilters } from '@/types/repair-log';
+import { Wrench, Search, Filter, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+interface RepairEntry {
+  id: string;
+  qr_code: string;
+  board_type: string;
+  failure_reason: string;
+  failure_date: string;
+  repair_status: 'pending' | 'in_progress' | 'completed' | 'scrapped';
+  assigned_technician_id?: string;
+  repair_notes?: string;
+  repair_start_date?: string;
+  repair_completed_date?: string;
+  retest_results?: 'pass' | 'fail';
+  ptl_order_id: string;
+  ptl_orders?: {
+    ptl_order_number: string;
+  };
+  profiles?: {
+    full_name: string;
+  };
+}
+
+interface RepairFilters {
+  status?: RepairEntry['repair_status'];
+  technician?: string;
+}
 
 const RepairLog: React.FC = () => {
-  const [repairEntries] = useState<RepairEntry[]>([
-    {
-      id: 'repair-001',
-      qrCode: 'PCB-ABC12345',
-      boardType: 'Main Control Board v2.1',
-      failureReason: 'Voltage regulator failure - output voltage 3.2V instead of 3.3V',
-      failureDate: new Date('2024-01-15T10:30:00'),
-      repairStatus: 'completed',
-      assignedTechnician: 'John Smith',
-      repairNotes: 'Replaced U3 voltage regulator. Tested at 3.31V output. Retested all functionality.',
-      repairStartDate: new Date('2024-01-16T09:00:00'),
-      repairCompletedDate: new Date('2024-01-16T11:30:00'),
-      retestResults: 'pass',
-      ptlOrderNumber: 'PTL-2024-001',
-      originalSessionId: 'session-001'
-    },
-    {
-      id: 'repair-002',
-      qrCode: 'SIB-789012-AB',
-      boardType: 'Sensor Interface Board',
-      failureReason: 'ADC channel 2 reading incorrect values',
-      failureDate: new Date('2024-01-14T14:20:00'),
-      repairStatus: 'in-progress',
-      assignedTechnician: 'Sarah Johnson',
-      repairNotes: 'Investigating ADC circuitry. Suspect C15 capacitor issue.',
-      repairStartDate: new Date('2024-01-15T08:00:00'),
-      ptlOrderNumber: 'PTL-2024-002',
-      originalSessionId: 'session-002'
-    },
-    {
-      id: 'repair-003',
-      qrCode: 'PCB-DEF67890',
-      boardType: 'Main Control Board v2.1',
-      failureReason: 'No power on LED indicator',
-      failureDate: new Date('2024-01-13T16:45:00'),
-      repairStatus: 'pending',
-      ptlOrderNumber: 'PTL-2024-001',
-      originalSessionId: 'session-003'
-    }
-  ]);
-
+  const [repairEntries, setRepairEntries] = useState<RepairEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<RepairFilters>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<RepairEntry | null>(null);
   const [repairNotes, setRepairNotes] = useState('');
   const { toast } = useToast();
 
-  const getStatusColor = (status: RepairEntry['repairStatus']) => {
+  useEffect(() => {
+    fetchRepairEntries();
+  }, []);
+
+  const fetchRepairEntries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('repair_entries')
+        .select(`
+          *,
+          ptl_orders(ptl_order_number),
+          profiles(full_name)
+        `)
+        .order('failure_date', { ascending: false });
+
+      if (error) throw error;
+      setRepairEntries(data || []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load repair entries",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status: RepairEntry['repair_status']) => {
     switch (status) {
       case 'pending': return 'destructive';
-      case 'in-progress': return 'secondary';
+      case 'in_progress': return 'secondary';
       case 'completed': return 'default';
       case 'scrapped': return 'outline';
       default: return 'secondary';
     }
   };
 
-  const getStatusIcon = (status: RepairEntry['repairStatus']) => {
+  const getStatusIcon = (status: RepairEntry['repair_status']) => {
     switch (status) {
       case 'pending': return <AlertTriangle className="h-4 w-4" />;
-      case 'in-progress': return <Clock className="h-4 w-4" />;
+      case 'in_progress': return <Clock className="h-4 w-4" />;
       case 'completed': return <CheckCircle className="h-4 w-4" />;
       case 'scrapped': return <XCircle className="h-4 w-4" />;
     }
   };
 
   const filteredEntries = repairEntries.filter(entry => {
-    const matchesSearch = entry.qrCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         entry.boardType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         entry.failureReason.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = entry.qr_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         entry.board_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         entry.failure_reason.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = !filters.status || entry.repairStatus === filters.status;
-    const matchesTechnician = !filters.technician || entry.assignedTechnician === filters.technician;
+    const matchesStatus = !filters.status || entry.repair_status === filters.status;
+    const matchesTechnician = !filters.technician || entry.profiles?.full_name === filters.technician;
     
     return matchesSearch && matchesStatus && matchesTechnician;
   });
 
-  const handleUpdateRepair = (entryId: string, updates: Partial<RepairEntry>) => {
-    // In real app, this would call an API
-    toast({
-      title: "Repair Updated",
-      description: "Repair entry has been updated successfully",
-    });
+  const handleUpdateRepair = async (entryId: string, updates: Partial<RepairEntry>) => {
+    try {
+      const { error } = await supabase
+        .from('repair_entries')
+        .update(updates)
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Repair Updated",
+        description: "Repair entry has been updated successfully",
+      });
+      
+      fetchRepairEntries();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update repair entry",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleAssignTechnician = (entryId: string, technician: string) => {
-    handleUpdateRepair(entryId, {
-      assignedTechnician: technician,
-      repairStatus: 'in-progress',
-      repairStartDate: new Date()
-    });
+  const handleAssignTechnician = async (entryId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      await handleUpdateRepair(entryId, {
+        assigned_technician_id: user.id,
+        repair_status: 'in_progress',
+        repair_start_date: new Date().toISOString().split('T')[0]
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to assign technician",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -134,14 +180,14 @@ const RepairLog: React.FC = () => {
                 className="pl-9"
               />
             </div>
-            <Select value={filters.status || ''} onValueChange={(value) => setFilters({...filters, status: value as RepairEntry['repairStatus'] || undefined})}>
+            <Select value={filters.status || ''} onValueChange={(value) => setFilters({...filters, status: value as RepairEntry['repair_status'] || undefined})}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All Statuses</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="scrapped">Scrapped</SelectItem>
               </SelectContent>
@@ -152,9 +198,9 @@ const RepairLog: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All Technicians</SelectItem>
-                <SelectItem value="John Smith">John Smith</SelectItem>
-                <SelectItem value="Sarah Johnson">Sarah Johnson</SelectItem>
-                <SelectItem value="Mike Wilson">Mike Wilson</SelectItem>
+                {Array.from(new Set(repairEntries.map(entry => entry.profiles?.full_name).filter(Boolean))).map((tech) => (
+                  <SelectItem key={tech} value={tech!}>{tech}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={() => {setFilters({}); setSearchTerm('');}}>
@@ -190,16 +236,16 @@ const RepairLog: React.FC = () => {
             <TableBody>
               {filteredEntries.map((entry) => (
                 <TableRow key={entry.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell className="font-medium">{entry.qrCode}</TableCell>
-                  <TableCell>{entry.boardType}</TableCell>
-                  <TableCell>{entry.failureDate.toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">{entry.qr_code}</TableCell>
+                  <TableCell>{entry.board_type}</TableCell>
+                  <TableCell>{new Date(entry.failure_date).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusColor(entry.repairStatus)} className="flex items-center gap-1 w-fit">
-                      {getStatusIcon(entry.repairStatus)}
-                      {entry.repairStatus}
+                    <Badge variant={getStatusColor(entry.repair_status)} className="flex items-center gap-1 w-fit">
+                      {getStatusIcon(entry.repair_status)}
+                      {entry.repair_status.replace('_', ' ')}
                     </Badge>
                   </TableCell>
-                  <TableCell>{entry.assignedTechnician || 'Unassigned'}</TableCell>
+                  <TableCell>{entry.profiles?.full_name || 'Unassigned'}</TableCell>
                   <TableCell>
                     <Dialog>
                       <DialogTrigger asChild>
@@ -211,30 +257,30 @@ const RepairLog: React.FC = () => {
                         <DialogHeader>
                           <DialogTitle className="flex items-center gap-2">
                             <Wrench className="h-5 w-5" />
-                            Repair Details - {entry.qrCode}
+                            Repair Details - {entry.qr_code}
                           </DialogTitle>
                           <DialogDescription>
-                            {entry.boardType} from {entry.ptlOrderNumber}
+                            {entry.board_type} from {entry.ptl_orders?.ptl_order_number}
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <Label>Failure Reason</Label>
-                              <div className="p-2 bg-muted rounded text-sm">{entry.failureReason}</div>
+                              <div className="p-2 bg-muted rounded text-sm">{entry.failure_reason}</div>
                             </div>
                             <div>
                               <Label>Current Status</Label>
-                              <Badge variant={getStatusColor(entry.repairStatus)} className="flex items-center gap-1 w-fit mt-1">
-                                {getStatusIcon(entry.repairStatus)}
-                                {entry.repairStatus}
+                              <Badge variant={getStatusColor(entry.repair_status)} className="flex items-center gap-1 w-fit mt-1">
+                                {getStatusIcon(entry.repair_status)}
+                                {entry.repair_status.replace('_', ' ')}
                               </Badge>
                             </div>
                           </div>
-                          {entry.repairNotes && (
+                          {entry.repair_notes && (
                             <div>
                               <Label>Repair Notes</Label>
-                              <div className="p-2 bg-muted rounded text-sm">{entry.repairNotes}</div>
+                              <div className="p-2 bg-muted rounded text-sm">{entry.repair_notes}</div>
                             </div>
                           )}
                           <div>
@@ -247,16 +293,16 @@ const RepairLog: React.FC = () => {
                             />
                           </div>
                           <div className="flex gap-2">
-                            <Button onClick={() => handleUpdateRepair(entry.id, { repairNotes })}>
+                            <Button onClick={() => handleUpdateRepair(entry.id, { repair_notes: repairNotes })}>
                               Update Notes
                             </Button>
-                            {entry.repairStatus === 'pending' && (
-                              <Button variant="outline" onClick={() => handleAssignTechnician(entry.id, 'Current User')}>
+                            {entry.repair_status === 'pending' && (
+                              <Button variant="outline" onClick={() => handleAssignTechnician(entry.id)}>
                                 Assign to Me
                               </Button>
                             )}
-                            {entry.repairStatus === 'in-progress' && (
-                              <Button variant="default" onClick={() => handleUpdateRepair(entry.id, { repairStatus: 'completed', repairCompletedDate: new Date() })}>
+                            {entry.repair_status === 'in_progress' && (
+                              <Button variant="default" onClick={() => handleUpdateRepair(entry.id, { repair_status: 'completed', repair_completed_date: new Date().toISOString().split('T')[0] })}>
                                 Mark Complete
                               </Button>
                             )}

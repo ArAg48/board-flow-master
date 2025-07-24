@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,78 +7,89 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { History, Search, Filter, Calendar, Clock, TrendingUp, Users, Target } from 'lucide-react';
-import { SessionHistory, HistoryFilters } from '@/types/scan-history';
+import { History, Search, Filter, TrendingUp, Users, Target } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+interface SessionHistory {
+  id: string;
+  ptl_order_id: string;
+  technician_id: string;
+  start_time: string;
+  end_time?: string;
+  duration_minutes?: number;
+  total_scanned: number;
+  pass_count: number;
+  fail_count: number;
+  pass_rate?: number;
+  tester_config: {
+    type: number;
+    scanBoxes: number;
+  };
+  status: 'completed' | 'paused' | 'abandoned' | 'active';
+  notes?: string;
+  ptl_orders?: {
+    ptl_order_number: string;
+    board_type: string;
+  };
+  profiles?: {
+    full_name: string;
+  };
+}
+
+interface HistoryFilters {
+  technician?: string;
+  ptlOrder?: string;
+  status?: SessionHistory['status'];
+}
 
 const ScanHistory: React.FC = () => {
-  const [sessions] = useState<SessionHistory[]>([
-    {
-      id: 'session-001',
-      ptlOrderNumber: 'PTL-2024-001',
-      boardType: 'Main Control Board v2.1',
-      technicianName: 'John Smith',
-      startTime: new Date('2024-01-15T09:00:00'),
-      endTime: new Date('2024-01-15T11:30:00'),
-      duration: 150,
-      totalScanned: 45,
-      passCount: 42,
-      failCount: 3,
-      passRate: 93,
-      testerConfig: { type: 5, scanBoxes: 5 },
-      status: 'completed',
-      notes: 'Good session, 3 failures were voltage regulator issues'
-    },
-    {
-      id: 'session-002',
-      ptlOrderNumber: 'PTL-2024-002',
-      boardType: 'Sensor Interface Board',
-      technicianName: 'Sarah Johnson',
-      startTime: new Date('2024-01-14T13:30:00'),
-      endTime: new Date('2024-01-14T16:45:00'),
-      duration: 195,
-      totalScanned: 62,
-      passCount: 60,
-      failCount: 2,
-      passRate: 97,
-      testerConfig: { type: 10, scanBoxes: 10 },
-      status: 'completed'
-    },
-    {
-      id: 'session-003',
-      ptlOrderNumber: 'PTL-2024-001',
-      boardType: 'Main Control Board v2.1',
-      technicianName: 'Mike Wilson',
-      startTime: new Date('2024-01-13T10:15:00'),
-      duration: 85,
-      totalScanned: 28,
-      passCount: 25,
-      failCount: 3,
-      passRate: 89,
-      testerConfig: { type: 4, scanBoxes: 4 },
-      status: 'paused',
-      notes: 'Session paused due to equipment maintenance'
-    },
-    {
-      id: 'session-004',
-      ptlOrderNumber: 'PTL-2024-003',
-      boardType: 'Power Management Board',
-      technicianName: 'John Smith',
-      startTime: new Date('2024-01-12T08:00:00'),
-      endTime: new Date('2024-01-12T12:30:00'),
-      duration: 270,
-      totalScanned: 88,
-      passCount: 84,
-      failCount: 4,
-      passRate: 95,
-      testerConfig: { type: 10, scanBoxes: 10 },
-      status: 'completed',
-      notes: 'High throughput session, excellent results'
-    }
-  ]);
-
+  const [sessions, setSessions] = useState<SessionHistory[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<HistoryFilters>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSession, setSelectedSession] = useState<SessionHistory | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const fetchSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('scan_sessions')
+        .select(`
+          *,
+          ptl_orders(ptl_order_number, board_type),
+          profiles(full_name)
+        `)
+        .order('start_time', { ascending: false });
+
+      if (error) throw error;
+      
+      // Calculate pass rate for sessions that don't have it and ensure proper types
+      const sessionsWithPassRate = (data || []).map(session => ({
+        ...session,
+        pass_rate: session.total_scanned > 0 
+          ? Math.round((session.pass_count / session.total_scanned) * 100)
+          : 0,
+        tester_config: typeof session.tester_config === 'string' 
+          ? JSON.parse(session.tester_config)
+          : session.tester_config || { type: 1, scanBoxes: 1 }
+      })) as SessionHistory[];
+      
+      setSessions(sessionsWithPassRate);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load scan sessions",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: SessionHistory['status']) => {
     switch (status) {
@@ -96,22 +107,26 @@ const ScanHistory: React.FC = () => {
   };
 
   const filteredSessions = sessions.filter(session => {
-    const matchesSearch = session.ptlOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         session.boardType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         session.technicianName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = session.ptl_orders?.ptl_order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         session.ptl_orders?.board_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         session.profiles?.full_name.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = !filters.status || session.status === filters.status;
-    const matchesTechnician = !filters.technician || session.technicianName === filters.technician;
-    const matchesPTL = !filters.ptlOrder || session.ptlOrderNumber === filters.ptlOrder;
+    const matchesTechnician = !filters.technician || session.profiles?.full_name === filters.technician;
+    const matchesPTL = !filters.ptlOrder || session.ptl_orders?.ptl_order_number === filters.ptlOrder;
     
     return matchesSearch && matchesStatus && matchesTechnician && matchesPTL;
   });
 
   // Calculate summary stats
   const totalSessions = filteredSessions.length;
-  const avgPassRate = filteredSessions.reduce((sum, s) => sum + s.passRate, 0) / totalSessions || 0;
-  const totalScanned = filteredSessions.reduce((sum, s) => sum + s.totalScanned, 0);
-  const totalPassed = filteredSessions.reduce((sum, s) => sum + s.passCount, 0);
+  const avgPassRate = filteredSessions.reduce((sum, s) => sum + (s.pass_rate || 0), 0) / totalSessions || 0;
+  const totalScanned = filteredSessions.reduce((sum, s) => sum + s.total_scanned, 0);
+  const totalPassed = filteredSessions.reduce((sum, s) => sum + s.pass_count, 0);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -161,10 +176,10 @@ const ScanHistory: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-orange-500" />
-              <div>
-                <div className="text-2xl font-bold">{new Set(filteredSessions.map(s => s.technicianName)).size}</div>
-                <div className="text-xs text-muted-foreground">Active Techs</div>
-              </div>
+            <div>
+              <div className="text-2xl font-bold">{new Set(filteredSessions.map(s => s.profiles?.full_name).filter(Boolean)).size}</div>
+              <div className="text-xs text-muted-foreground">Active Techs</div>
+            </div>
             </div>
           </CardContent>
         </Card>
@@ -198,6 +213,7 @@ const ScanHistory: React.FC = () => {
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="paused">Paused</SelectItem>
                 <SelectItem value="abandoned">Abandoned</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filters.technician || ''} onValueChange={(value) => setFilters({...filters, technician: value || undefined})}>
@@ -206,9 +222,9 @@ const ScanHistory: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All Technicians</SelectItem>
-                <SelectItem value="John Smith">John Smith</SelectItem>
-                <SelectItem value="Sarah Johnson">Sarah Johnson</SelectItem>
-                <SelectItem value="Mike Wilson">Mike Wilson</SelectItem>
+                {Array.from(new Set(sessions.map(s => s.profiles?.full_name).filter(Boolean))).map((tech) => (
+                  <SelectItem key={tech} value={tech!}>{tech}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={filters.ptlOrder || ''} onValueChange={(value) => setFilters({...filters, ptlOrder: value || undefined})}>
@@ -217,9 +233,9 @@ const ScanHistory: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">All Orders</SelectItem>
-                <SelectItem value="PTL-2024-001">PTL-2024-001</SelectItem>
-                <SelectItem value="PTL-2024-002">PTL-2024-002</SelectItem>
-                <SelectItem value="PTL-2024-003">PTL-2024-003</SelectItem>
+                {Array.from(new Set(sessions.map(s => s.ptl_orders?.ptl_order_number).filter(Boolean))).map((order) => (
+                  <SelectItem key={order} value={order!}>{order}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={() => {setFilters({}); setSearchTerm('');}}>
@@ -257,14 +273,16 @@ const ScanHistory: React.FC = () => {
             <TableBody>
               {filteredSessions.map((session) => (
                 <TableRow key={session.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell className="font-medium">{session.ptlOrderNumber}</TableCell>
-                  <TableCell>{session.technicianName}</TableCell>
-                  <TableCell>{session.startTime.toLocaleDateString()}</TableCell>
-                  <TableCell>{Math.floor(session.duration / 60)}h {session.duration % 60}m</TableCell>
-                  <TableCell>{session.totalScanned}</TableCell>
+                  <TableCell className="font-medium">{session.ptl_orders?.ptl_order_number}</TableCell>
+                  <TableCell>{session.profiles?.full_name}</TableCell>
+                  <TableCell>{new Date(session.start_time).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <span className={getPassRateColor(session.passRate)}>
-                      {session.passRate}%
+                    {session.duration_minutes ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : 'In progress'}
+                  </TableCell>
+                  <TableCell>{session.total_scanned}</TableCell>
+                  <TableCell>
+                    <span className={getPassRateColor(session.pass_rate || 0)}>
+                      {session.pass_rate || 0}%
                     </span>
                   </TableCell>
                   <TableCell>
@@ -283,29 +301,31 @@ const ScanHistory: React.FC = () => {
                         <DialogHeader>
                           <DialogTitle className="flex items-center gap-2">
                             <History className="h-5 w-5" />
-                            Session Details - {session.ptlOrderNumber}
+                            Session Details - {session.ptl_orders?.ptl_order_number}
                           </DialogTitle>
                           <DialogDescription>
-                            {session.boardType} • {session.startTime.toLocaleDateString()}
+                            {session.ptl_orders?.board_type} • {new Date(session.start_time).toLocaleDateString()}
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <div className="text-sm text-muted-foreground">Technician</div>
-                              <div className="font-medium">{session.technicianName}</div>
+                              <div className="font-medium">{session.profiles?.full_name}</div>
                             </div>
                             <div>
                               <div className="text-sm text-muted-foreground">Tester Configuration</div>
-                              <div className="font-medium">{session.testerConfig.type}-up ({session.testerConfig.scanBoxes} boxes)</div>
+                              <div className="font-medium">{session.tester_config.type}-up ({session.tester_config.scanBoxes} boxes)</div>
                             </div>
                             <div>
                               <div className="text-sm text-muted-foreground">Start Time</div>
-                              <div className="font-medium">{session.startTime.toLocaleString()}</div>
+                              <div className="font-medium">{new Date(session.start_time).toLocaleString()}</div>
                             </div>
                             <div>
                               <div className="text-sm text-muted-foreground">Duration</div>
-                              <div className="font-medium">{Math.floor(session.duration / 60)}h {session.duration % 60}m</div>
+                              <div className="font-medium">
+                                {session.duration_minutes ? `${Math.floor(session.duration_minutes / 60)}h ${session.duration_minutes % 60}m` : 'In progress'}
+                              </div>
                             </div>
                           </div>
                           
@@ -313,21 +333,21 @@ const ScanHistory: React.FC = () => {
                             <div className="text-sm text-muted-foreground">Test Results</div>
                             <div className="grid grid-cols-3 gap-4 text-center">
                               <div>
-                                <div className="text-2xl font-bold">{session.totalScanned}</div>
+                                <div className="text-2xl font-bold">{session.total_scanned}</div>
                                 <div className="text-xs text-muted-foreground">Total</div>
                               </div>
                               <div>
-                                <div className="text-2xl font-bold text-green-600">{session.passCount}</div>
+                                <div className="text-2xl font-bold text-green-600">{session.pass_count}</div>
                                 <div className="text-xs text-muted-foreground">Passed</div>
                               </div>
                               <div>
-                                <div className="text-2xl font-bold text-red-600">{session.failCount}</div>
+                                <div className="text-2xl font-bold text-red-600">{session.fail_count}</div>
                                 <div className="text-xs text-muted-foreground">Failed</div>
                               </div>
                             </div>
-                            <Progress value={session.passRate} className="h-2" />
+                            <Progress value={session.pass_rate || 0} className="h-2" />
                             <div className="text-center text-sm font-medium">
-                              {session.passRate}% Pass Rate
+                              {session.pass_rate || 0}% Pass Rate
                             </div>
                           </div>
                           
