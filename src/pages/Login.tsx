@@ -134,11 +134,6 @@ const Login: React.FC = () => {
             
           </form>
           
-          <div className="mt-6 text-sm text-muted-foreground text-center space-y-1">
-            <p>Demo Credentials:</p>
-            <p>Manager: manager / manager123</p>
-            <p>Technician: tech / tech123</p>
-          </div>
         </CardContent>
       </Card>
 
@@ -230,9 +225,6 @@ const Login: React.FC = () => {
             </div>
           )}
 
-          <div className="mt-4 text-xs text-muted-foreground text-center">
-            <p>Demo Board ID: DEMO123</p>
-          </div>
         </CardContent>
       </Card>
       </div>
