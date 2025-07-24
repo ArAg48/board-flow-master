@@ -305,6 +305,16 @@ export type Database = {
           user_role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      create_user_account: {
+        Args: {
+          p_username: string
+          p_password: string
+          p_first_name: string
+          p_last_name: string
+          p_role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: string
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]

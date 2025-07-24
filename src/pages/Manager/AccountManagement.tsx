@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { Trash2, UserPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
 const createAccountSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
@@ -23,6 +25,8 @@ const createAccountSchema = z.object({
 });
 
 type CreateAccountForm = z.infer<typeof createAccountSchema>;
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface Account {
   id: string;
@@ -36,35 +40,43 @@ interface Account {
 
 const AccountManagement: React.FC = () => {
   const { toast } = useToast();
-  const [accounts, setAccounts] = useState<Account[]>([
-    {
-      id: '1',
-      username: 'manager',
-      role: 'manager',
-      firstName: 'John',
-      lastName: 'Manager',
-      isActive: true,
-      createdAt: '2024-01-15',
-    },
-    {
-      id: '2',
-      username: 'tech',
-      role: 'technician',
-      firstName: 'Jane',
-      lastName: 'Technician',
-      isActive: true,
-      createdAt: '2024-01-20',
-    },
-    {
-      id: '3',
-      username: 'tech2',
-      role: 'technician',
-      firstName: 'Bob',
-      lastName: 'Smith',
-      isActive: false,
-      createdAt: '2024-02-01',
-    },
-  ]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedAccounts: Account[] = (data || []).map((profile: Profile) => ({
+        id: profile.id,
+        username: profile.username,
+        role: profile.role as 'manager' | 'technician',
+        firstName: profile.full_name?.split(' ')[0] || '',
+        lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
+        isActive: true, // We'll assume all profiles are active for now
+        createdAt: new Date(profile.created_at).toISOString().split('T')[0],
+      }));
+
+      setAccounts(formattedAccounts);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch accounts.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const form = useForm<CreateAccountForm>({
     resolver: zodResolver(createAccountSchema),
@@ -77,25 +89,34 @@ const AccountManagement: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: CreateAccountForm) => {
-    // TODO: Replace with actual API call
-    const newAccount: Account = {
-      id: Date.now().toString(),
-      username: data.username,
-      role: data.role,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      isActive: true,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
+  const onSubmit = async (data: CreateAccountForm) => {
+    try {
+      const { data: result, error } = await supabase
+        .rpc('create_user_account', {
+          p_username: data.username,
+          p_password: data.password,
+          p_first_name: data.firstName,
+          p_last_name: data.lastName,
+          p_role: data.role
+        });
 
-    setAccounts(prev => [...prev, newAccount]);
-    form.reset();
-    
-    toast({
-      title: 'Account Created',
-      description: `${data.role} account for ${data.firstName} ${data.lastName} has been created successfully.`,
-    });
+      if (error) throw error;
+
+      toast({
+        title: 'Account Created',
+        description: `${data.role} account for ${data.firstName} ${data.lastName} has been created successfully.`,
+      });
+
+      form.reset();
+      fetchAccounts(); // Refresh the list
+    } catch (error) {
+      console.error('Error creating account:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create account. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const toggleAccountStatus = (id: string) => {
@@ -242,7 +263,16 @@ const AccountManagement: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {accounts.map((account) => (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center">Loading accounts...</TableCell>
+                    </TableRow>
+                  ) : accounts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center">No accounts found</TableCell>
+                    </TableRow>
+                  ) : (
+                    accounts.map((account) => (
                     <TableRow key={account.id}>
                       <TableCell>
                         <div>
@@ -294,7 +324,8 @@ const AccountManagement: React.FC = () => {
                         </AlertDialog>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
