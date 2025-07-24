@@ -43,9 +43,8 @@ const ScanValidator: React.FC = () => {
         ptlOrder: order,
         testerConfig: { type: 1, scanBoxes: 1 },
         preTestVerification: {
-          firmwareVersion: '',
-          testerCalibration: false,
-          environmentCheck: false
+          testerCheck: false,
+          firmwareCheck: false
         },
         startTime: new Date(),
         status: 'setup',

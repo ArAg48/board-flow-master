@@ -14,9 +14,8 @@ export interface TesterConfig {
 }
 
 export interface PreTestVerification {
-  firmwareVersion: string;
-  testerCalibration: boolean;
-  environmentCheck: boolean;
+  testerCheck: boolean;
+  firmwareCheck: boolean;
 }
 
 export interface PostTestVerification {

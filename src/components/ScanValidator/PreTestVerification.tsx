@@ -26,9 +26,7 @@ const PreTestVerification: React.FC<PreTestVerificationProps> = ({
     onVerificationChange(updated);
   };
 
-  const isComplete = localVerification.firmwareVersion.trim() !== '' && 
-                    localVerification.testerCalibration && 
-                    localVerification.environmentCheck;
+  const isComplete = localVerification.testerCheck && localVerification.firmwareCheck;
 
   return (
     <Card>
@@ -42,36 +40,26 @@ const PreTestVerification: React.FC<PreTestVerificationProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="firmware">Firmware Version</Label>
-          <Input
-            id="firmware"
-            placeholder="Enter firmware version (e.g., v2.1.4)"
-            value={localVerification.firmwareVersion}
-            onChange={(e) => handleChange('firmwareVersion', e.target.value)}
-          />
-        </div>
-
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="calibration"
-              checked={localVerification.testerCalibration}
-              onCheckedChange={(checked) => handleChange('testerCalibration', checked)}
+              id="tester"
+              checked={localVerification.testerCheck}
+              onCheckedChange={(checked) => handleChange('testerCheck', checked)}
             />
-            <Label htmlFor="calibration" className="text-sm font-normal">
+            <Label htmlFor="tester" className="text-sm font-normal">
               Tester calibration verified and within tolerance
             </Label>
           </div>
 
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="environment"
-              checked={localVerification.environmentCheck}
-              onCheckedChange={(checked) => handleChange('environmentCheck', checked)}
+              id="firmware"
+              checked={localVerification.firmwareCheck}
+              onCheckedChange={(checked) => handleChange('firmwareCheck', checked)}
             />
-            <Label htmlFor="environment" className="text-sm font-normal">
-              Environment check completed (temperature, humidity, cleanliness)
+            <Label htmlFor="firmware" className="text-sm font-normal">
+              Firmware version verified and up to date
             </Label>
           </div>
         </div>
