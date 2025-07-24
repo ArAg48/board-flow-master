@@ -75,9 +75,26 @@ const HardwareOrders: React.FC = () => {
 
   const onSubmit = async (data: HardwareOrderForm) => {
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: 'Authentication Required',
+          description: 'You must be logged in to create hardware orders.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       console.log('Form data submitted:', data);
+      console.log('Current user:', user);
+      
       const endingSequence = calculateEndingSequence(data.starting_sequence, data.quantity);
-      const orderData = { ...data, ending_sequence: endingSequence };
+      const orderData = { 
+        ...data, 
+        ending_sequence: endingSequence,
+        created_by: user.id  // Set the created_by field
+      };
       console.log('Order data to insert:', orderData);
 
       if (editingOrder) {
