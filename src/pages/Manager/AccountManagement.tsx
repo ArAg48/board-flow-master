@@ -19,7 +19,6 @@ const createAccountSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email address'),
   role: z.enum(['manager', 'technician'], { required_error: 'Please select a role' }),
 });
 
@@ -31,7 +30,6 @@ interface Account {
   role: 'manager' | 'technician';
   firstName: string;
   lastName: string;
-  email: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -45,7 +43,6 @@ const AccountManagement: React.FC = () => {
       role: 'manager',
       firstName: 'John',
       lastName: 'Manager',
-      email: 'manager@ptl.com',
       isActive: true,
       createdAt: '2024-01-15',
     },
@@ -55,7 +52,6 @@ const AccountManagement: React.FC = () => {
       role: 'technician',
       firstName: 'Jane',
       lastName: 'Technician',
-      email: 'tech@ptl.com',
       isActive: true,
       createdAt: '2024-01-20',
     },
@@ -65,7 +61,6 @@ const AccountManagement: React.FC = () => {
       role: 'technician',
       firstName: 'Bob',
       lastName: 'Smith',
-      email: 'bob@ptl.com',
       isActive: false,
       createdAt: '2024-02-01',
     },
@@ -78,7 +73,6 @@ const AccountManagement: React.FC = () => {
       password: '',
       firstName: '',
       lastName: '',
-      email: '',
       role: undefined,
     },
   });
@@ -91,7 +85,6 @@ const AccountManagement: React.FC = () => {
       role: data.role,
       firstName: data.firstName,
       lastName: data.lastName,
-      email: data.email,
       isActive: true,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -192,18 +185,6 @@ const AccountManagement: React.FC = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  {...form.register('email')}
-                  className={form.formState.errors.email ? 'border-destructive' : ''}
-                />
-                {form.formState.errors.email && (
-                  <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-                )}
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
