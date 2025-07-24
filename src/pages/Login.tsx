@@ -48,27 +48,6 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleAnonymousLogin = async () => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      // Use anonymous authentication
-      const success = await login('anonymous', '');
-      if (success) {
-        toast({
-          title: 'Login Successful',
-          description: 'Logged in as anonymous user',
-        });
-      } else {
-        setError('Anonymous login failed');
-      }
-    } catch (err) {
-      setError('An error occurred during anonymous login');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleBoardLookup = async () => {
     if (!boardId.trim()) return;
@@ -153,24 +132,6 @@ const Login: React.FC = () => {
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
             
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
-            
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="w-full" 
-              disabled={isLoading}
-              onClick={handleAnonymousLogin}
-            >
-              Continue without Login
-            </Button>
           </form>
           
           <div className="mt-6 text-sm text-muted-foreground text-center space-y-1">
