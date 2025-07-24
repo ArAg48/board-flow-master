@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Search, Download, Calendar as CalendarIcon, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LogEntry {
   id: string;
@@ -30,73 +31,121 @@ const LogHistory: React.FC = () => {
   const [techFilter, setTechFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const [logs] = useState<LogEntry[]>([
-    {
-      id: '1',
-      timestamp: '2024-01-15T10:30:00Z',
-      type: 'test',
-      level: 'success',
-      message: 'Board testing completed successfully',
-      technician: 'Jane Technician',
-      poNumber: 'PO-2024-001',
-      boardId: 'BOARD-001-001',
-      details: 'All 15 test points passed within acceptable parameters',
-    },
-    {
-      id: '2',
-      timestamp: '2024-01-15T10:25:00Z',
-      type: 'test',
-      level: 'error',
-      message: 'Board failed voltage test',
-      technician: 'Jane Technician',
-      poNumber: 'PO-2024-001',
-      boardId: 'BOARD-001-002',
-      details: 'Voltage test point 3 failed: Expected 3.3V, measured 2.1V',
-    },
-    {
-      id: '3',
-      timestamp: '2024-01-15T09:45:00Z',
-      type: 'repair',
-      level: 'info',
-      message: 'Board repair initiated',
-      technician: 'Bob Smith',
-      poNumber: 'PO-2024-002',
-      boardId: 'BOARD-002-005',
-      details: 'Replacing faulty capacitor C15',
-    },
-    {
-      id: '4',
-      timestamp: '2024-01-15T09:30:00Z',
-      type: 'order',
-      level: 'info',
-      message: 'New PTL order created',
-      technician: 'John Manager',
-      poNumber: 'PO-2024-003',
-      details: 'Order for 50 units of PCB-SENSOR-V1',
-    },
-    {
-      id: '5',
-      timestamp: '2024-01-15T09:15:00Z',
-      type: 'system',
-      level: 'warning',
-      message: 'Test equipment calibration due',
-      technician: 'System',
-      details: 'Oscilloscope OSC-001 calibration expires in 7 days',
-    },
-    {
-      id: '6',
-      timestamp: '2024-01-15T08:45:00Z',
-      type: 'test',
-      level: 'success',
-      message: 'Repair verification completed',
-      technician: 'Bob Smith',
-      poNumber: 'PO-2024-002',
-      boardId: 'BOARD-002-003',
-      details: 'Board passed all tests after component replacement',
-    },
-  ]);
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      // Fetch scan sessions for test logs
+      const { data: sessions } = await supabase
+        .from('scan_sessions')
+        .select(`
+          id, created_at, status, pass_count, fail_count, total_scanned,
+          profiles(full_name),
+          ptl_orders(ptl_order_number, hardware_orders(po_number))
+        `)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      // Fetch repair entries for repair logs
+      const { data: repairs } = await supabase
+        .from('repair_entries')
+        .select(`
+          id, created_at, updated_at, failure_reason, repair_status, qr_code,
+          profiles(full_name),
+          ptl_orders(ptl_order_number, hardware_orders(po_number))
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Fetch PTL orders for order logs
+      const { data: orders } = await supabase
+        .from('ptl_orders')
+        .select(`
+          id, created_at, ptl_order_number, status,
+          profiles(full_name),
+          hardware_orders(po_number)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      const logEntries: LogEntry[] = [];
+
+      // Add session logs
+      sessions?.forEach(session => {
+        const level = session.status === 'completed' ? 'success' : 'info';
+        logEntries.push({
+          id: `session-${session.id}`,
+          timestamp: session.created_at,
+          type: 'test',
+          level,
+          message: `Scan session ${session.status}`,
+          technician: session.profiles?.full_name || 'Unknown',
+          poNumber: session.ptl_orders?.hardware_orders?.po_number,
+          boardId: session.ptl_orders?.ptl_order_number,
+          details: `Total scanned: ${session.total_scanned}, Passed: ${session.pass_count}, Failed: ${session.fail_count}`
+        });
+
+        // Add fail logs if any
+        if (session.fail_count > 0) {
+          logEntries.push({
+            id: `session-fail-${session.id}`,
+            timestamp: session.created_at,
+            type: 'test',
+            level: 'error',
+            message: `${session.fail_count} board(s) failed testing`,
+            technician: session.profiles?.full_name || 'Unknown',
+            poNumber: session.ptl_orders?.hardware_orders?.po_number,
+            boardId: session.ptl_orders?.ptl_order_number,
+            details: `Failed boards require repair`
+          });
+        }
+      });
+
+      // Add repair logs
+      repairs?.forEach(repair => {
+        const level = repair.repair_status === 'completed' ? 'success' : 'warning';
+        logEntries.push({
+          id: `repair-${repair.id}`,
+          timestamp: repair.repair_status === 'completed' ? repair.updated_at : repair.created_at,
+          type: 'repair',
+          level,
+          message: repair.repair_status === 'completed' ? 'Board repair completed' : 'Board repair initiated',
+          technician: repair.profiles?.full_name || 'Unknown',
+          poNumber: repair.ptl_orders?.hardware_orders?.po_number,
+          boardId: repair.qr_code,
+          details: repair.failure_reason
+        });
+      });
+
+      // Add order logs
+      orders?.forEach(order => {
+        logEntries.push({
+          id: `order-${order.id}`,
+          timestamp: order.created_at,
+          type: 'order',
+          level: 'info',
+          message: 'New PTL order created',
+          technician: order.profiles?.full_name || 'Unknown',
+          poNumber: order.hardware_orders?.po_number,
+          details: `PTL Order: ${order.ptl_order_number}`
+        });
+      });
+
+      // Sort by timestamp descending
+      logEntries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      setLogs(logEntries);
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -149,6 +198,10 @@ const LogHistory: React.FC = () => {
     // TODO: Implement actual export functionality
     console.log('Exporting logs...', filteredLogs);
   };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading logs...</div>;
+  }
 
   return (
     <div className="space-y-6">

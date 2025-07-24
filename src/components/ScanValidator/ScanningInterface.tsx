@@ -71,9 +71,12 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     setScanInputs(newInputs);
 
     // Auto-process when QR code is complete (11 characters: 4 letters + 7 digits)
-    if (value.length >= 11 && (value.includes('\n') || value.length >= 11)) {
-      const cleanQrCode = value.trim();
-      processScan(boxIndex, cleanQrCode);
+    // Also check for newline character which indicates scan completion
+    if (value.length >= 11 || value.includes('\n') || value.includes('\r')) {
+      const cleanQrCode = value.replace(/[\n\r]/g, '').trim();
+      if (cleanQrCode.length >= 11) {
+        processScan(boxIndex, cleanQrCode);
+      }
     }
   };
 

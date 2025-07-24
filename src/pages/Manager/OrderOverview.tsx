@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Search, Eye, Edit, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -35,8 +36,10 @@ const OrderOverview: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editNotes, setEditNotes] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -122,6 +125,39 @@ const OrderOverview: React.FC = () => {
 
   const calculateProgress = (order: Order) => {
     return order.quantity > 0 ? (order.tested / order.quantity) * 100 : 0;
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setEditOrder(order);
+    setEditNotes(''); // Initialize with empty notes for now
+  };
+
+  const handleSaveOrder = async () => {
+    if (!editOrder) return;
+
+    try {
+      const { error } = await supabase
+        .from('ptl_orders')
+        .update({ notes: editNotes })
+        .eq('id', editOrder.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Order Updated",
+        description: "Order notes have been updated successfully",
+      });
+
+      setEditOrder(null);
+      setEditNotes('');
+      fetchOrders(); // Refresh the orders list
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update order",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {
@@ -300,7 +336,11 @@ const OrderOverview: React.FC = () => {
                           )}
                         </DialogContent>
                       </Dialog>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditOrder(order)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                     </div>
@@ -311,6 +351,49 @@ const OrderOverview: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit Order Dialog */}
+      <Dialog open={!!editOrder} onOpenChange={(open) => !open && setEditOrder(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Order - {editOrder?.ptl_order_number}</DialogTitle>
+            <DialogDescription>
+              Update order notes and information
+            </DialogDescription>
+          </DialogHeader>
+          {editOrder && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Order Details</Label>
+                <div className="text-sm space-y-1 bg-muted p-3 rounded">
+                  <p><span className="font-medium">PTL:</span> {editOrder.ptl_order_number}</p>
+                  <p><span className="font-medium">Board Type:</span> {editOrder.board_type}</p>
+                  <p><span className="font-medium">Quantity:</span> {editOrder.quantity}</p>
+                  <p><span className="font-medium">Status:</span> {editOrder.status}</p>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea
+                  id="edit-notes"
+                  placeholder="Add notes about this order..."
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={4}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOrder(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveOrder}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
