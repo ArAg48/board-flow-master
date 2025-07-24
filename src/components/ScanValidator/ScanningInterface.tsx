@@ -110,8 +110,12 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       onScanEntry(entry);
     });
 
-    // Clear all validated boards since they're now processed
+    // Clear all validated boards and inputs since they're now processed
     setValidatedBoards({});
+    setScanInputs(Array(testerConfig.scanBoxes).fill(''));
+    
+    // Reset active box to first box
+    setActiveBox(0);
 
     toast({
       title: "All Unfailed Boards Passed",
@@ -140,16 +144,34 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     newValidatedBoards[boxIndex] = qrCode;
     setValidatedBoards(newValidatedBoards);
 
-    // Keep QR code in input box, just move to next box
-
-    // Move to next available box
-    const nextBox = (boxIndex + 1) % testerConfig.scanBoxes;
+    // Auto-advance cursor to next box
+    const nextBox = findNextEmptyBox(boxIndex);
     setActiveBox(nextBox);
+    
+    // Focus the next input box
+    setTimeout(() => {
+      const nextInput = document.querySelector(`input[data-box-index="${nextBox}"]`) as HTMLInputElement;
+      if (nextInput) {
+        nextInput.focus();
+      }
+    }, 100);
 
     toast({
       title: "Board Validated",
       description: `Box ${boxIndex + 1}: ${qrCode} - Format correct`,
     });
+  };
+
+  const findNextEmptyBox = (currentBox: number): number => {
+    // Look for next empty box that doesn't have a validated board
+    for (let i = 1; i <= testerConfig.scanBoxes; i++) {
+      const nextIndex = (currentBox + i) % testerConfig.scanBoxes;
+      if (!validatedBoards[nextIndex] || scanInputs[nextIndex] === '') {
+        return nextIndex;
+      }
+    }
+    // If all boxes are filled, return current box
+    return currentBox;
   };
 
   const handleFailureSubmit = async () => {
@@ -270,6 +292,8 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                       placeholder="Scan QR code..."
                       className={`text-center ${activeBox === i ? 'ring-2 ring-primary' : ''}`}
                       disabled={!isActive}
+                      data-box-index={i}
+                      autoFocus={activeBox === i}
                     />
                     <Button
                       size="sm"
