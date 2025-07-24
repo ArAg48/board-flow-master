@@ -289,6 +289,8 @@ const AccountManagement: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>User</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Demo Password</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -297,11 +299,11 @@ const AccountManagement: React.FC = () => {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center">Loading accounts...</TableCell>
+                      <TableCell colSpan={6} className="text-center">Loading accounts...</TableCell>
                     </TableRow>
                   ) : accounts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center">No accounts found</TableCell>
+                      <TableCell colSpan={6} className="text-center">No accounts found</TableCell>
                     </TableRow>
                   ) : (
                     accounts.map((account) => (
@@ -309,7 +311,21 @@ const AccountManagement: React.FC = () => {
                       <TableCell>
                         <div>
                           <div className="font-medium">{account.firstName} {account.lastName}</div>
-                          <div className="text-sm text-muted-foreground">@{account.username}</div>
+                          <div className="text-sm text-muted-foreground">{account.username}@ptl.local</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <code className="bg-muted px-2 py-1 rounded text-sm">{account.username}</code>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {account.username === 'manager' ? (
+                            <code className="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded text-sm">manager123</code>
+                          ) : account.username === 'tech' ? (
+                            <code className="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded text-sm">tech123</code>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Custom password set</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
