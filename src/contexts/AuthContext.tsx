@@ -40,83 +40,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state changed:', event, session);
         setSession(session);
         
         if (session?.user) {
-          // Create or get user profile
-          await createUserProfile(session.user);
+          // Defer profile fetching to avoid deadlock
+          setTimeout(() => {
+            fetchUserProfile(session.user);
+          }, 0);
         } else {
           setUser(null);
+          setIsLoading(false);
         }
       }
     );
 
-    // Check for existing session
+    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        createUserProfile(session.user);
+        fetchUserProfile(session.user);
+      } else {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const createUserProfile = async (supabaseUser: SupabaseUser) => {
+  const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
       // Check if profile exists
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
         .single();
 
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+        setIsLoading(false);
+        return;
+      }
+
       if (profile) {
         // Profile exists, use it
         const userProfile: User = {
           id: profile.id,
-          username: profile.username || 'anonymous',
-          role: profile.role || 'manager',
-          firstName: profile.full_name?.split(' ')[0] || 'Anonymous',
-          lastName: profile.full_name?.split(' ')[1] || 'User',
-          email: `${profile.username}@ptl.local`,
+          username: profile.username || 'user',
+          role: profile.role || 'technician',
+          firstName: profile.full_name?.split(' ')[0] || 'User',
+          lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
+          email: supabaseUser.email || `${profile.username}@ptl.local`,
           createdAt: profile.created_at,
         };
         setUser(userProfile);
-      } else {
-        // Create new profile for anonymous user
-        const { error } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: supabaseUser.id,
-              full_name: 'Anonymous User',
-              username: 'anonymous',
-              password: 'anonymous123',
-              role: 'manager', // Default to manager for testing
-            }
-          ]);
-
-        if (!error) {
-          const userProfile: User = {
-            id: supabaseUser.id,
-            username: 'Anonymous User',
-            role: 'manager',
-            firstName: 'Anonymous',
-            lastName: 'User',
-            email: supabaseUser.email || 'anonymous@ptl.local',
-            createdAt: new Date().toISOString(),
-          };
-          setUser(userProfile);
-        }
       }
     } catch (error) {
-      console.error('Error creating user profile:', error);
+      console.error('Error fetching user profile:', error);
     } finally {
       setIsLoading(false);
     }
@@ -124,26 +108,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      // First sign in anonymously to get a Supabase session
-      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+      setIsLoading(true);
       
-      if (authError) {
-        console.error('Anonymous sign in error:', authError);
-        throw authError;
-      }
-
-      // Then use database function to authenticate credentials
+      // Use database function to authenticate credentials first
       const { data, error } = await supabase
         .rpc('authenticate_user', {
           input_username: username,
           input_password: password
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Authentication error:', error);
+        return false;
+      }
       
       if (data && data.length > 0) {
         const { user_id, user_role } = data[0];
         
+        // Sign in anonymously to create a session
+        const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+        
+        if (authError) {
+          console.error('Session creation error:', authError);
+          return false;
+        }
+
         // Create user profile in state
         const userProfile: User = {
           id: user_id,
@@ -151,20 +140,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           role: user_role,
           firstName: username === 'manager' ? 'Manager' : 'Tech',
           lastName: 'User',
-          email: username === 'manager' ? 'manager@ptl.local' : 'tech@ptl.local',
+          email: `${username}@ptl.local`,
           createdAt: new Date().toISOString(),
         };
         setUser(userProfile);
         return true;
       }
       
-      // If authentication fails, sign out the anonymous session
-      await supabase.auth.signOut();
       return false;
     } catch (error) {
       console.error('Login error:', error);
-      await supabase.auth.signOut();
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 

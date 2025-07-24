@@ -26,10 +26,29 @@ const Login: React.FC = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const validateInput = (value: string): boolean => {
+    // Basic input validation to prevent injection attacks
+    const dangerousChars = /[<>'";&]/;
+    return !dangerousChars.test(value) && value.length <= 50;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    // Input validation
+    if (!validateInput(username) || !validateInput(password)) {
+      setError('Invalid characters in username or password');
+      setIsLoading(false);
+      return;
+    }
+
+    if (username.length < 3 || password.length < 3) {
+      setError('Username and password must be at least 3 characters long');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const success = await login(username, password);
@@ -105,8 +124,10 @@ const Login: React.FC = () => {
                 id="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => setUsername(e.target.value.trim())}
                 placeholder="Enter your username"
+                maxLength={50}
+                autoComplete="username"
                 required
               />
             </div>
@@ -118,6 +139,8 @@ const Login: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
+                maxLength={50}
+                autoComplete="current-password"
                 required
               />
             </div>
