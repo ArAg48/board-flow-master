@@ -91,6 +91,23 @@ const AccountManagement: React.FC = () => {
 
   const onSubmit = async (data: CreateAccountForm) => {
     try {
+      // First check if username already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', data.username)
+        .single();
+
+      if (existingUser) {
+        toast({
+          title: 'Username Already Exists',
+          description: `The username "${data.username}" is already taken. Please choose a different username.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // If no existing user found, proceed with creation
       const { data: result, error } = await supabase
         .rpc('create_user_account', {
           p_username: data.username,
@@ -100,7 +117,10 @@ const AccountManagement: React.FC = () => {
           p_role: data.role
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       toast({
         title: 'Account Created',
@@ -109,11 +129,23 @@ const AccountManagement: React.FC = () => {
 
       form.reset();
       fetchAccounts(); // Refresh the list
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating account:', error);
+      
+      // Handle specific error cases
+      let errorMessage = 'Failed to create account. Please try again.';
+      
+      if (error?.code === '23505') {
+        errorMessage = 'This username is already taken. Please choose a different username.';
+      } else if (error?.message?.includes('duplicate')) {
+        errorMessage = 'This username is already taken. Please choose a different username.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: 'Error',
-        description: 'Failed to create account. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
