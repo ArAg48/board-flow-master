@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Eye, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -24,12 +25,12 @@ interface HardwareOrderForm {
 
 const HardwareOrders: React.FC = () => {
   const [orders, setOrders] = useState<HardwareOrder[]>([]);
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<HardwareOrder | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<HardwareOrder | null>(null);
   const [viewPTLOrders, setViewPTLOrders] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const form = useForm<HardwareOrderForm>({
     defaultValues: {
@@ -76,7 +77,6 @@ const HardwareOrders: React.FC = () => {
   const onSubmit = async (data: HardwareOrderForm) => {
     try {
       // Check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({
           title: 'Authentication Required',
@@ -93,7 +93,7 @@ const HardwareOrders: React.FC = () => {
       const orderData = { 
         ...data, 
         ending_sequence: endingSequence,
-        created_by: user.id  // Set the created_by field
+        created_by: user.id  // Use the profile ID from AuthContext
       };
       console.log('Order data to insert:', orderData);
 
