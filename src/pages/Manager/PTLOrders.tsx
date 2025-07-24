@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,68 +12,23 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Eye, Clipboard, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
-interface PTLOrder {
-  id: string;
-  ptlOrderNumber: string;
-  hardwareOrderId: string;
-  hardwareOrderPO: string;
-  saleCode: string;
-  firmwareRevision: string;
-  boardsToTest: number;
-  dateCode: string;
-  notes?: string;
-  status: 'pending' | 'active' | 'completed' | 'cancelled';
-  createdAt: string;
-  createdBy: string;
-}
+type PTLOrder = Database['public']['Tables']['ptl_orders']['Row'];
+type HardwareOrder = Database['public']['Tables']['hardware_orders']['Row'];
 
 interface PTLOrderForm {
-  hardwareOrderId: string;
-  saleCode: string;
-  firmwareRevision: string;
-  boardsToTest: number;
-  dateCode: string;
-  notes?: string;
+  hardware_order_id: string;
+  ptl_order_number: string;
+  board_type: string;
+  quantity: number;
+  test_parameters?: any;
 }
 
 const PTLOrders: React.FC = () => {
-  // Mock hardware orders - in real app, fetch from API
-  const hardwareOrders = [
-    { id: '1', poNumber: 'PO-2024-001', assemblyNumber: '257411E', status: 'active' },
-    { id: '2', poNumber: 'PO-2024-002', assemblyNumber: '257411D', status: 'active' },
-    { id: '3', poNumber: 'PO-2024-003', assemblyNumber: '257411E', status: 'active' },
-  ];
-
-  const [orders, setOrders] = useState<PTLOrder[]>([
-    {
-      id: '1',
-      ptlOrderNumber: 'PTL-2024-001',
-      hardwareOrderId: '1',
-      hardwareOrderPO: 'PO-2024-001',
-      saleCode: '1234-ABC',
-      firmwareRevision: '1.3',
-      boardsToTest: 50,
-      dateCode: '2401',
-      notes: 'Initial production run',
-      status: 'active',
-      createdAt: '2024-01-15T11:00:00Z',
-      createdBy: 'John Manager'
-    },
-    {
-      id: '2',
-      ptlOrderNumber: 'PTL-2024-002',
-      hardwareOrderId: '2',
-      hardwareOrderPO: 'PO-2024-002',
-      saleCode: '5678',
-      firmwareRevision: '14',
-      boardsToTest: 25,
-      dateCode: '2401',
-      status: 'completed',
-      createdAt: '2024-01-10T15:30:00Z',
-      createdBy: 'John Manager'
-    }
-  ]);
+  const [hardwareOrders, setHardwareOrders] = useState<HardwareOrder[]>([]);
+  const [orders, setOrders] = useState<PTLOrder[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
@@ -83,14 +38,54 @@ const PTLOrders: React.FC = () => {
 
   const form = useForm<PTLOrderForm>({
     defaultValues: {
-      hardwareOrderId: '',
-      saleCode: '',
-      firmwareRevision: '',
-      boardsToTest: 1,
-      dateCode: '',
-      notes: '',
+      hardware_order_id: '',
+      ptl_order_number: '',
+      board_type: '',
+      quantity: 1,
+      test_parameters: {},
     },
   });
+
+  useEffect(() => {
+    fetchHardwareOrders();
+    fetchPTLOrders();
+  }, []);
+
+  const fetchHardwareOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('hardware_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setHardwareOrders(data || []);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch hardware orders.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const fetchPTLOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ptl_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch PTL orders.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const generatePTLOrderNumber = (): string => {
     const year = new Date().getFullYear();
@@ -100,41 +95,42 @@ const PTLOrders: React.FC = () => {
 
   const onSubmit = async (data: PTLOrderForm) => {
     try {
-      const selectedHardwareOrder = hardwareOrders.find(h => h.id === data.hardwareOrderId);
-      
       if (editingOrder) {
         // Update existing order
-        const updatedOrder: PTLOrder = {
-          ...editingOrder,
-          ...data,
-          hardwareOrderPO: selectedHardwareOrder?.poNumber || editingOrder.hardwareOrderPO,
-        };
-        setOrders(prev => prev.map(order => order.id === editingOrder.id ? updatedOrder : order));
+        const { error } = await supabase
+          .from('ptl_orders')
+          .update(data)
+          .eq('id', editingOrder.id);
+
+        if (error) throw error;
+
         toast({
           title: 'PTL Order Updated',
-          description: `Order ${editingOrder.ptlOrderNumber} has been updated successfully.`,
+          description: `Order ${data.ptl_order_number} has been updated successfully.`,
         });
       } else {
         // Create new order
-        const newOrder: PTLOrder = {
-          id: Date.now().toString(),
-          ptlOrderNumber: generatePTLOrderNumber(),
-          hardwareOrderPO: selectedHardwareOrder?.poNumber || '',
+        const orderData = {
           ...data,
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-          createdBy: 'Current User',
+          ptl_order_number: data.ptl_order_number || generatePTLOrderNumber(),
         };
-        setOrders(prev => [newOrder, ...prev]);
+
+        const { error } = await supabase
+          .from('ptl_orders')
+          .insert([orderData]);
+
+        if (error) throw error;
+
         toast({
           title: 'PTL Order Created',
-          description: `Order ${newOrder.ptlOrderNumber} has been created successfully.`,
+          description: `Order ${orderData.ptl_order_number} has been created successfully.`,
         });
       }
 
       setIsDialogOpen(false);
       setEditingOrder(null);
       form.reset();
+      fetchPTLOrders(); // Refresh the list
     } catch (error) {
       toast({
         title: 'Error',
@@ -147,12 +143,11 @@ const PTLOrders: React.FC = () => {
   const handleEdit = (order: PTLOrder) => {
     setEditingOrder(order);
     form.reset({
-      hardwareOrderId: order.hardwareOrderId,
-      saleCode: order.saleCode,
-      firmwareRevision: order.firmwareRevision,
-      boardsToTest: order.boardsToTest,
-      dateCode: order.dateCode,
-      notes: order.notes || '',
+      hardware_order_id: order.hardware_order_id || '',
+      ptl_order_number: order.ptl_order_number,
+      board_type: order.board_type,
+      quantity: order.quantity,
+      test_parameters: order.test_parameters || {},
     });
     setIsDialogOpen(true);
   };
@@ -162,7 +157,7 @@ const PTLOrders: React.FC = () => {
     setViewOrderDetails(true);
   };
 
-  const getStatusColor = (status: PTLOrder['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'active': return 'bg-green-100 text-green-800';
@@ -201,7 +196,7 @@ const PTLOrders: React.FC = () => {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="hardwareOrderId"
+                  name="hardware_order_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Hardware Order</FormLabel>
@@ -214,7 +209,7 @@ const PTLOrders: React.FC = () => {
                         <SelectContent>
                           {hardwareOrders.map((order) => (
                             <SelectItem key={order.id} value={order.id}>
-                              {order.poNumber} - {order.assemblyNumber}
+                              {order.order_number} - {order.customer_name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -224,15 +219,29 @@ const PTLOrders: React.FC = () => {
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="ptl_order_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PTL Order Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder={generatePTLOrderNumber()} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="saleCode"
+                    name="board_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Sale Code</FormLabel>
+                        <FormLabel>Board Type</FormLabel>
                         <FormControl>
-                          <Input placeholder="1234-ABC or 1234" {...field} />
+                          <Input placeholder="e.g., Main Board, Control Board" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -241,26 +250,10 @@ const PTLOrders: React.FC = () => {
                   
                   <FormField
                     control={form.control}
-                    name="firmwareRevision"
+                    name="quantity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Firmware Revision</FormLabel>
-                        <FormControl>
-                          <Input placeholder="1.3 or 14" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="boardsToTest"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Boards to Test</FormLabel>
+                        <FormLabel>Quantity</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -273,38 +266,7 @@ const PTLOrders: React.FC = () => {
                       </FormItem>
                     )}
                   />
-                  
-                  <FormField
-                    control={form.control}
-                    name="dateCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date Code (4 digits)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="2401" maxLength={4} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
-                
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Additional notes for this PTL order..."
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => {
@@ -338,45 +300,44 @@ const PTLOrders: React.FC = () => {
               <TableRow>
                 <TableHead>PTL Order</TableHead>
                 <TableHead>Hardware Order</TableHead>
-                <TableHead>Sale Code</TableHead>
-                <TableHead>Firmware Rev</TableHead>
-                <TableHead>Boards to Test</TableHead>
-                <TableHead>Date Code</TableHead>
+                <TableHead>Board Type</TableHead>
+                <TableHead>Quantity</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.ptlOrderNumber}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Link className="h-4 w-4 text-muted-foreground" />
-                      {order.hardwareOrderPO}
-                    </div>
-                  </TableCell>
-                  <TableCell>{order.saleCode}</TableCell>
-                  <TableCell>{order.firmwareRevision}</TableCell>
-                  <TableCell>{order.boardsToTest}</TableCell>
-                  <TableCell>{order.dateCode}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(order.status)}>
-                      {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {orders.map((order) => {
+                const hardwareOrder = hardwareOrders.find(h => h.id === order.hardware_order_id);
+                return (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">{order.ptl_order_number}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Link className="h-4 w-4 text-muted-foreground" />
+                        {hardwareOrder?.order_number || 'N/A'}
+                      </div>
+                    </TableCell>
+                    <TableCell>{order.board_type}</TableCell>
+                    <TableCell>{order.quantity}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(order.status)}>
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -386,34 +347,26 @@ const PTLOrders: React.FC = () => {
       <Dialog open={viewOrderDetails} onOpenChange={setViewOrderDetails}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>PTL Order Details - {selectedOrder?.ptlOrderNumber}</DialogTitle>
+            <DialogTitle>PTL Order Details - {selectedOrder?.ptl_order_number}</DialogTitle>
           </DialogHeader>
           {selectedOrder && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
                 <div>
                   <Label className="text-sm font-medium">PTL Order Number</Label>
-                  <p className="text-sm font-mono">{selectedOrder.ptlOrderNumber}</p>
+                  <p className="text-sm font-mono">{selectedOrder.ptl_order_number}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Hardware Order</Label>
-                  <p className="text-sm">{selectedOrder.hardwareOrderPO}</p>
+                  <p className="text-sm">{hardwareOrders.find(h => h.id === selectedOrder.hardware_order_id)?.order_number || 'N/A'}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Sale Code</Label>
-                  <p className="text-sm">{selectedOrder.saleCode}</p>
+                  <Label className="text-sm font-medium">Board Type</Label>
+                  <p className="text-sm">{selectedOrder.board_type}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Firmware Revision</Label>
-                  <p className="text-sm">{selectedOrder.firmwareRevision}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Boards to Test</Label>
-                  <p className="text-sm">{selectedOrder.boardsToTest}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Date Code</Label>
-                  <p className="text-sm">{selectedOrder.dateCode}</p>
+                  <Label className="text-sm font-medium">Quantity</Label>
+                  <p className="text-sm">{selectedOrder.quantity}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Status</Label>
@@ -423,30 +376,23 @@ const PTLOrders: React.FC = () => {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Created</Label>
-                  <p className="text-sm">{new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
+                  <p className="text-sm">{new Date(selectedOrder.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
-              
-              {selectedOrder.notes && (
-                <div>
-                  <Label className="text-sm font-medium">Notes</Label>
-                  <p className="text-sm mt-1 p-3 bg-muted rounded-md">{selectedOrder.notes}</p>
-                </div>
-              )}
 
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Testing Progress</Label>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">25</p>
+                    <p className="text-2xl font-bold text-blue-600">0</p>
                     <p className="text-sm text-muted-foreground">Tested</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">22</p>
+                    <p className="text-2xl font-bold text-green-600">0</p>
                     <p className="text-sm text-muted-foreground">Passed</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold text-red-600">3</p>
+                    <p className="text-2xl font-bold text-red-600">0</p>
                     <p className="text-sm text-muted-foreground">Failed</p>
                   </div>
                 </div>
