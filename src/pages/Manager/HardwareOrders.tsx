@@ -75,8 +75,10 @@ const HardwareOrders: React.FC = () => {
 
   const onSubmit = async (data: HardwareOrderForm) => {
     try {
+      console.log('Form data submitted:', data);
       const endingSequence = calculateEndingSequence(data.starting_sequence, data.quantity);
       const orderData = { ...data, ending_sequence: endingSequence };
+      console.log('Order data to insert:', orderData);
 
       if (editingOrder) {
         // Update existing order
@@ -85,7 +87,10 @@ const HardwareOrders: React.FC = () => {
           .update(orderData)
           .eq('id', editingOrder.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
 
         toast({
           title: 'Hardware Order Updated',
@@ -93,12 +98,17 @@ const HardwareOrders: React.FC = () => {
         });
       } else {
         // Create new order
-        const { error } = await supabase
+        console.log('Attempting to insert new order...');
+        const { error, data: insertData } = await supabase
           .from('hardware_orders')
           .insert([orderData]);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
 
+        console.log('Insert successful:', insertData);
         toast({
           title: 'Hardware Order Created',
           description: `Order ${data.po_number} has been created successfully.`,
@@ -110,6 +120,7 @@ const HardwareOrders: React.FC = () => {
       form.reset();
       fetchOrders(); // Refresh the list
     } catch (error) {
+      console.error('Full error object:', error);
       toast({
         title: 'Error',
         description: editingOrder ? 'Failed to update hardware order.' : 'Failed to create hardware order.',
