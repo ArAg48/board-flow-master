@@ -204,35 +204,35 @@ const ScanHistory: React.FC = () => {
                 className="pl-9"
               />
             </div>
-            <Select value={filters.status || ''} onValueChange={(value) => setFilters({...filters, status: value as SessionHistory['status'] || undefined})}>
+            <Select value={filters.status || 'all'} onValueChange={(value) => setFilters({...filters, status: value === 'all' ? undefined : value as SessionHistory['status']})}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="paused">Paused</SelectItem>
                 <SelectItem value="abandoned">Abandoned</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filters.technician || ''} onValueChange={(value) => setFilters({...filters, technician: value || undefined})}>
+            <Select value={filters.technician || 'all'} onValueChange={(value) => setFilters({...filters, technician: value === 'all' ? undefined : value})}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by technician" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Technicians</SelectItem>
+                <SelectItem value="all">All Technicians</SelectItem>
                 {Array.from(new Set(sessions.map(s => s.profiles?.full_name).filter(Boolean))).map((tech) => (
                   <SelectItem key={tech} value={tech!}>{tech}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filters.ptlOrder || ''} onValueChange={(value) => setFilters({...filters, ptlOrder: value || undefined})}>
+            <Select value={filters.ptlOrder || 'all'} onValueChange={(value) => setFilters({...filters, ptlOrder: value === 'all' ? undefined : value})}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by PTL order" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Orders</SelectItem>
+                <SelectItem value="all">All Orders</SelectItem>
                 {Array.from(new Set(sessions.map(s => s.ptl_orders?.ptl_order_number).filter(Boolean))).map((order) => (
                   <SelectItem key={order} value={order!}>{order}</SelectItem>
                 ))}

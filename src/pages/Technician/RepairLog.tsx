@@ -180,24 +180,24 @@ const RepairLog: React.FC = () => {
                 className="pl-9"
               />
             </div>
-            <Select value={filters.status || ''} onValueChange={(value) => setFilters({...filters, status: value as RepairEntry['repair_status'] || undefined})}>
+            <Select value={filters.status || 'all'} onValueChange={(value) => setFilters({...filters, status: value === 'all' ? undefined : value as RepairEntry['repair_status']})}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="scrapped">Scrapped</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filters.technician || ''} onValueChange={(value) => setFilters({...filters, technician: value || undefined})}>
+            <Select value={filters.technician || 'all'} onValueChange={(value) => setFilters({...filters, technician: value === 'all' ? undefined : value})}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by technician" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Technicians</SelectItem>
+                <SelectItem value="all">All Technicians</SelectItem>
                 {Array.from(new Set(repairEntries.map(entry => entry.profiles?.full_name).filter(Boolean))).map((tech) => (
                   <SelectItem key={tech} value={tech!}>{tech}</SelectItem>
                 ))}
