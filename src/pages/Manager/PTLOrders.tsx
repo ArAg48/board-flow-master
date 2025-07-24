@@ -209,7 +209,7 @@ const PTLOrders: React.FC = () => {
                         <SelectContent>
                           {hardwareOrders.map((order) => (
                             <SelectItem key={order.id} value={order.id}>
-                              {order.order_number} - {order.customer_name}
+                              {order.po_number} - {order.assembly_number}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -315,7 +315,7 @@ const PTLOrders: React.FC = () => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Link className="h-4 w-4 text-muted-foreground" />
-                        {hardwareOrder?.order_number || 'N/A'}
+                        {hardwareOrder?.po_number || 'N/A'}
                       </div>
                     </TableCell>
                     <TableCell>{order.board_type}</TableCell>
@@ -358,7 +358,7 @@ const PTLOrders: React.FC = () => {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Hardware Order</Label>
-                  <p className="text-sm">{hardwareOrders.find(h => h.id === selectedOrder.hardware_order_id)?.order_number || 'N/A'}</p>
+                  <p className="text-sm">{hardwareOrders.find(h => h.id === selectedOrder.hardware_order_id)?.po_number || 'N/A'}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Board Type</Label>

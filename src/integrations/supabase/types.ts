@@ -16,42 +16,42 @@ export type Database = {
     Tables: {
       hardware_orders: {
         Row: {
+          assembly_number: string
           created_at: string
           created_by: string | null
-          customer_name: string
-          delivery_date: string | null
+          ending_sequence: string | null
           id: string
           notes: string | null
-          order_date: string
-          order_number: string
+          po_number: string
+          quantity: number
+          starting_sequence: string
           status: Database["public"]["Enums"]["order_status"]
-          total_amount: number | null
           updated_at: string
         }
         Insert: {
+          assembly_number?: string
           created_at?: string
           created_by?: string | null
-          customer_name: string
-          delivery_date?: string | null
+          ending_sequence?: string | null
           id?: string
           notes?: string | null
-          order_date: string
-          order_number: string
+          po_number?: string
+          quantity?: number
+          starting_sequence?: string
           status?: Database["public"]["Enums"]["order_status"]
-          total_amount?: number | null
           updated_at?: string
         }
         Update: {
+          assembly_number?: string
           created_at?: string
           created_by?: string | null
-          customer_name?: string
-          delivery_date?: string | null
+          ending_sequence?: string | null
           id?: string
           notes?: string | null
-          order_date?: string
-          order_number?: string
+          po_number?: string
+          quantity?: number
+          starting_sequence?: string
           status?: Database["public"]["Enums"]["order_status"]
-          total_amount?: number | null
           updated_at?: string
         }
         Relationships: [

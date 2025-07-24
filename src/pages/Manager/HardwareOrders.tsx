@@ -16,12 +16,10 @@ import type { Database } from '@/integrations/supabase/types';
 type HardwareOrder = Database['public']['Tables']['hardware_orders']['Row'];
 
 interface HardwareOrderForm {
-  order_number: string;
-  customer_name: string;
-  order_date: string;
-  delivery_date?: string;
-  total_amount?: number;
-  notes?: string;
+  po_number: string;
+  quantity: number;
+  assembly_number: string;
+  starting_sequence: string;
 }
 
 const HardwareOrders: React.FC = () => {
@@ -35,14 +33,23 @@ const HardwareOrders: React.FC = () => {
 
   const form = useForm<HardwareOrderForm>({
     defaultValues: {
-      order_number: '',
-      customer_name: '',
-      order_date: new Date().toISOString().split('T')[0],
-      delivery_date: '',
-      total_amount: 0,
-      notes: '',
+      po_number: '',
+      quantity: 1,
+      assembly_number: '',
+      starting_sequence: '',
     },
   });
+
+  const calculateEndingSequence = (startingSeq: string, quantity: number): string => {
+    // Extract the numeric part and increment by quantity - 1
+    const match = startingSeq.match(/(\d+)$/);
+    if (match) {
+      const numericPart = parseInt(match[1]);
+      const endingNum = numericPart + quantity - 1;
+      return startingSeq.replace(/\d+$/, endingNum.toString().padStart(match[1].length, '0'));
+    }
+    return startingSeq;
+  };
 
   useEffect(() => {
     fetchOrders();
@@ -68,30 +75,33 @@ const HardwareOrders: React.FC = () => {
 
   const onSubmit = async (data: HardwareOrderForm) => {
     try {
+      const endingSequence = calculateEndingSequence(data.starting_sequence, data.quantity);
+      const orderData = { ...data, ending_sequence: endingSequence };
+
       if (editingOrder) {
         // Update existing order
         const { error } = await supabase
           .from('hardware_orders')
-          .update(data)
+          .update(orderData)
           .eq('id', editingOrder.id);
 
         if (error) throw error;
 
         toast({
           title: 'Hardware Order Updated',
-          description: `Order ${data.order_number} has been updated successfully.`,
+          description: `Order ${data.po_number} has been updated successfully.`,
         });
       } else {
         // Create new order
         const { error } = await supabase
           .from('hardware_orders')
-          .insert([data]);
+          .insert([orderData]);
 
         if (error) throw error;
 
         toast({
           title: 'Hardware Order Created',
-          description: `Order ${data.order_number} has been created successfully.`,
+          description: `Order ${data.po_number} has been created successfully.`,
         });
       }
       
@@ -111,12 +121,10 @@ const HardwareOrders: React.FC = () => {
   const handleEdit = (order: HardwareOrder) => {
     setEditingOrder(order);
     form.reset({
-      order_number: order.order_number,
-      customer_name: order.customer_name,
-      order_date: order.order_date,
-      delivery_date: order.delivery_date || '',
-      total_amount: order.total_amount || 0,
-      notes: order.notes || '',
+      po_number: order.po_number,
+      quantity: order.quantity,
+      assembly_number: order.assembly_number,
+      starting_sequence: order.starting_sequence,
     });
     setIsDialogOpen(true);
   };
@@ -186,26 +194,12 @@ const HardwareOrders: React.FC = () => {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="order_number"
+                  name="po_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Order Number</FormLabel>
+                      <FormLabel>PO Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="HW-2024-001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="customer_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Customer Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Customer ABC Corp" {...field} />
+                        <Input placeholder="PO-2024-001" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -215,12 +209,12 @@ const HardwareOrders: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="order_date"
+                    name="assembly_number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Order Date</FormLabel>
+                        <FormLabel>Assembly Number with Revision</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input placeholder="257411E" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -229,12 +223,17 @@ const HardwareOrders: React.FC = () => {
                   
                   <FormField
                     control={form.control}
-                    name="delivery_date"
+                    name="quantity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Delivery Date (Optional)</FormLabel>
+                        <FormLabel>Quantity</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -244,38 +243,26 @@ const HardwareOrders: React.FC = () => {
                 
                 <FormField
                   control={form.control}
-                  name="total_amount"
+                  name="starting_sequence"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Total Amount (Optional)</FormLabel>
+                      <FormLabel>Starting Sequence</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          step="0.01"
-                          placeholder="0.00"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                        />
+                        <Input placeholder="411E0000001" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Additional notes..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {form.watch('starting_sequence') && form.watch('quantity') && (
+                  <div className="p-3 bg-muted rounded-md">
+                    <Label className="text-sm font-medium">Calculated Ending Sequence:</Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {calculateEndingSequence(form.watch('starting_sequence'), form.watch('quantity'))}
+                    </p>
+                  </div>
+                )}
                 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => {
@@ -307,31 +294,31 @@ const HardwareOrders: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order Number</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Order Date</TableHead>
-                <TableHead>Delivery Date</TableHead>
-                <TableHead>Amount</TableHead>
+                <TableHead>PO Number</TableHead>
+                <TableHead>Assembly</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Sequence Range</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orders.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.order_number}</TableCell>
-                  <TableCell>{order.customer_name}</TableCell>
-                  <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    {order.total_amount ? `$${order.total_amount.toFixed(2)}` : 'N/A'}
+                  <TableCell className="font-medium">{order.po_number}</TableCell>
+                  <TableCell>{order.assembly_number}</TableCell>
+                  <TableCell>{order.quantity}</TableCell>
+                  <TableCell className="text-sm">
+                    {order.starting_sequence} - {order.ending_sequence}
                   </TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(order.status)}>
                       {order.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {new Date(order.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -354,22 +341,22 @@ const HardwareOrders: React.FC = () => {
       <Dialog open={viewPTLOrders} onOpenChange={setViewPTLOrders}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>PTL Orders for {selectedOrder?.order_number}</DialogTitle>
+            <DialogTitle>PTL Orders for {selectedOrder?.po_number}</DialogTitle>
           </DialogHeader>
           {selectedOrder && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
                 <div>
                   <Label className="text-sm font-medium">Hardware Order</Label>
-                  <p className="text-sm">{selectedOrder.order_number}</p>
+                  <p className="text-sm">{selectedOrder.po_number}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Customer</Label>
-                  <p className="text-sm">{selectedOrder.customer_name}</p>
+                  <Label className="text-sm font-medium">Assembly</Label>
+                  <p className="text-sm">{selectedOrder.assembly_number}</p>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Order Date</Label>
-                  <p className="text-sm">{new Date(selectedOrder.order_date).toLocaleDateString()}</p>
+                  <Label className="text-sm font-medium">Quantity</Label>
+                  <p className="text-sm">{selectedOrder.quantity}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Status</Label>
