@@ -49,17 +49,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Don't fetch profile for anonymous sessions - we handle user data differently
         if (!session) {
           setUser(null);
-          setIsLoading(false);
         }
+        setIsLoading(false);
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (!session) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
