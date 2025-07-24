@@ -84,7 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           role: profile.role || 'manager',
           firstName: profile.full_name?.split(' ')[0] || 'Anonymous',
           lastName: profile.full_name?.split(' ')[1] || 'User',
-          email: profile.email,
+          email: `${profile.username}@ptl.local`,
           createdAt: profile.created_at,
         };
         setUser(userProfile);
@@ -95,9 +95,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .insert([
             {
               id: supabaseUser.id,
-              email: supabaseUser.email || 'anonymous@ptl.local',
               full_name: 'Anonymous User',
               username: 'anonymous',
+              password: 'anonymous123',
               role: 'manager', // Default to manager for testing
             }
           ]);

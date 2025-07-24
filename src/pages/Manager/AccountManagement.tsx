@@ -36,6 +36,7 @@ interface Account {
   lastName: string;
   isActive: boolean;
   createdAt: string;
+  password: string;
 }
 
 const AccountManagement: React.FC = () => {
@@ -64,6 +65,7 @@ const AccountManagement: React.FC = () => {
         lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
         isActive: true, // We'll assume all profiles are active for now
         createdAt: new Date(profile.created_at).toISOString().split('T')[0],
+        password: profile.password || '', // Include password in the account data
       }));
 
       setAccounts(formattedAccounts);
@@ -290,7 +292,7 @@ const AccountManagement: React.FC = () => {
                   <TableRow>
                     <TableHead>User</TableHead>
                     <TableHead>Username</TableHead>
-                    <TableHead>Demo Password</TableHead>
+                    <TableHead>Password</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -318,15 +320,7 @@ const AccountManagement: React.FC = () => {
                         <code className="bg-muted px-2 py-1 rounded text-sm">{account.username}</code>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {account.username === 'manager' ? (
-                            <code className="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded text-sm">manager123</code>
-                          ) : account.username === 'tech' ? (
-                            <code className="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded text-sm">tech123</code>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">Custom password set</span>
-                          )}
-                        </div>
+                        <code className="bg-muted px-2 py-1 rounded text-sm">{account.password}</code>
                       </TableCell>
                       <TableCell>
                         <Badge variant={account.role === 'manager' ? 'default' : 'secondary'}>
