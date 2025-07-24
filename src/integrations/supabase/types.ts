@@ -14,16 +14,298 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      hardware_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_name: string
+          delivery_date: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          status: Database["public"]["Enums"]["order_status"]
+          total_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_name: string
+          delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date: string
+          order_number: string
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string
+          delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          order_number?: string
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hardware_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ptl_orders: {
+        Row: {
+          board_type: string
+          created_at: string
+          created_by: string | null
+          hardware_order_id: string | null
+          id: string
+          ptl_order_number: string
+          quantity: number
+          status: Database["public"]["Enums"]["order_status"]
+          test_parameters: Json | null
+          updated_at: string
+        }
+        Insert: {
+          board_type: string
+          created_at?: string
+          created_by?: string | null
+          hardware_order_id?: string | null
+          id?: string
+          ptl_order_number: string
+          quantity: number
+          status?: Database["public"]["Enums"]["order_status"]
+          test_parameters?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          board_type?: string
+          created_at?: string
+          created_by?: string | null
+          hardware_order_id?: string | null
+          id?: string
+          ptl_order_number?: string
+          quantity?: number
+          status?: Database["public"]["Enums"]["order_status"]
+          test_parameters?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ptl_orders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptl_orders_hardware_order_id_fkey"
+            columns: ["hardware_order_id"]
+            isOneToOne: false
+            referencedRelation: "hardware_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_entries: {
+        Row: {
+          assigned_technician_id: string | null
+          board_type: string
+          created_at: string
+          failure_date: string
+          failure_reason: string
+          id: string
+          original_session_id: string
+          ptl_order_id: string
+          qr_code: string
+          repair_completed_date: string | null
+          repair_notes: string | null
+          repair_start_date: string | null
+          repair_status: Database["public"]["Enums"]["repair_status"]
+          retest_results: Database["public"]["Enums"]["retest_result"] | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_technician_id?: string | null
+          board_type: string
+          created_at?: string
+          failure_date: string
+          failure_reason: string
+          id?: string
+          original_session_id: string
+          ptl_order_id: string
+          qr_code: string
+          repair_completed_date?: string | null
+          repair_notes?: string | null
+          repair_start_date?: string | null
+          repair_status?: Database["public"]["Enums"]["repair_status"]
+          retest_results?: Database["public"]["Enums"]["retest_result"] | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_technician_id?: string | null
+          board_type?: string
+          created_at?: string
+          failure_date?: string
+          failure_reason?: string
+          id?: string
+          original_session_id?: string
+          ptl_order_id?: string
+          qr_code?: string
+          repair_completed_date?: string | null
+          repair_notes?: string | null
+          repair_start_date?: string | null
+          repair_status?: Database["public"]["Enums"]["repair_status"]
+          retest_results?: Database["public"]["Enums"]["retest_result"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_entries_assigned_technician_id_fkey"
+            columns: ["assigned_technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_entries_original_session_id_fkey"
+            columns: ["original_session_id"]
+            isOneToOne: false
+            referencedRelation: "scan_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_entries_ptl_order_id_fkey"
+            columns: ["ptl_order_id"]
+            isOneToOne: false
+            referencedRelation: "ptl_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          end_time: string | null
+          fail_count: number
+          id: string
+          notes: string | null
+          pass_count: number
+          pass_rate: number | null
+          ptl_order_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["session_status"]
+          technician_id: string
+          tester_config: Json
+          total_scanned: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          end_time?: string | null
+          fail_count?: number
+          id?: string
+          notes?: string | null
+          pass_count?: number
+          pass_rate?: number | null
+          ptl_order_id: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          technician_id: string
+          tester_config: Json
+          total_scanned?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          end_time?: string | null
+          fail_count?: number
+          id?: string
+          notes?: string | null
+          pass_count?: number
+          pass_rate?: number | null
+          ptl_order_id?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["session_status"]
+          technician_id?: string
+          tester_config?: Json
+          total_scanned?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_sessions_ptl_order_id_fkey"
+            columns: ["ptl_order_id"]
+            isOneToOne: false
+            referencedRelation: "ptl_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_sessions_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
     }
     Enums: {
-      [_ in never]: never
+      order_status: "pending" | "in_progress" | "completed" | "cancelled"
+      repair_status: "pending" | "in_progress" | "completed" | "scrapped"
+      retest_result: "pass" | "fail"
+      session_status: "completed" | "paused" | "abandoned" | "active"
+      user_role: "manager" | "technician"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +432,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      order_status: ["pending", "in_progress", "completed", "cancelled"],
+      repair_status: ["pending", "in_progress", "completed", "scrapped"],
+      retest_result: ["pass", "fail"],
+      session_status: ["completed", "paused", "abandoned", "active"],
+      user_role: ["manager", "technician"],
+    },
   },
 } as const
