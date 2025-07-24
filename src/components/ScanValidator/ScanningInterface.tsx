@@ -38,6 +38,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   isBreakMode
 }) => {
   const [scanInputs, setScanInputs] = useState<string[]>(Array(testerConfig.scanBoxes).fill(''));
+  const [validatedBoards, setValidatedBoards] = useState<{[boxIndex: number]: string}>({});
   const [activeBox, setActiveBox] = useState(0);
   const [failureDialog, setFailureDialog] = useState<{ open: boolean; boxIndex: number; qrCode: string }>({
     open: false,
@@ -74,21 +75,11 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   };
 
   const handleManualFail = (boxIndex: number) => {
-    const qrCode = scanInputs[boxIndex].trim();
+    const qrCode = validatedBoards[boxIndex];
     if (!qrCode) {
       toast({
-        title: "No QR Code",
+        title: "No Validated Board",
         description: "Please scan a QR code first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const isValid = validateQRFormat(qrCode);
-    if (!isValid) {
-      toast({
-        title: "Invalid QR Format",
-        description: `Code doesn't match expected format: ${ptlOrder.expectedFormat}`,
         variant: "destructive"
       });
       return;
@@ -98,19 +89,30 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   };
 
   const handlePassAllBoards = () => {
-    const unpassedEntries = scannedEntries.filter(entry => entry.qrCode && entry.testResult !== 'pass' && entry.testResult !== 'fail');
-    unpassedEntries.forEach(entry => {
-      const updatedEntry: ScanEntry = {
-        ...entry,
-        testResult: 'pass',
-        timestamp: new Date()
+    const validatedBoardEntries = Object.entries(validatedBoards);
+    const alreadyProcessedBoxes = scannedEntries.map(entry => entry.boxIndex);
+    const unprocessedBoards = validatedBoardEntries.filter(([boxIndex]) => 
+      !alreadyProcessedBoxes.includes(parseInt(boxIndex))
+    );
+
+    unprocessedBoards.forEach(([boxIndex, qrCode]) => {
+      const entry: ScanEntry = {
+        id: `scan-${Date.now()}-${boxIndex}`,
+        boxIndex: parseInt(boxIndex),
+        qrCode,
+        isValid: true,
+        timestamp: new Date(),
+        testResult: 'pass'
       };
-      onScanEntry(updatedEntry);
+      onScanEntry(entry);
     });
+
+    // Clear all validated boards since they're now processed
+    setValidatedBoards({});
 
     toast({
       title: "All Unfailed Boards Passed",
-      description: `${unpassedEntries.length} boards marked as passed`,
+      description: `${unprocessedBoards.length} boards marked as passed`,
     });
   };
 
@@ -130,23 +132,10 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       return;
     }
 
-    // Only validate format - don't auto-test
-    // Record the scan with no test result yet (undefined)
-    completeSuccessfulScan(boxIndex, qrCode, undefined);
-  };
-
-  const completeSuccessfulScan = (boxIndex: number, qrCode: string, testResult: 'pass' | 'fail' | undefined, failureReason?: string) => {
-    const entry: ScanEntry = {
-      id: `scan-${Date.now()}-${boxIndex}`,
-      boxIndex,
-      qrCode,
-      isValid: true,
-      timestamp: new Date(),
-      testResult,
-      failureReason
-    };
-
-    onScanEntry(entry);
+    // Store validated board in local state - don't create scan entry yet
+    const newValidatedBoards = { ...validatedBoards };
+    newValidatedBoards[boxIndex] = qrCode;
+    setValidatedBoards(newValidatedBoards);
 
     // Clear the input and move to next box
     const newInputs = [...scanInputs];
@@ -158,24 +147,39 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     setActiveBox(nextBox);
 
     toast({
-      title: testResult === 'pass' ? "Board Passed" : testResult === 'fail' ? "Board Failed" : "Board Scanned",
-      description: `Box ${boxIndex + 1}: ${qrCode}`,
-      variant: testResult === 'fail' ? 'destructive' : 'default'
+      title: "Board Validated",
+      description: `Box ${boxIndex + 1}: ${qrCode} - Format correct`,
     });
   };
 
   const handleFailureSubmit = () => {
     if (!failureReason.trim()) return;
 
-    completeSuccessfulScan(
-      failureDialog.boxIndex, 
-      failureDialog.qrCode, 
-      'fail', 
+    const entry: ScanEntry = {
+      id: `scan-${Date.now()}-${failureDialog.boxIndex}`,
+      boxIndex: failureDialog.boxIndex,
+      qrCode: failureDialog.qrCode,
+      isValid: true,
+      timestamp: new Date(),
+      testResult: 'fail',
       failureReason
-    );
+    };
+
+    onScanEntry(entry);
+
+    // Remove from validated boards since it's now processed
+    const newValidatedBoards = { ...validatedBoards };
+    delete newValidatedBoards[failureDialog.boxIndex];
+    setValidatedBoards(newValidatedBoards);
 
     setFailureDialog({ open: false, boxIndex: -1, qrCode: '' });
     setFailureReason('');
+
+    toast({
+      title: "Board Failed",
+      description: `Box ${failureDialog.boxIndex + 1}: ${failureDialog.qrCode}`,
+      variant: 'destructive'
+    });
   };
 
   const getBoxStats = (boxIndex: number) => {
@@ -233,30 +237,30 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
               return (
                  <div key={i} className="space-y-2">
                    <Label className="text-sm font-medium">Box {i + 1}</Label>
-                   <div className="flex items-center gap-2 mb-2">
-                     <Checkbox 
-                       checked={validateQRFormat(scanInputs[i])}
-                       disabled
-                       className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-                     />
-                     <span className="text-xs text-muted-foreground">Count</span>
-                   </div>
-                   <Input
-                     value={scanInputs[i]}
-                     onChange={(e) => handleScanInput(i, e.target.value)}
-                     placeholder="Scan QR code..."
-                     className={`text-center ${activeBox === i ? 'ring-2 ring-primary' : ''}`}
-                     disabled={!isActive}
-                   />
-                   <Button
-                     size="sm"
-                     variant="destructive"
-                     onClick={() => handleManualFail(i)}
-                     disabled={!isActive || !scanInputs[i].trim()}
-                     className="w-full text-xs"
-                   >
-                     Fail
-                   </Button>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Checkbox 
+                        checked={!!validatedBoards[i]}
+                        disabled
+                        className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                      />
+                      <span className="text-xs text-muted-foreground">Format Valid</span>
+                    </div>
+                    <Input
+                      value={scanInputs[i]}
+                      onChange={(e) => handleScanInput(i, e.target.value)}
+                      placeholder="Scan QR code..."
+                      className={`text-center ${activeBox === i ? 'ring-2 ring-primary' : ''}`}
+                      disabled={!isActive}
+                    />
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleManualFail(i)}
+                      disabled={!isActive || !validatedBoards[i]}
+                      className="w-full text-xs"
+                    >
+                      Fail
+                    </Button>
                    <div className="text-xs text-center space-y-1">
                      <div>Total: {stats.total}</div>
                      <div className="flex justify-center gap-2">
@@ -283,7 +287,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                  <Button 
                    onClick={handlePassAllBoards} 
                    variant="default"
-                   disabled={scannedEntries.length === 0}
+                   disabled={Object.keys(validatedBoards).length === 0}
                  >
                    <CheckCircle className="h-4 w-4 mr-2" />
                    Pass All Unfailed Boards
