@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { PTLOrder, ValidationSession, ScanEntry, TesterConfig, PreTestVerification, PostTestVerification } from '@/types/scan-validator';
 import PTLOrderSelector from '@/components/ScanValidator/PTLOrderSelector';
 import PreTestVerificationComponent from '@/components/ScanValidator/PreTestVerification';
@@ -14,27 +17,196 @@ import RealTimeTracking from '@/components/ScanValidator/RealTimeTracking';
 
 const ScanValidator: React.FC = () => {
   const [currentSession, setCurrentSession] = useState<ValidationSession | null>(null);
-  const [availableOrders] = useState<PTLOrder[]>([
-    {
-      id: '1',
-      orderNumber: 'PTL-2024-001',
-      boardType: 'Main Control Board v2.1',
-      expectedFormat: '^PCB-[A-Z0-9]{8}$',
-      expectedCount: 100,
-      priority: 'high',
-      dueDate: new Date('2024-12-30')
-    },
-    {
-      id: '2',
-      orderNumber: 'PTL-2024-002',
-      boardType: 'Sensor Interface Board',
-      expectedFormat: '^SIB-[0-9]{6}-[A-Z]{2}$',
-      expectedCount: 150,
-      priority: 'medium',
-      dueDate: new Date('2024-12-28')
-    }
-  ]);
+  const [availableOrders, setAvailableOrders] = useState<PTLOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [resumeDialog, setResumeDialog] = useState<{ open: boolean; session: any | null }>({ 
+    open: false, 
+    session: null 
+  });
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Load PTL orders and check for active sessions on component mount
+  useEffect(() => {
+    if (user) {
+      loadPTLOrders();
+      checkForActiveSession();
+    }
+  }, [user]);
+
+  // Auto-save session when it changes
+  useEffect(() => {
+    if (currentSession && user && (currentSession.status === 'scanning' || currentSession.status === 'paused' || currentSession.status === 'break')) {
+      saveSession();
+    }
+  }, [currentSession, user]);
+
+  const loadPTLOrders = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch PTL orders with hardware order details
+      const { data: ptlOrdersData, error: ptlError } = await supabase
+        .from('ptl_orders')
+        .select(`
+          *,
+          hardware_orders(starting_sequence)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (ptlError) throw ptlError;
+
+      // Transform database records to PTLOrder format
+      const transformedOrders: PTLOrder[] = (ptlOrdersData || []).map(order => {
+        const hardwareOrder = order.hardware_orders as any;
+        const startSequence = hardwareOrder?.starting_sequence || '411E0000001';
+        const first4Chars = startSequence.substring(0, 4);
+        
+        return {
+          id: order.id,
+          orderNumber: order.ptl_order_number,
+          boardType: order.board_type,
+          expectedFormat: `^${first4Chars}\\d{7}$`, // First 4 chars + 7 digits
+          expectedCount: order.quantity,
+          priority: 'medium' as const, // Default priority
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default to 7 days from now
+        };
+      });
+
+      setAvailableOrders(transformedOrders);
+    } catch (error) {
+      console.error('Error loading PTL orders:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load PTL orders.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkForActiveSession = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase.rpc('get_active_session_for_user', {
+        user_id: user.id
+      });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const activeSession = data[0];
+        setResumeDialog({ open: true, session: activeSession });
+      }
+    } catch (error) {
+      console.error('Error checking for active session:', error);
+    }
+  };
+
+  const saveSession = async () => {
+    if (!currentSession || !user?.id) return;
+
+    try {
+      const sessionData = JSON.parse(JSON.stringify({
+        id: currentSession.id,
+        status: currentSession.status,
+        startTime: currentSession.startTime.toISOString(),
+        testerConfig: currentSession.testerConfig,
+        preTestVerification: currentSession.preTestVerification,
+        postTestVerification: currentSession.postTestVerification,
+        scannedEntries: currentSession.scannedEntries.map(entry => ({
+          ...entry,
+          timestamp: entry.timestamp.toISOString()
+        })),
+        totalDuration: currentSession.totalDuration,
+        pausedTime: currentSession.pausedTime?.toISOString(),
+        breakTime: currentSession.breakTime?.toISOString(),
+        endTime: currentSession.endTime?.toISOString()
+      }));
+
+      await supabase.rpc('save_session', {
+        p_session_id: currentSession.id,
+        p_technician_id: user.id,
+        p_ptl_order_id: currentSession.ptlOrder.id,
+        p_session_data: sessionData,
+        p_status: currentSession.status,
+        p_paused_at: currentSession.pausedTime?.toISOString() || null,
+        p_break_started_at: currentSession.breakTime?.toISOString() || null
+      });
+    } catch (error) {
+      console.error('Error saving session:', error);
+    }
+  };
+
+  const resumeActiveSession = async () => {
+    const sessionData = resumeDialog.session;
+    if (!sessionData) return;
+
+    try {
+      // Find the corresponding PTL order
+      const ptlOrder = availableOrders.find(order => order.id === sessionData.ptl_order_id);
+      if (!ptlOrder) {
+        toast({
+          title: 'Error',
+          description: 'Could not find the PTL order for this session.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Reconstruct the session from stored data
+      const storedData = sessionData.session_data;
+      const reconstructedSession: ValidationSession = {
+        id: sessionData.session_id,
+        ptlOrder,
+        testerConfig: storedData.testerConfig || { type: 1, scanBoxes: 1 },
+        preTestVerification: storedData.preTestVerification || { testerCheck: true, firmwareCheck: true },
+        startTime: new Date(storedData.startTime || sessionData.start_time),
+        pausedTime: sessionData.paused_at ? new Date(sessionData.paused_at) : undefined,
+        breakTime: sessionData.break_started_at ? new Date(sessionData.break_started_at) : undefined,
+        status: sessionData.break_started_at ? 'break' : 'paused',
+        scannedEntries: (storedData.scannedEntries || []).map((entry: any) => ({
+          ...entry,
+          timestamp: new Date(entry.timestamp)
+        })),
+        totalDuration: storedData.totalDuration || 0
+      };
+
+      setCurrentSession(reconstructedSession);
+      setResumeDialog({ open: false, session: null });
+
+      toast({
+        title: 'Session Resumed',
+        description: 'Your previous session has been restored.'
+      });
+    } catch (error) {
+      console.error('Error resuming session:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to resume session.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const startNewSessionFromDialog = async () => {
+    if (resumeDialog.session && user?.id) {
+      // Deactivate the old session
+      try {
+        await supabase.rpc('deactivate_session', {
+          p_session_id: resumeDialog.session.session_id
+        });
+      } catch (error) {
+        console.error('Error deactivating old session:', error);
+      }
+    }
+    
+    setResumeDialog({ open: false, session: null });
+    setCurrentSession(null);
+  };
 
   const handleOrderSelect = (order: PTLOrder) => {
     if (!currentSession) {
@@ -273,6 +445,47 @@ const ScanValidator: React.FC = () => {
             All validation steps completed for order {currentSession.ptlOrder.orderNumber}
           </p>
           <Progress value={100} className="h-2 mt-4" />
+        </div>
+      )}
+
+      {/* Resume Session Dialog */}
+      <Dialog open={resumeDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setResumeDialog({ open: false, session: null });
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resume Previous Session?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-muted-foreground">
+              You have an active session from a previous login. Would you like to resume it or start fresh?
+            </p>
+            {resumeDialog.session && (
+              <div className="p-4 bg-muted rounded-lg text-sm">
+                <div><strong>Session:</strong> {resumeDialog.session.session_id}</div>
+                <div><strong>Started:</strong> {new Date(resumeDialog.session.start_time).toLocaleString()}</div>
+                {resumeDialog.session.paused_at && (
+                  <div><strong>Paused:</strong> {new Date(resumeDialog.session.paused_at).toLocaleString()}</div>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={startNewSessionFromDialog}>
+                Start New Session
+              </Button>
+              <Button onClick={resumeActiveSession}>
+                Resume Session
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {loading && (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-muted-foreground">Loading PTL orders...</div>
         </div>
       )}
     </div>

@@ -409,13 +409,40 @@ export type Database = {
         }
         Returns: string
       }
+      deactivate_session: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
       delete_user_account: {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      get_active_session_for_user: {
+        Args: { user_id: string }
+        Returns: {
+          session_id: string
+          ptl_order_id: string
+          session_data: Json
+          start_time: string
+          paused_at: string
+          break_started_at: string
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      save_session: {
+        Args: {
+          p_session_id: string
+          p_technician_id: string
+          p_ptl_order_id: string
+          p_session_data: Json
+          p_status?: string
+          p_paused_at?: string
+          p_break_started_at?: string
+        }
+        Returns: string
       }
       update_user_password: {
         Args: { p_user_id: string; p_new_password: string }

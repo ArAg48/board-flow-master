@@ -95,7 +95,7 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
             <div className="flex items-center gap-2 p-2 bg-muted rounded">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               <span className="text-sm">
-                Ensure QR codes match the expected format before proceeding
+                Board format: First 4 characters + 7 digit serial (e.g., 411E0000001)
               </span>
             </div>
 

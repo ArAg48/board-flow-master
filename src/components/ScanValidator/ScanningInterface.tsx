@@ -47,8 +47,15 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   const { toast } = useToast();
 
   const validateQRFormat = (qrCode: string): boolean => {
-    const regex = new RegExp(ptlOrder.expectedFormat);
-    return regex.test(qrCode);
+    try {
+      const regex = new RegExp(ptlOrder.expectedFormat);
+      return regex.test(qrCode);
+    } catch (error) {
+      console.error('Invalid regex pattern:', ptlOrder.expectedFormat, error);
+      // Fallback validation: check if it matches the expected board format (4 chars + 7 digits)
+      const fallbackRegex = /^[A-Z0-9]{4}\d{7}$/;
+      return fallbackRegex.test(qrCode);
+    }
   };
 
   const handleScanInput = (boxIndex: number, value: string) => {
@@ -58,8 +65,8 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     newInputs[boxIndex] = value;
     setScanInputs(newInputs);
 
-    // Auto-process when QR code is complete (assuming newline or specific length)
-    if (value.length >= 8 && (value.includes('\n') || value.length >= 12)) {
+    // Auto-process when QR code is complete (11 characters: 4 letters + 7 digits)
+    if (value.length >= 11 && (value.includes('\n') || value.length >= 11)) {
       const cleanQrCode = value.trim();
       processScan(boxIndex, cleanQrCode);
     }

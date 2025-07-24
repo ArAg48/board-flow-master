@@ -117,6 +117,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
+    // Deactivate any active sessions before logging out
+    if (user?.id) {
+      try {
+        const { data: activeSessions } = await supabase.rpc('get_active_session_for_user', { 
+          user_id: user.id 
+        });
+        
+        if (activeSessions && activeSessions.length > 0) {
+          await supabase.rpc('deactivate_session', { 
+            p_session_id: activeSessions[0].session_id 
+          });
+        }
+      } catch (error) {
+        console.error('Error during session cleanup:', error);
+      }
+    }
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
