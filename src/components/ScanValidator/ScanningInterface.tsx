@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { TesterConfig, ScanEntry, PTLOrder } from '@/types/scan-validator';
 import { Scan, CheckCircle, XCircle, Coffee, Pause, Play, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -240,6 +241,14 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
               return (
                  <div key={i} className="space-y-2">
                    <Label className="text-sm font-medium">Box {i + 1}</Label>
+                   <div className="flex items-center gap-2 mb-2">
+                     <Checkbox 
+                       checked={validateQRFormat(scanInputs[i])}
+                       disabled
+                       className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                     />
+                     <span className="text-xs text-muted-foreground">Count</span>
+                   </div>
                    <Input
                      value={scanInputs[i]}
                      onChange={(e) => handleScanInput(i, e.target.value)}
