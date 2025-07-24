@@ -110,6 +110,12 @@ const ScanValidator: React.FC = () => {
     if (!currentSession || !user?.id) return;
 
     try {
+      // Calculate real-time statistics
+      const stats = getSessionStats();
+      const duration = currentSession.endTime 
+        ? Math.floor((currentSession.endTime.getTime() - currentSession.startTime.getTime()) / (1000 * 60))
+        : Math.floor((new Date().getTime() - currentSession.startTime.getTime()) / (1000 * 60));
+
       const sessionData = JSON.parse(JSON.stringify({
         id: currentSession.id,
         status: currentSession.status,
@@ -127,6 +133,7 @@ const ScanValidator: React.FC = () => {
         endTime: currentSession.endTime?.toISOString()
       }));
 
+      // Save session with accurate counts
       await supabase.rpc('save_session', {
         p_session_id: currentSession.id,
         p_technician_id: user.id,
@@ -136,6 +143,20 @@ const ScanValidator: React.FC = () => {
         p_paused_at: currentSession.pausedTime?.toISOString() || null,
         p_break_started_at: currentSession.breakTime?.toISOString() || null
       });
+
+      // Update session statistics in database
+      await supabase
+        .from('scan_sessions')
+        .update({
+          total_scanned: stats.total,
+          pass_count: stats.passed,
+          fail_count: stats.failed,
+          pass_rate: stats.passRate,
+          duration_minutes: duration,
+          end_time: currentSession.endTime?.toISOString() || null
+        })
+        .eq('id', currentSession.id);
+
     } catch (error) {
       console.error('Error saving session:', error);
     }
@@ -273,7 +294,7 @@ const ScanValidator: React.FC = () => {
     }
   };
 
-  const handlePostTestComplete = () => {
+  const handlePostTestComplete = async () => {
     if (currentSession) {
       const updatedSession = {
         ...currentSession,
@@ -281,6 +302,33 @@ const ScanValidator: React.FC = () => {
         status: 'completed' as const
       };
       setCurrentSession(updatedSession);
+      
+      // Final save to ensure all data is persisted
+      try {
+        const stats = getSessionStats();
+        const duration = Math.floor((updatedSession.endTime!.getTime() - currentSession.startTime.getTime()) / (1000 * 60));
+
+        await supabase
+          .from('scan_sessions')
+          .update({
+            status: 'completed',
+            end_time: updatedSession.endTime.toISOString(),
+            total_scanned: stats.total,
+            pass_count: stats.passed,
+            fail_count: stats.failed,
+            pass_rate: stats.passRate,
+            duration_minutes: duration,
+            is_active: false
+          })
+          .eq('id', currentSession.id);
+
+        // Deactivate session
+        await supabase.rpc('deactivate_session', {
+          p_session_id: currentSession.id
+        });
+      } catch (error) {
+        console.error('Error finalizing session:', error);
+      }
       
       const passed = currentSession.scannedEntries.filter(e => e.testResult === 'pass').length;
       const failed = currentSession.scannedEntries.filter(e => e.testResult === 'fail').length;

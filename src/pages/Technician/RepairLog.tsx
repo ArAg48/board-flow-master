@@ -301,6 +301,11 @@ const RepairLog: React.FC = () => {
                                 Assign to Me
                               </Button>
                             )}
+                            {entry.repair_status === 'pending' && (
+                              <Button variant="secondary" onClick={() => handleUpdateRepair(entry.id, { repair_status: 'completed', repair_completed_date: new Date().toISOString().split('T')[0], repair_notes: repairNotes || 'Board repaired' })}>
+                                Mark as Repaired
+                              </Button>
+                            )}
                             {entry.repair_status === 'in_progress' && (
                               <Button variant="default" onClick={() => handleUpdateRepair(entry.id, { repair_status: 'completed', repair_completed_date: new Date().toISOString().split('T')[0] })}>
                                 Mark Complete

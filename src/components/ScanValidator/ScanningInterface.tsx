@@ -110,12 +110,21 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       onScanEntry(entry);
     });
 
-    // Clear all validated boards and inputs since they're now processed
-    setValidatedBoards({});
-    setScanInputs(Array(testerConfig.scanBoxes).fill(''));
+    // Clear processed boards from validated boards and inputs
+    const newValidatedBoards = { ...validatedBoards };
+    const newInputs = [...scanInputs];
     
-    // Reset active box to first box
-    setActiveBox(0);
+    unprocessedBoards.forEach(([boxIndex]) => {
+      delete newValidatedBoards[parseInt(boxIndex)];
+      newInputs[parseInt(boxIndex)] = '';
+    });
+    
+    setValidatedBoards(newValidatedBoards);
+    setScanInputs(newInputs);
+    
+    // Reset active box to first empty box
+    const firstEmptyBox = findNextEmptyBox(-1);
+    setActiveBox(firstEmptyBox);
 
     toast({
       title: "All Unfailed Boards Passed",
@@ -139,6 +148,17 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       return;
     }
 
+    // Check if this QR code was already scanned in this box
+    const existingEntry = scannedEntries.find(entry => entry.boxIndex === boxIndex && entry.qrCode === qrCode);
+    if (existingEntry) {
+      toast({
+        title: "Already Scanned",
+        description: `This code was already processed for Box ${boxIndex + 1}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Store validated board in local state - don't create scan entry yet
     const newValidatedBoards = { ...validatedBoards };
     newValidatedBoards[boxIndex] = qrCode;
@@ -158,7 +178,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
     toast({
       title: "Board Validated",
-      description: `Box ${boxIndex + 1}: ${qrCode} - Format correct`,
+      description: `Box ${boxIndex + 1}: ${qrCode} - Ready for testing`,
     });
   };
 
