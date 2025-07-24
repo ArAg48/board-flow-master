@@ -123,27 +123,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      if (username === 'anonymous') {
-        // Sign in anonymously
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error) throw error;
-        return true;
-      } else {
-        // Regular demo login
-        if (username === 'manager' && password === 'manager123') {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          if (error) throw error;
-          return true;
-        }
-        
-        if (username === 'tech' && password === 'tech123') {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          if (error) throw error;
-          return true;
-        }
-      }
+      let email = '';
       
-      return false;
+      // Map usernames to email addresses
+      if (username === 'manager' && password === 'manager123') {
+        email = 'manager@ptl.local';
+      } else if (username === 'tech' && password === 'tech123') {
+        email = 'technician@ptl.local';
+      } else {
+        return false;
+      }
+
+      // Use email/password authentication instead of anonymous
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) throw error;
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       return false;
