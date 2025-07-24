@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus, Edit } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +25,12 @@ const createAccountSchema = z.object({
   role: z.enum(['manager', 'technician'], { required_error: 'Please select a role' }),
 });
 
+const editPasswordSchema = z.object({
+  newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
 type CreateAccountForm = z.infer<typeof createAccountSchema>;
+type EditPasswordForm = z.infer<typeof editPasswordSchema>;
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -43,6 +49,15 @@ const AccountManagement: React.FC = () => {
   const { toast } = useToast();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const editPasswordForm = useForm<EditPasswordForm>({
+    resolver: zodResolver(editPasswordSchema),
+    defaultValues: {
+      newPassword: '',
+    },
+  });
 
   useEffect(() => {
     fetchAccounts();
@@ -169,15 +184,80 @@ const AccountManagement: React.FC = () => {
     });
   };
 
-  const deleteAccount = (id: string) => {
-    const account = accounts.find(acc => acc.id === id);
-    setAccounts(prev => prev.filter(account => account.id !== id));
-    
-    toast({
-      title: 'Account Deleted',
-      description: `${account?.firstName} ${account?.lastName}'s account has been deleted.`,
-      variant: 'destructive',
-    });
+  const deleteAccount = async (id: string) => {
+    try {
+      const { error } = await supabase.rpc('delete_user_account', {
+        p_user_id: id
+      });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      const account = accounts.find(acc => acc.id === id);
+      setAccounts(prev => prev.filter(account => account.id !== id));
+      
+      toast({
+        title: 'Account Deleted',
+        description: `${account?.firstName} ${account?.lastName}'s account has been deleted.`,
+        variant: 'destructive',
+      });
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete account. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const editPassword = (account: Account) => {
+    setEditingAccount(account);
+    editPasswordForm.reset({ newPassword: '' });
+    setEditDialogOpen(true);
+  };
+
+  const onPasswordUpdate = async (data: EditPasswordForm) => {
+    if (!editingAccount) return;
+
+    try {
+      const { error } = await supabase.rpc('update_user_password', {
+        p_user_id: editingAccount.id,
+        p_new_password: data.newPassword
+      });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      // Update the local state
+      setAccounts(prev => 
+        prev.map(account => 
+          account.id === editingAccount.id 
+            ? { ...account, password: data.newPassword }
+            : account
+        )
+      );
+
+      toast({
+        title: 'Password Updated',
+        description: `Password for ${editingAccount.firstName} ${editingAccount.lastName} has been updated successfully.`,
+      });
+
+      setEditDialogOpen(false);
+      setEditingAccount(null);
+      editPasswordForm.reset();
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update password. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -339,31 +419,40 @@ const AccountManagement: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Account</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete {account.firstName} {account.lastName}'s account? 
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteAccount(account.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete Account
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => editPassword(account)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Account</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete {account.firstName} {account.lastName}'s account? 
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteAccount(account.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete Account
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                     ))
@@ -374,6 +463,40 @@ const AccountManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Password Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Password</DialogTitle>
+            <DialogDescription>
+              Change the password for {editingAccount?.firstName} {editingAccount?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={editPasswordForm.handleSubmit(onPasswordUpdate)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                {...editPasswordForm.register('newPassword')}
+                className={editPasswordForm.formState.errors.newPassword ? 'border-destructive' : ''}
+              />
+              {editPasswordForm.formState.errors.newPassword && (
+                <p className="text-sm text-destructive">{editPasswordForm.formState.errors.newPassword.message}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Update Password
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
