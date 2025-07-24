@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Profile exists, use it
         const userProfile: User = {
           id: profile.id,
-          username: profile.full_name || 'Anonymous User',
+          username: profile.username || 'anonymous',
           role: profile.role || 'manager',
           firstName: profile.full_name?.split(' ')[0] || 'Anonymous',
           lastName: profile.full_name?.split(' ')[1] || 'User',
@@ -97,6 +97,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               id: supabaseUser.id,
               email: supabaseUser.email || 'anonymous@ptl.local',
               full_name: 'Anonymous User',
+              username: 'anonymous',
               role: 'manager', // Default to manager for testing
             }
           ]);
@@ -123,25 +124,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      let email = '';
-      
-      // Map usernames to email addresses
-      if (username === 'manager' && password === 'manager123') {
-        email = 'manager@ptl.local';
-      } else if (username === 'tech' && password === 'tech123') {
-        email = 'technician@ptl.local';
-      } else {
-        return false;
-      }
-
-      // Use email/password authentication instead of anonymous
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
+      // Use database function to authenticate
+      const { data, error } = await supabase
+        .rpc('authenticate_user', {
+          input_username: username,
+          input_password: password
+        });
 
       if (error) throw error;
-      return true;
+      
+      if (data && data.length > 0) {
+        const { user_id, user_role } = data[0];
+        
+        // Create user profile in state
+        const userProfile: User = {
+          id: user_id,
+          username: username,
+          role: user_role,
+          firstName: username === 'manager' ? 'Manager' : 'Tech',
+          lastName: 'User',
+          email: username === 'manager' ? 'manager@ptl.local' : 'tech@ptl.local',
+          createdAt: new Date().toISOString(),
+        };
+        setUser(userProfile);
+        return true;
+      }
+      
+      return false;
     } catch (error) {
       console.error('Login error:', error);
       return false;

@@ -72,6 +72,7 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
+          username: string
         }
         Insert: {
           created_at?: string
@@ -80,6 +81,7 @@ export type Database = {
           id: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+          username: string
         }
         Update: {
           created_at?: string
@@ -88,6 +90,7 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+          username?: string
         }
         Relationships: []
       }
@@ -295,6 +298,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authenticate_user: {
+        Args: { input_username: string; input_password: string }
+        Returns: {
+          user_id: string
+          user_role: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
