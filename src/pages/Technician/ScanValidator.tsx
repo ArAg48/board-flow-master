@@ -358,9 +358,19 @@ const ScanValidator: React.FC = () => {
   const getSessionStats = () => {
     if (!currentSession) return { total: 0, passed: 0, failed: 0, passRate: 0 };
     
-    const total = currentSession.scannedEntries.length;
-    const passed = currentSession.scannedEntries.filter(e => e.testResult === 'pass').length;
-    const failed = currentSession.scannedEntries.filter(e => e.testResult === 'fail').length;
+    // Count unique QR codes and get latest result for each (reject duplicates)
+    const qrCodeResults = new Map();
+    currentSession.scannedEntries.forEach(entry => {
+      const existing = qrCodeResults.get(entry.qrCode);
+      if (!existing || entry.timestamp > existing.timestamp) {
+        qrCodeResults.set(entry.qrCode, entry);
+      }
+    });
+    
+    const uniqueResults = Array.from(qrCodeResults.values());
+    const total = uniqueResults.length;
+    const passed = uniqueResults.filter(e => e.testResult === 'pass').length;
+    const failed = uniqueResults.filter(e => e.testResult === 'fail').length;
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     
     return { total, passed, failed, passRate };
