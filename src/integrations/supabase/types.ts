@@ -169,10 +169,14 @@ export type Database = {
           board_type: string
           created_at: string
           created_by: string | null
+          date_code: string | null
+          firmware_revision: string | null
           hardware_order_id: string | null
           id: string
+          notes: string | null
           ptl_order_number: string
           quantity: number
+          sale_code: string | null
           status: Database["public"]["Enums"]["order_status"]
           test_parameters: Json | null
           updated_at: string
@@ -181,10 +185,14 @@ export type Database = {
           board_type: string
           created_at?: string
           created_by?: string | null
+          date_code?: string | null
+          firmware_revision?: string | null
           hardware_order_id?: string | null
           id?: string
+          notes?: string | null
           ptl_order_number: string
           quantity: number
+          sale_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           test_parameters?: Json | null
           updated_at?: string
@@ -193,10 +201,14 @@ export type Database = {
           board_type?: string
           created_at?: string
           created_by?: string | null
+          date_code?: string | null
+          firmware_revision?: string | null
           hardware_order_id?: string | null
           id?: string
+          notes?: string | null
           ptl_order_number?: string
           quantity?: number
+          sale_code?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           test_parameters?: Json | null
           updated_at?: string

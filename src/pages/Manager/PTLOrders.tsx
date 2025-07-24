@@ -23,6 +23,10 @@ interface PTLOrderForm {
   ptl_order_number: string;
   board_type: string;
   quantity: number;
+  sale_code: string;
+  firmware_revision: string;
+  date_code: string;
+  notes?: string;
   test_parameters?: any;
 }
 
@@ -42,6 +46,10 @@ const PTLOrders: React.FC = () => {
       ptl_order_number: '',
       board_type: '',
       quantity: 1,
+      sale_code: '',
+      firmware_revision: '',
+      date_code: '',
+      notes: '',
       test_parameters: {},
     },
   });
@@ -147,6 +155,10 @@ const PTLOrders: React.FC = () => {
       ptl_order_number: order.ptl_order_number,
       board_type: order.board_type,
       quantity: order.quantity,
+      sale_code: order.sale_code || '',
+      firmware_revision: order.firmware_revision || '',
+      date_code: order.date_code || '',
+      notes: order.notes || '',
       test_parameters: order.test_parameters || {},
     });
     setIsDialogOpen(true);
@@ -253,7 +265,7 @@ const PTLOrders: React.FC = () => {
                     name="quantity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Quantity</FormLabel>
+                        <FormLabel>Number of Boards to Test</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -267,6 +279,74 @@ const PTLOrders: React.FC = () => {
                     )}
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="sale_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sale Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., 1234-ABC or 1234" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="firmware_revision"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Firmware Revision</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., 1.3 or 14" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="date_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date Code (4 digits)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g., 2501" 
+                          maxLength={4}
+                          pattern="[0-9]{4}"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Additional notes or comments..." 
+                          className="resize-none"
+                          rows={3}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => {
@@ -299,7 +379,8 @@ const PTLOrders: React.FC = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>PTL Order</TableHead>
-                <TableHead>Hardware Order</TableHead>
+                <TableHead>Sale Code</TableHead>
+                <TableHead>Firmware Rev</TableHead>
                 <TableHead>Board Type</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Status</TableHead>
@@ -312,12 +393,8 @@ const PTLOrders: React.FC = () => {
                 return (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.ptl_order_number}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Link className="h-4 w-4 text-muted-foreground" />
-                        {hardwareOrder?.po_number || 'N/A'}
-                      </div>
-                    </TableCell>
+                    <TableCell>{order.sale_code || '-'}</TableCell>
+                    <TableCell>{order.firmware_revision || '-'}</TableCell>
                     <TableCell>{order.board_type}</TableCell>
                     <TableCell>{order.quantity}</TableCell>
                     <TableCell>
@@ -361,12 +438,24 @@ const PTLOrders: React.FC = () => {
                   <p className="text-sm">{hardwareOrders.find(h => h.id === selectedOrder.hardware_order_id)?.po_number || 'N/A'}</p>
                 </div>
                 <div>
+                  <Label className="text-sm font-medium">Sale Code</Label>
+                  <p className="text-sm">{selectedOrder.sale_code || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Firmware Revision</Label>
+                  <p className="text-sm">{selectedOrder.firmware_revision || '-'}</p>
+                </div>
+                <div>
                   <Label className="text-sm font-medium">Board Type</Label>
                   <p className="text-sm">{selectedOrder.board_type}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Quantity</Label>
                   <p className="text-sm">{selectedOrder.quantity}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Date Code</Label>
+                  <p className="text-sm">{selectedOrder.date_code || '-'}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Status</Label>
@@ -378,6 +467,12 @@ const PTLOrders: React.FC = () => {
                   <Label className="text-sm font-medium">Created</Label>
                   <p className="text-sm">{new Date(selectedOrder.created_at).toLocaleDateString()}</p>
                 </div>
+                {selectedOrder.notes && (
+                  <div className="col-span-2">
+                    <Label className="text-sm font-medium">Notes</Label>
+                    <p className="text-sm bg-background p-2 rounded border">{selectedOrder.notes}</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
