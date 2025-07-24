@@ -211,7 +211,7 @@ const ScanValidator: React.FC = () => {
   const handleOrderSelect = (order: PTLOrder) => {
     if (!currentSession) {
       const newSession: ValidationSession = {
-        id: `session-${Date.now()}`,
+        id: crypto.randomUUID(),
         ptlOrder: order,
         testerConfig: { type: 1, scanBoxes: 1 },
         preTestVerification: {

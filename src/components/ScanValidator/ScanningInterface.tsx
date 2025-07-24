@@ -100,7 +100,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
     unprocessedBoards.forEach(([boxIndex, qrCode]) => {
       const entry: ScanEntry = {
-        id: `scan-${Date.now()}-${boxIndex}`,
+        id: crypto.randomUUID(),
         boxIndex: parseInt(boxIndex),
         qrCode,
         isValid: true,
@@ -178,7 +178,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     if (!failureReason.trim()) return;
 
     const entry: ScanEntry = {
-      id: `scan-${Date.now()}-${failureDialog.boxIndex}`,
+      id: crypto.randomUUID(),
       boxIndex: failureDialog.boxIndex,
       qrCode: failureDialog.qrCode,
       isValid: true,
