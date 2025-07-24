@@ -308,15 +308,19 @@ export type Database = {
       }
       scan_sessions: {
         Row: {
+          break_started_at: string | null
           created_at: string
           duration_minutes: number | null
           end_time: string | null
           fail_count: number
           id: string
+          is_active: boolean | null
           notes: string | null
           pass_count: number
           pass_rate: number | null
+          paused_at: string | null
           ptl_order_id: string
+          session_data: Json | null
           start_time: string
           status: Database["public"]["Enums"]["session_status"]
           technician_id: string
@@ -325,15 +329,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          break_started_at?: string | null
           created_at?: string
           duration_minutes?: number | null
           end_time?: string | null
           fail_count?: number
           id?: string
+          is_active?: boolean | null
           notes?: string | null
           pass_count?: number
           pass_rate?: number | null
+          paused_at?: string | null
           ptl_order_id: string
+          session_data?: Json | null
           start_time?: string
           status?: Database["public"]["Enums"]["session_status"]
           technician_id: string
@@ -342,15 +350,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          break_started_at?: string | null
           created_at?: string
           duration_minutes?: number | null
           end_time?: string | null
           fail_count?: number
           id?: string
+          is_active?: boolean | null
           notes?: string | null
           pass_count?: number
           pass_rate?: number | null
+          paused_at?: string | null
           ptl_order_id?: string
+          session_data?: Json | null
           start_time?: string
           status?: Database["public"]["Enums"]["session_status"]
           technician_id?: string
