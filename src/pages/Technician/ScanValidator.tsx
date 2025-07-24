@@ -358,21 +358,9 @@ const ScanValidator: React.FC = () => {
   const getSessionStats = () => {
     if (!currentSession) return { total: 0, passed: 0, failed: 0, passRate: 0 };
     
-    // Count unique boxes that have been scanned (each box = one board)
-    const uniqueBoxes = new Set(currentSession.scannedEntries.map(e => e.boxIndex));
-    const total = uniqueBoxes.size;
-    
-    // For pass/fail counts, get the latest result for each box
-    const boxResults = new Map();
-    currentSession.scannedEntries.forEach(entry => {
-      const existing = boxResults.get(entry.boxIndex);
-      if (!existing || entry.timestamp > existing.timestamp) {
-        boxResults.set(entry.boxIndex, entry);
-      }
-    });
-    
-    const passed = Array.from(boxResults.values()).filter(e => e.testResult === 'pass').length;
-    const failed = Array.from(boxResults.values()).filter(e => e.testResult === 'fail').length;
+    const total = currentSession.scannedEntries.length;
+    const passed = currentSession.scannedEntries.filter(e => e.testResult === 'pass').length;
+    const failed = currentSession.scannedEntries.filter(e => e.testResult === 'fail').length;
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     
     return { total, passed, failed, passRate };
