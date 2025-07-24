@@ -124,7 +124,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      // Use database function to authenticate
+      // First sign in anonymously to get a Supabase session
+      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+      
+      if (authError) {
+        console.error('Anonymous sign in error:', authError);
+        throw authError;
+      }
+
+      // Then use database function to authenticate credentials
       const { data, error } = await supabase
         .rpc('authenticate_user', {
           input_username: username,
@@ -150,9 +158,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return true;
       }
       
+      // If authentication fails, sign out the anonymous session
+      await supabase.auth.signOut();
       return false;
     } catch (error) {
       console.error('Login error:', error);
+      await supabase.auth.signOut();
       return false;
     }
   };
