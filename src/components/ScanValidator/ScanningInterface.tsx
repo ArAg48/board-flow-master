@@ -94,14 +94,14 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     setFailureDialog({ open: true, boxIndex, qrCode });
   };
 
-  const handlePassAllBoards = () => {
+  const handlePassAllBoards = async () => {
     const validatedBoardEntries = Object.entries(validatedBoards);
     const alreadyProcessedBoxes = scannedEntries.map(entry => entry.boxIndex);
     const unprocessedBoards = validatedBoardEntries.filter(([boxIndex]) => 
       !alreadyProcessedBoxes.includes(parseInt(boxIndex))
     );
 
-    unprocessedBoards.forEach(([boxIndex, qrCode]) => {
+    for (const [boxIndex, qrCode] of unprocessedBoards) {
       const entry: ScanEntry = {
         id: crypto.randomUUID(),
         boxIndex: parseInt(boxIndex),
@@ -111,7 +111,10 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
         testResult: 'pass'
       };
       onScanEntry(entry);
-    });
+
+      // Save board data to database
+      await saveBoardData(qrCode, 'pass');
+    }
 
     // Clear processed boards from validated boards and inputs
     const newValidatedBoards = { ...validatedBoards };
@@ -197,6 +200,27 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     return currentBox;
   };
 
+  const saveBoardData = async (qrCode: string, testResult: 'pass' | 'fail', failureReason?: string) => {
+    try {
+      const { error } = await supabase
+        .from('board_data')
+        .upsert({
+          qr_code: qrCode,
+          board_type: ptlOrder.boardType,
+          assembly_number: ptlOrder.boardType, // Using board type as assembly for now
+          sequence_number: qrCode, // Using QR code as sequence number
+          test_status: testResult,
+          test_date: new Date().toISOString(),
+          ptl_order_id: ptlOrder.id,
+          test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving board data:', error);
+    }
+  };
+
   const handleFailureSubmit = async () => {
     if (!failureReason.trim()) return;
 
@@ -212,7 +236,9 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
     onScanEntry(entry);
 
-    // Create repair entry in database
+    // Save board data and create repair entry
+    await saveBoardData(failureDialog.qrCode, 'fail', failureReason);
+
     try {
       const { error } = await supabase
         .from('repair_entries')

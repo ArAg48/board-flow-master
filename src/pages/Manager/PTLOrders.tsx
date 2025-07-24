@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,8 +32,10 @@ interface PTLOrderForm {
 }
 
 const PTLOrders: React.FC = () => {
+  const navigate = useNavigate();
   const [hardwareOrders, setHardwareOrders] = useState<HardwareOrder[]>([]);
   const [orders, setOrders] = useState<PTLOrder[]>([]);
+  const [orderCounts, setOrderCounts] = useState<{[key: string]: {scanned: number, passed: number, failed: number}}>({});
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
@@ -57,6 +60,7 @@ const PTLOrders: React.FC = () => {
   useEffect(() => {
     fetchHardwareOrders();
     fetchPTLOrders();
+    fetchOrderCounts();
   }, []);
 
   const fetchHardwareOrders = async () => {
@@ -92,6 +96,31 @@ const PTLOrders: React.FC = () => {
         description: 'Failed to fetch PTL orders.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const fetchOrderCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('board_data')
+        .select('ptl_order_id, test_status');
+
+      if (error) throw error;
+
+      const counts: {[key: string]: {scanned: number, passed: number, failed: number}} = {};
+      
+      (data || []).forEach(board => {
+        if (!counts[board.ptl_order_id]) {
+          counts[board.ptl_order_id] = { scanned: 0, passed: 0, failed: 0 };
+        }
+        counts[board.ptl_order_id].scanned++;
+        if (board.test_status === 'pass') counts[board.ptl_order_id].passed++;
+        if (board.test_status === 'fail') counts[board.ptl_order_id].failed++;
+      });
+
+      setOrderCounts(counts);
+    } catch (error) {
+      console.error('Error fetching order counts:', error);
     }
   };
 
@@ -139,6 +168,7 @@ const PTLOrders: React.FC = () => {
       setEditingOrder(null);
       form.reset();
       fetchPTLOrders(); // Refresh the list
+      fetchOrderCounts(); // Refresh counts
     } catch (error) {
       toast({
         title: 'Error',
@@ -383,6 +413,7 @@ const PTLOrders: React.FC = () => {
                 <TableHead>Firmware Rev</TableHead>
                 <TableHead>Board Type</TableHead>
                 <TableHead>Quantity</TableHead>
+                <TableHead>Progress</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -390,20 +421,33 @@ const PTLOrders: React.FC = () => {
             <TableBody>
               {orders.map((order) => {
                 const hardwareOrder = hardwareOrders.find(h => h.id === order.hardware_order_id);
+                const counts = orderCounts[order.id] || { scanned: 0, passed: 0, failed: 0 };
                 return (
-                  <TableRow key={order.id}>
+                  <TableRow 
+                    key={order.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/manager/ptl-orders/${order.id}`)}
+                  >
                     <TableCell className="font-medium">{order.ptl_order_number}</TableCell>
                     <TableCell>{order.sale_code || '-'}</TableCell>
                     <TableCell>{order.firmware_revision || '-'}</TableCell>
                     <TableCell>{order.board_type}</TableCell>
                     <TableCell>{order.quantity}</TableCell>
                     <TableCell>
+                      <div className="text-sm">
+                        <div>{counts.scanned}/{order.quantity} scanned</div>
+                        <div className="text-xs text-muted-foreground">
+                          ✓{counts.passed} ✗{counts.failed}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <Badge className={getStatusColor(order.status)}>
                         {order.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                         <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
                           <Eye className="h-4 w-4" />
                         </Button>

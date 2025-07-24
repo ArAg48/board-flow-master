@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -87,32 +88,38 @@ const Login: React.FC = () => {
     setBoardDetails(null);
 
     try {
-      // TODO: Replace with actual API call to your backend
-      // const response = await fetch(`/api/board-lookup/${boardId}`);
-      // const data = await response.json();
-      
-      // Mock data for demonstration
-      setTimeout(() => {
-        if (boardId === 'DEMO123') {
-          setBoardDetails({
-            boardId: 'DEMO123',
-            assemblyNumber: '257411E',
-            revision: 'Rev C',
-            saleCode: '1234-ABC',
-            firmwareVersion: '1.3',
-            dateCode: '2024',
-            status: 'Tested - Passed',
-            testDate: '2024-01-15',
-            technician: 'tech001',
-            notes: 'All tests passed successfully'
-          });
-        } else {
-          setLookupError('Board ID not found');
-        }
+      const { data, error } = await supabase
+        .from('board_data')
+        .select(`
+          *,
+          ptl_orders!inner(ptl_order_number, board_type),
+          profiles(full_name)
+        `)
+        .eq('qr_code', boardId.trim())
+        .single();
+
+      if (error || !data) {
+        setLookupError('Board ID not found');
         setLookupLoading(false);
-      }, 1000);
+        return;
+      }
+
+      setBoardDetails({
+        boardId: data.qr_code,
+        assemblyNumber: data.assembly_number,
+        revision: data.board_type,
+        saleCode: data.ptl_orders?.ptl_order_number || 'N/A',
+        firmwareVersion: 'N/A',
+        dateCode: 'N/A',
+        status: data.test_status === 'pass' ? 'Tested - Passed' : 
+                data.test_status === 'fail' ? 'Tested - Failed' : 'Pending',
+        testDate: data.test_date ? new Date(data.test_date).toLocaleDateString() : 'N/A',
+        technician: data.profiles?.full_name || 'N/A',
+        notes: data.test_results ? JSON.stringify(data.test_results) : 'No test data'
+      });
     } catch (err) {
       setLookupError('Error looking up board details');
+    } finally {
       setLookupLoading(false);
     }
   };

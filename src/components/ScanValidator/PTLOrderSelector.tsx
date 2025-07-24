@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PTLOrder } from '@/types/scan-validator';
-import { Package, Calendar, AlertCircle } from 'lucide-react';
+import { Package, Calendar, AlertCircle, Search } from 'lucide-react';
 
 interface PTLOrderSelectorProps {
   orders: PTLOrder[];
@@ -19,6 +19,17 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
   onOrderSelect,
   onConfirm
 }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredOrders, setFilteredOrders] = useState(orders);
+
+  useEffect(() => {
+    const filtered = orders.filter(order =>
+      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.boardType.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredOrders(filtered);
+  }, [searchTerm, orders]);
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'destructive';
@@ -36,30 +47,50 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
           Select PTL Order
         </CardTitle>
         <CardDescription>
-          Choose the PTL order to validate and view expected board format
+          Search and choose the PTL order to validate
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select onValueChange={(value) => {
-          const order = orders.find(o => o.id === value);
-          if (order) onOrderSelect(order);
-        }}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a PTL order..." />
-          </SelectTrigger>
-          <SelectContent>
-            {orders.map((order) => (
-              <SelectItem key={order.id} value={order.id}>
-                <div className="flex items-center justify-between w-full">
-                  <span>{order.orderNumber} - {order.boardType}</span>
-                  <Badge variant={getPriorityColor(order.priority)} className="ml-2">
-                    {order.priority}
-                  </Badge>
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by order number or board type..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+
+        <div className="max-h-64 overflow-y-auto space-y-2">
+          {filteredOrders.map((order) => (
+            <div
+              key={order.id}
+              className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                selectedOrder?.id === order.id ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+              onClick={() => onOrderSelect(order)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{order.orderNumber}</div>
+                  <div className="text-sm text-muted-foreground">{order.boardType}</div>
                 </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+                <Badge variant={getPriorityColor(order.priority)}>
+                  {order.priority}
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Count: {order.expectedCount} | Due: {order.dueDate.toLocaleDateString()}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {filteredOrders.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No PTL orders found matching your search
+          </div>
+        )}
 
         {selectedOrder && (
           <div className="border rounded-lg p-4 space-y-3">
