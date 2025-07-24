@@ -98,21 +98,19 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   };
 
   const handlePassAllBoards = () => {
-    const entriesWithBoards = scannedEntries.filter(entry => entry.qrCode);
-    entriesWithBoards.forEach(entry => {
-      if (entry.testResult !== 'pass') {
-        const updatedEntry: ScanEntry = {
-          ...entry,
-          testResult: 'pass',
-          timestamp: new Date()
-        };
-        onScanEntry(updatedEntry);
-      }
+    const unpassedEntries = scannedEntries.filter(entry => entry.qrCode && entry.testResult !== 'pass' && entry.testResult !== 'fail');
+    unpassedEntries.forEach(entry => {
+      const updatedEntry: ScanEntry = {
+        ...entry,
+        testResult: 'pass',
+        timestamp: new Date()
+      };
+      onScanEntry(updatedEntry);
     });
 
     toast({
-      title: "All Boards Passed",
-      description: `${entriesWithBoards.length} boards marked as passed`,
+      title: "All Unfailed Boards Passed",
+      description: `${unpassedEntries.length} boards marked as passed`,
     });
   };
 
@@ -132,18 +130,12 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       return;
     }
 
-    // Simulate test result (in real app, this would come from tester hardware)
-    const testResult = Math.random() > 0.15 ? 'pass' : 'fail'; // 85% pass rate
-
-    if (testResult === 'fail') {
-      setFailureDialog({ open: true, boxIndex, qrCode });
-      return;
-    }
-
-    completeSuccessfulScan(boxIndex, qrCode, testResult);
+    // Only validate format - don't auto-test
+    // Record the scan with no test result yet (undefined)
+    completeSuccessfulScan(boxIndex, qrCode, undefined);
   };
 
-  const completeSuccessfulScan = (boxIndex: number, qrCode: string, testResult: 'pass' | 'fail', failureReason?: string) => {
+  const completeSuccessfulScan = (boxIndex: number, qrCode: string, testResult: 'pass' | 'fail' | undefined, failureReason?: string) => {
     const entry: ScanEntry = {
       id: `scan-${Date.now()}-${boxIndex}`,
       boxIndex,
@@ -166,9 +158,9 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     setActiveBox(nextBox);
 
     toast({
-      title: testResult === 'pass' ? "Board Passed" : "Board Failed",
+      title: testResult === 'pass' ? "Board Passed" : testResult === 'fail' ? "Board Failed" : "Board Scanned",
       description: `Box ${boxIndex + 1}: ${qrCode}`,
-      variant: testResult === 'pass' ? 'default' : 'destructive'
+      variant: testResult === 'fail' ? 'destructive' : 'default'
     });
   };
 
@@ -288,14 +280,14 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                   <Coffee className="h-4 w-4 mr-2" />
                   Take Break
                 </Button>
-                <Button 
-                  onClick={handlePassAllBoards} 
-                  variant="default"
-                  disabled={scannedEntries.length === 0}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Pass All Boards
-                </Button>
+                 <Button 
+                   onClick={handlePassAllBoards} 
+                   variant="default"
+                   disabled={scannedEntries.length === 0}
+                 >
+                   <CheckCircle className="h-4 w-4 mr-2" />
+                   Pass All Unfailed Boards
+                 </Button>
                 <Button 
                   onClick={onFinishPTL} 
                   variant="default"
