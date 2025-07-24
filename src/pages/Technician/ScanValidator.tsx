@@ -419,6 +419,7 @@ const ScanValidator: React.FC = () => {
             onFinishPTL={handleFinishPTL}
             isActive={currentSession.status === 'scanning'}
             isBreakMode={currentSession.status === 'break'}
+            sessionId={currentSession.id}
           />
         </div>
       )}

@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { TesterConfig, ScanEntry, PTLOrder } from '@/types/scan-validator';
 import { Scan, CheckCircle, XCircle, Coffee, Pause, Play, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ScanningInterfaceProps {
   testerConfig: TesterConfig;
@@ -23,6 +24,7 @@ interface ScanningInterfaceProps {
   onFinishPTL: () => void;
   isActive: boolean;
   isBreakMode: boolean;
+  sessionId: string;
 }
 
 const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
@@ -35,7 +37,8 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   onResume,
   onFinishPTL,
   isActive,
-  isBreakMode
+  isBreakMode,
+  sessionId
 }) => {
   const [scanInputs, setScanInputs] = useState<string[]>(Array(testerConfig.scanBoxes).fill(''));
   const [validatedBoards, setValidatedBoards] = useState<{[boxIndex: number]: string}>({});
@@ -137,10 +140,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     newValidatedBoards[boxIndex] = qrCode;
     setValidatedBoards(newValidatedBoards);
 
-    // Clear the input and move to next box
-    const newInputs = [...scanInputs];
-    newInputs[boxIndex] = '';
-    setScanInputs(newInputs);
+    // Keep QR code in input box, just move to next box
 
     // Move to next available box
     const nextBox = (boxIndex + 1) % testerConfig.scanBoxes;
@@ -152,7 +152,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     });
   };
 
-  const handleFailureSubmit = () => {
+  const handleFailureSubmit = async () => {
     if (!failureReason.trim()) return;
 
     const entry: ScanEntry = {
@@ -166,6 +166,25 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     };
 
     onScanEntry(entry);
+
+    // Create repair entry in database
+    try {
+      const { error } = await supabase
+        .from('repair_entries')
+        .insert({
+          qr_code: failureDialog.qrCode,
+          board_type: ptlOrder.boardType,
+          failure_reason: failureReason,
+          failure_date: new Date().toISOString().split('T')[0],
+          repair_status: 'pending',
+          ptl_order_id: ptlOrder.id,
+          original_session_id: sessionId
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error creating repair entry:', error);
+    }
 
     // Remove from validated boards since it's now processed
     const newValidatedBoards = { ...validatedBoards };

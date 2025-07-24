@@ -177,7 +177,7 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
             <div className="flex gap-1">
               {recentScans.slice(-10).map((scan, index) => (
                 <div
-                  key={scan.id}
+                  key={`${scan.id}-${index}`}
                   className={`w-3 h-3 rounded-full ${
                     scan.testResult === 'pass' ? 'bg-green-500' : 'bg-red-500'
                   }`}
