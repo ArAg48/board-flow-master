@@ -96,11 +96,11 @@ const PTLOrderDetails: React.FC = () => {
       
       setBoardData(transformedData);
 
-      // Calculate stats
-      const total = data?.length || 0;
-      const passed = data?.filter(b => b.test_status === 'pass').length || 0;
-      const failed = data?.filter(b => b.test_status === 'fail').length || 0;
-      const pending = data?.filter(b => b.test_status === 'pending').length || 0;
+      // Calculate stats - use transformedData instead of raw data
+      const total = transformedData?.length || 0;
+      const passed = transformedData?.filter(b => b.test_status === 'pass').length || 0;
+      const failed = transformedData?.filter(b => b.test_status === 'fail').length || 0;
+      const pending = transformedData?.filter(b => b.test_status === 'pending').length || 0;
 
       // Get timing data from ptl_order_progress to match the list view
       const { data: progressData } = await supabase
