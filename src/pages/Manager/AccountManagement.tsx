@@ -186,7 +186,7 @@ const AccountManagement: React.FC = () => {
 
   const deleteAccount = async (id: string) => {
     try {
-      const { error } = await supabase.rpc('delete_user_account', {
+      const { data, error } = await supabase.rpc('delete_user_account', {
         p_user_id: id
       });
 
@@ -195,19 +195,26 @@ const AccountManagement: React.FC = () => {
         throw error;
       }
 
-      const account = accounts.find(acc => acc.id === id);
-      setAccounts(prev => prev.filter(account => account.id !== id));
-      
-      toast({
-        title: 'Account Deleted',
-        description: `${account?.firstName} ${account?.lastName}'s account has been deleted.`,
-        variant: 'destructive',
-      });
+      if (data) {
+        const account = accounts.find(acc => acc.id === id);
+        setAccounts(prev => prev.filter(account => account.id !== id));
+        
+        toast({
+          title: 'Account Deleted',
+          description: `${account?.firstName} ${account?.lastName}'s account has been deleted.`,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Account not found or could not be deleted.',
+          variant: 'destructive',
+        });
+      }
     } catch (error: any) {
       console.error('Error deleting account:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete account. Please try again.',
+        description: 'Only managers can delete accounts.',
         variant: 'destructive',
       });
     }
