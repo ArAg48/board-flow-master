@@ -82,13 +82,6 @@ export type Database = {
             referencedRelation: "ptl_orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "board_data_technician_id_fkey"
-            columns: ["technician_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       hardware_orders: {
