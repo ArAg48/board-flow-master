@@ -65,14 +65,13 @@ const AccountManagement: React.FC = () => {
 
   const fetchAccounts = async () => {
     try {
+      // Use the secure function that doesn't expose passwords
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .rpc('get_user_profiles');
 
       if (error) throw error;
 
-      const formattedAccounts: Account[] = (data || []).map((profile: Profile) => ({
+      const formattedAccounts: Account[] = (data || []).map((profile: any) => ({
         id: profile.id,
         username: profile.username,
         role: profile.role as 'manager' | 'technician',
@@ -80,14 +79,15 @@ const AccountManagement: React.FC = () => {
         lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
         isActive: true, // We'll assume all profiles are active for now
         createdAt: new Date(profile.created_at).toISOString().split('T')[0],
-        password: profile.password || '', // Include password in the account data
+        password: '••••••••', // Never expose real passwords
       }));
 
       setAccounts(formattedAccounts);
     } catch (error) {
+      console.error('Error fetching accounts:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch accounts.',
+        description: 'Failed to fetch accounts. Make sure you have manager permissions.',
         variant: 'destructive',
       });
     } finally {

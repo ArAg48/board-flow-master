@@ -70,14 +70,33 @@ const PTLOrderDetails: React.FC = () => {
       const { data, error } = await supabase
         .from('board_data')
         .select(`
-          *,
-          profiles(full_name)
+          id,
+          qr_code,
+          test_status,
+          test_date,
+          test_results,
+          technician_id,
+          profiles!board_data_technician_id_fkey(full_name)
         `)
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBoardData(data || []);
+      
+      // Transform the data to match BoardData interface
+      const transformedData: BoardData[] = (data || []).map(item => ({
+        id: item.id,
+        qr_code: item.qr_code,
+        test_status: item.test_status || 'pending',
+        test_date: item.test_date || '',
+        test_results: item.test_results,
+        technician_id: item.technician_id || '',
+        profiles: item.profiles && Array.isArray(item.profiles) && item.profiles.length > 0 
+          ? { full_name: item.profiles[0].full_name } 
+          : undefined
+      }));
+      
+      setBoardData(transformedData);
 
       // Calculate stats
       const total = data?.length || 0;

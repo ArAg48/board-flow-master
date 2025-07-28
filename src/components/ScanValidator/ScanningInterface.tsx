@@ -219,6 +219,11 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
         });
 
       if (error) throw error;
+      
+      // The database trigger will automatically update progress, but we can also
+      // manually call it to ensure consistency
+      await supabase.rpc('update_ptl_progress', { p_ptl_order_id: ptlOrder.id });
+      
     } catch (error) {
       console.error('Error saving board data:', error);
     }

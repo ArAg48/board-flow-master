@@ -132,40 +132,35 @@ const Login: React.FC = () => {
     setBoardDetails(null);
 
     try {
+      // Use the new secure lookup function
       const { data, error } = await supabase
-        .from('board_data')
-        .select(`
-          *,
-          ptl_orders(ptl_order_number, board_type, firmware_revision, date_code, sale_code),
-          profiles(full_name)
-        `)
-        .eq('qr_code', boardId.trim())
-        .maybeSingle();
+        .rpc('lookup_board_details', { p_qr_code: boardId.trim() });
 
-      if (error || !data) {
+      if (error || !data || data.length === 0) {
         setLookupError('Board ID not found');
         setLookupLoading(false);
         return;
       }
 
-      if (data) {
-        console.log('Board data found:', data);
+      if (data && data.length > 0) {
+        const board = data[0]; // Get first result from RPC function
+        console.log('Board data found:', board);
         
         // Extract serial number as last 7 digits
-        const serialNumber = data.sequence_number ? data.sequence_number.slice(-7) : 'N/A';
+        const serialNumber = board.sequence_number ? board.sequence_number.slice(-7) : 'N/A';
         
         setBoardDetails({
-          boardId: data.qr_code,
+          boardId: board.qr_code,
           serialNumber: serialNumber,
-          assemblyNumber: data.assembly_number,
-          hardwareRevision: data.board_type,
-          saleCode: data.ptl_orders?.sale_code || data.ptl_orders?.ptl_order_number || 'N/A',
-          firmwareVersion: data.ptl_orders?.firmware_revision || 'N/A',
-          dateCode: data.ptl_orders?.date_code || 'N/A',
-          status: data.test_status === 'pass' ? 'Tested - Passed' : 
-                  data.test_status === 'fail' ? 'Tested - Failed' : 'Pending',
-          testDate: data.test_date ? new Date(data.test_date).toLocaleDateString() : 'N/A',
-          technicianName: data.profiles?.full_name || 'N/A',
+          assemblyNumber: board.assembly_number,
+          hardwareRevision: board.board_type,
+          saleCode: board.sale_code || board.ptl_order_number || 'N/A',
+          firmwareVersion: board.firmware_revision || 'N/A',
+          dateCode: board.date_code || 'N/A',
+          status: board.test_status === 'pass' ? 'Tested - Passed' : 
+                  board.test_status === 'fail' ? 'Tested - Failed' : 'Pending',
+          testDate: board.test_date ? new Date(board.test_date).toLocaleDateString() : 'N/A',
+          technicianName: board.technician_name || 'N/A',
         });
       } else {
         console.log('No board data found for:', boardId);

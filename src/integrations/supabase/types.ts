@@ -437,6 +437,15 @@ export type Database = {
           user_role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      count_scanned_boards: {
+        Args: { p_ptl_order_id: string }
+        Returns: {
+          total_count: number
+          pass_count: number
+          fail_count: number
+          pending_count: number
+        }[]
+      }
       create_user_account: {
         Args: {
           p_username: string
@@ -470,6 +479,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_user_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          username: string
+          full_name: string
+          role: Database["public"]["Enums"]["user_role"]
+          created_at: string
+          updated_at: string
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
@@ -477,6 +497,22 @@ export type Database = {
       hash_password: {
         Args: { password_text: string }
         Returns: string
+      }
+      lookup_board_details: {
+        Args: { p_qr_code: string }
+        Returns: {
+          qr_code: string
+          sequence_number: string
+          assembly_number: string
+          board_type: string
+          test_status: string
+          test_date: string
+          ptl_order_number: string
+          firmware_revision: string
+          date_code: string
+          sale_code: string
+          technician_name: string
+        }[]
       }
       save_session: {
         Args: {
@@ -489,6 +525,10 @@ export type Database = {
           p_break_started_at?: string
         }
         Returns: string
+      }
+      update_ptl_progress: {
+        Args: { p_ptl_order_id: string }
+        Returns: boolean
       }
       update_user_password: {
         Args: { p_user_id: string; p_new_password: string }
