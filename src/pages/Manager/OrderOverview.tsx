@@ -75,20 +75,20 @@ const OrderOverview: React.FC = () => {
 
         const ptlOrderIds = ptlOrders?.map(p => p.id) || [];
         
-        // Get scan sessions for all PTL orders
+        // Get progress data for all PTL orders
         let totalScanned = 0;
         let totalPassed = 0;
         let totalFailed = 0;
         
         if (ptlOrderIds.length > 0) {
-          const { data: sessions } = await supabase
-            .from('scan_sessions')
-            .select('pass_count, fail_count, total_scanned')
-            .in('ptl_order_id', ptlOrderIds);
+          const { data: progress } = await supabase
+            .from('ptl_order_progress')
+            .select('scanned_count, passed_count, failed_count')
+            .in('id', ptlOrderIds);
 
-          totalScanned = sessions?.reduce((sum, s) => sum + s.total_scanned, 0) || 0;
-          totalPassed = sessions?.reduce((sum, s) => sum + s.pass_count, 0) || 0;
-          totalFailed = sessions?.reduce((sum, s) => sum + s.fail_count, 0) || 0;
+          totalScanned = progress?.reduce((sum, p) => sum + (p.scanned_count || 0), 0) || 0;
+          totalPassed = progress?.reduce((sum, p) => sum + (p.passed_count || 0), 0) || 0;
+          totalFailed = progress?.reduce((sum, p) => sum + (p.failed_count || 0), 0) || 0;
         }
 
         return {

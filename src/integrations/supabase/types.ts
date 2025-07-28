@@ -159,6 +159,7 @@ export type Database = {
       }
       ptl_order_progress: {
         Row: {
+          active_time_minutes: number | null
           board_type: string
           completion_percentage: number | null
           created_at: string | null
@@ -169,9 +170,11 @@ export type Database = {
           quantity: number
           scanned_count: number | null
           status: Database["public"]["Enums"]["order_status"]
+          total_time_minutes: number | null
           updated_at: string | null
         }
         Insert: {
+          active_time_minutes?: number | null
           board_type: string
           completion_percentage?: number | null
           created_at?: string | null
@@ -182,9 +185,11 @@ export type Database = {
           quantity: number
           scanned_count?: number | null
           status: Database["public"]["Enums"]["order_status"]
+          total_time_minutes?: number | null
           updated_at?: string | null
         }
         Update: {
+          active_time_minutes?: number | null
           board_type?: string
           completion_percentage?: number | null
           created_at?: string | null
@@ -195,6 +200,7 @@ export type Database = {
           quantity?: number
           scanned_count?: number | null
           status?: Database["public"]["Enums"]["order_status"]
+          total_time_minutes?: number | null
           updated_at?: string | null
         }
         Relationships: []
