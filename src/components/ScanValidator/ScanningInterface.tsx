@@ -202,6 +202,8 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
   const saveBoardData = async (qrCode: string, testResult: 'pass' | 'fail', failureReason?: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from('board_data')
         .upsert({
@@ -212,6 +214,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
           test_status: testResult,
           test_date: new Date().toISOString(),
           ptl_order_id: ptlOrder.id,
+          technician_id: user?.id,
           test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
         });
 
