@@ -102,16 +102,14 @@ const PTLOrderDetails: React.FC = () => {
       const failed = data?.filter(b => b.test_status === 'fail').length || 0;
       const pending = data?.filter(b => b.test_status === 'pending').length || 0;
 
-      // Get timing data from scan_sessions - use duration_minutes if actual_duration_minutes is null
-      const { data: sessionData } = await supabase
-        .from('scan_sessions')
-        .select('actual_duration_minutes, duration_minutes')
-        .eq('ptl_order_id', id);
+      // Get timing data from ptl_order_progress to match the list view
+      const { data: progressData } = await supabase
+        .from('ptl_order_progress')
+        .select('total_time_minutes')
+        .eq('id', id)
+        .single();
 
-      const totalTime = sessionData?.reduce((sum, session) => {
-        const duration = session.actual_duration_minutes || session.duration_minutes || 0;
-        return sum + duration;
-      }, 0) || 0;
+      const totalTime = progressData?.total_time_minutes || 0;
 
       setStats({ total, passed, failed, pending, totalTime });
     } catch (error) {
