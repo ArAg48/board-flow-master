@@ -72,6 +72,13 @@ export type Database = {
             foreignKeyName: "board_data_ptl_order_id_fkey"
             columns: ["ptl_order_id"]
             isOneToOne: false
+            referencedRelation: "ptl_order_progress"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_data_ptl_order_id_fkey"
+            columns: ["ptl_order_id"]
+            isOneToOne: false
             referencedRelation: "ptl_orders"
             referencedColumns: ["id"]
           },
@@ -301,6 +308,13 @@ export type Database = {
             foreignKeyName: "repair_entries_ptl_order_id_fkey"
             columns: ["ptl_order_id"]
             isOneToOne: false
+            referencedRelation: "ptl_order_progress"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_entries_ptl_order_id_fkey"
+            columns: ["ptl_order_id"]
+            isOneToOne: false
             referencedRelation: "ptl_orders"
             referencedColumns: ["id"]
           },
@@ -308,6 +322,8 @@ export type Database = {
       }
       scan_sessions: {
         Row: {
+          actual_duration_minutes: number | null
+          break_duration_minutes: number | null
           break_started_at: string | null
           created_at: string
           duration_minutes: number | null
@@ -318,6 +334,7 @@ export type Database = {
           notes: string | null
           pass_count: number
           pass_rate: number | null
+          pause_duration_minutes: number | null
           paused_at: string | null
           ptl_order_id: string
           session_data: Json | null
@@ -329,6 +346,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          actual_duration_minutes?: number | null
+          break_duration_minutes?: number | null
           break_started_at?: string | null
           created_at?: string
           duration_minutes?: number | null
@@ -339,6 +358,7 @@ export type Database = {
           notes?: string | null
           pass_count?: number
           pass_rate?: number | null
+          pause_duration_minutes?: number | null
           paused_at?: string | null
           ptl_order_id: string
           session_data?: Json | null
@@ -350,6 +370,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          actual_duration_minutes?: number | null
+          break_duration_minutes?: number | null
           break_started_at?: string | null
           created_at?: string
           duration_minutes?: number | null
@@ -360,6 +382,7 @@ export type Database = {
           notes?: string | null
           pass_count?: number
           pass_rate?: number | null
+          pause_duration_minutes?: number | null
           paused_at?: string | null
           ptl_order_id?: string
           session_data?: Json | null
@@ -371,6 +394,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "scan_sessions_ptl_order_id_fkey"
+            columns: ["ptl_order_id"]
+            isOneToOne: false
+            referencedRelation: "ptl_order_progress"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scan_sessions_ptl_order_id_fkey"
             columns: ["ptl_order_id"]
@@ -389,7 +419,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ptl_order_progress: {
+        Row: {
+          active_time_minutes: number | null
+          board_type: string | null
+          completion_percentage: number | null
+          failed_count: number | null
+          id: string | null
+          passed_count: number | null
+          ptl_order_number: string | null
+          quantity: number | null
+          scanned_count: number | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          total_time_minutes: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       authenticate_user: {

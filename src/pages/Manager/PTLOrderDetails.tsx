@@ -35,7 +35,7 @@ const PTLOrderDetails: React.FC = () => {
   const [ptlOrder, setPtlOrder] = useState<PTLOrderDetail | null>(null);
   const [boardData, setBoardData] = useState<BoardData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, pending: 0 });
+  const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, pending: 0, totalTime: 0 });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -85,7 +85,15 @@ const PTLOrderDetails: React.FC = () => {
       const failed = data?.filter(b => b.test_status === 'fail').length || 0;
       const pending = data?.filter(b => b.test_status === 'pending').length || 0;
 
-      setStats({ total, passed, failed, pending });
+      // Get timing data from scan_sessions
+      const { data: sessionData } = await supabase
+        .from('scan_sessions')
+        .select('actual_duration_minutes')
+        .eq('ptl_order_id', id);
+
+      const totalTime = sessionData?.reduce((sum, session) => sum + (session.actual_duration_minutes || 0), 0) || 0;
+
+      setStats({ total, passed, failed, pending, totalTime });
     } catch (error) {
       console.error('Error loading board data:', error);
       toast({
@@ -178,7 +186,7 @@ const PTLOrderDetails: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -201,6 +209,14 @@ const PTLOrderDetails: React.FC = () => {
           <CardContent className="p-6">
             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
             <div className="text-sm text-muted-foreground">Pending</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-2xl font-bold text-blue-600">
+              {stats.totalTime > 0 ? `${Math.round(stats.totalTime)}` : '0'}
+            </div>
+            <div className="text-sm text-muted-foreground">Minutes</div>
           </CardContent>
         </Card>
       </div>

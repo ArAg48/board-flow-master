@@ -35,7 +35,7 @@ const PTLOrders: React.FC = () => {
   const navigate = useNavigate();
   const [hardwareOrders, setHardwareOrders] = useState<HardwareOrder[]>([]);
   const [orders, setOrders] = useState<PTLOrder[]>([]);
-  const [orderCounts, setOrderCounts] = useState<{[key: string]: {scanned: number, passed: number, failed: number}}>({});
+  const [orderCounts, setOrderCounts] = useState<{[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}}>({});
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
@@ -101,26 +101,46 @@ const PTLOrders: React.FC = () => {
 
   const fetchOrderCounts = async () => {
     try {
+      // Use the new view for getting progress with timing data
       const { data, error } = await supabase
-        .from('board_data')
-        .select('ptl_order_id, test_status');
+        .from('ptl_order_progress')
+        .select('*');
 
       if (error) throw error;
 
-      const counts: {[key: string]: {scanned: number, passed: number, failed: number}} = {};
+      const counts: {[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}} = {};
       
-      (data || []).forEach(board => {
-        if (!counts[board.ptl_order_id]) {
-          counts[board.ptl_order_id] = { scanned: 0, passed: 0, failed: 0 };
-        }
-        counts[board.ptl_order_id].scanned++;
-        if (board.test_status === 'pass') counts[board.ptl_order_id].passed++;
-        if (board.test_status === 'fail') counts[board.ptl_order_id].failed++;
+      (data || []).forEach(order => {
+        counts[order.id] = { 
+          scanned: order.scanned_count, 
+          passed: order.passed_count, 
+          failed: order.failed_count,
+          totalTime: order.total_time_minutes
+        };
       });
 
       setOrderCounts(counts);
     } catch (error) {
       console.error('Error fetching order counts:', error);
+      // Fallback to original method if view fails
+      const { data, error: fallbackError } = await supabase
+        .from('board_data')
+        .select('ptl_order_id, test_status');
+
+      if (!fallbackError) {
+        const counts: {[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}} = {};
+        
+        (data || []).forEach(board => {
+          if (!counts[board.ptl_order_id]) {
+            counts[board.ptl_order_id] = { scanned: 0, passed: 0, failed: 0, totalTime: 0 };
+          }
+          counts[board.ptl_order_id].scanned++;
+          if (board.test_status === 'pass') counts[board.ptl_order_id].passed++;
+          if (board.test_status === 'fail') counts[board.ptl_order_id].failed++;
+        });
+
+        setOrderCounts(counts);
+      }
     }
   };
 
@@ -414,6 +434,7 @@ const PTLOrders: React.FC = () => {
                 <TableHead>Board Type</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Progress</TableHead>
+                <TableHead>Time</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -421,7 +442,7 @@ const PTLOrders: React.FC = () => {
             <TableBody>
               {orders.map((order) => {
                 const hardwareOrder = hardwareOrders.find(h => h.id === order.hardware_order_id);
-                const counts = orderCounts[order.id] || { scanned: 0, passed: 0, failed: 0 };
+                const counts = orderCounts[order.id] || { scanned: 0, passed: 0, failed: 0, totalTime: 0 };
                 return (
                   <TableRow 
                     key={order.id}
@@ -439,6 +460,15 @@ const PTLOrders: React.FC = () => {
                         <div className="text-xs text-muted-foreground">
                           ✓{counts.passed} ✗{counts.failed}
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {counts.totalTime > 0 ? (
+                          <span>{Math.round(counts.totalTime)} min</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>

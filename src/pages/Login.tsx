@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Search } from 'lucide-react';
@@ -104,20 +106,30 @@ const Login: React.FC = () => {
         return;
       }
 
-      setBoardDetails({
-        boardId: data.qr_code,
-        serialNumber: data.sequence_number,
-        assemblyNumber: data.assembly_number,
-        hardwareRevision: data.board_type,
-        saleCode: data.ptl_orders?.sale_code || data.ptl_orders?.ptl_order_number || 'N/A',
-        firmwareVersion: data.ptl_orders?.firmware_revision || 'N/A',
-        dateCode: data.ptl_orders?.date_code || 'N/A',
-        status: data.test_status === 'pass' ? 'Tested - Passed' : 
-                data.test_status === 'fail' ? 'Tested - Failed' : 'Pending',
-        testDate: data.test_date ? new Date(data.test_date).toLocaleDateString() : 'N/A',
-        technician: data.profiles?.full_name || 'N/A',
-        notes: data.test_results ? JSON.stringify(data.test_results) : 'No test data'
-      });
+      if (data) {
+        console.log('Board data found:', data);
+        
+        // Extract serial number as last 7 digits
+        const serialNumber = data.sequence_number ? data.sequence_number.slice(-7) : 'N/A';
+        
+        setBoardDetails({
+          boardId: data.qr_code,
+          serialNumber: serialNumber,
+          assemblyNumber: data.assembly_number,
+          hardwareRevision: data.board_type,
+          saleCode: data.ptl_orders?.sale_code || data.ptl_orders?.ptl_order_number || 'N/A',
+          firmwareVersion: data.ptl_orders?.firmware_revision || 'N/A',
+          dateCode: data.ptl_orders?.date_code || 'N/A',
+          status: data.test_status === 'pass' ? 'Tested - Passed' : 
+                  data.test_status === 'fail' ? 'Tested - Failed' : 'Pending',
+          testDate: data.test_date ? new Date(data.test_date).toLocaleDateString() : 'N/A',
+          technicianName: data.profiles?.full_name || 'N/A',
+        });
+      } else {
+        console.log('No board data found for:', boardId);
+        setBoardDetails(null);
+        setLookupError(`No board found with ID: ${boardId}`);
+      }
     } catch (err) {
       setLookupError('Error looking up board details');
     } finally {
@@ -217,59 +229,68 @@ const Login: React.FC = () => {
             </Alert>
           )}
 
-          {boardDetails && (
-            <div className="space-y-3 mt-4 p-4 bg-muted/50 rounded-lg">
-              <h4 className="font-semibold text-sm">Board Details:</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Board ID:</span>
-                  <p className="font-medium">{boardDetails.boardId}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Serial Number:</span>
-                  <p className="font-medium">{boardDetails.serialNumber}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Assembly Number:</span>
-                  <p className="font-medium">{boardDetails.assemblyNumber}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Hardware Revision:</span>
-                  <p className="font-medium">{boardDetails.hardwareRevision}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Sale Code:</span>
-                  <p className="font-medium">{boardDetails.saleCode}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Firmware Version:</span>
-                  <p className="font-medium">{boardDetails.firmwareVersion}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Date Code:</span>
-                  <p className="font-medium">{boardDetails.dateCode}</p>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Status:</span>
-                  <p className="font-medium text-green-600">{boardDetails.status}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Test Date:</span>
-                  <p className="font-medium">{boardDetails.testDate}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Technician:</span>
-                  <p className="font-medium">{boardDetails.technician}</p>
-                </div>
-                {boardDetails.notes && (
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Notes:</span>
-                    <p className="font-medium">{boardDetails.notes}</p>
-                  </div>
-                )}
-              </div>
+           {boardDetails && (
+            <div className="mt-4">
+              <h4 className="font-semibold text-sm mb-3">Board Details:</h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Field</TableHead>
+                    <TableHead>Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">Board ID</TableCell>
+                    <TableCell className="font-mono">{boardDetails.boardId}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Serial Number</TableCell>
+                    <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Assembly Number</TableCell>
+                    <TableCell className="font-mono">{boardDetails.assemblyNumber}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Hardware Revision</TableCell>
+                    <TableCell>{boardDetails.hardwareRevision}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Sale Code</TableCell>
+                    <TableCell className="font-mono">{boardDetails.saleCode}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Firmware Version</TableCell>
+                    <TableCell className="font-mono">{boardDetails.firmwareVersion}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Date Code</TableCell>
+                    <TableCell className="font-mono">{boardDetails.dateCode}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Status</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        boardDetails.status === 'Tested - Passed' ? 'default' :
+                        boardDetails.status === 'Tested - Failed' ? 'destructive' : 'secondary'
+                      }>
+                        {boardDetails.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Test Date</TableCell>
+                    <TableCell>{boardDetails.testDate}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Technician</TableCell>
+                    <TableCell>{boardDetails.technicianName}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
-          )}
+           )}
 
         </CardContent>
       </Card>
