@@ -108,35 +108,53 @@ const AccountManagement: React.FC = () => {
 
   const onSubmit = async (data: CreateAccountForm) => {
     try {
-      // First check if username already exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('username', data.username)
-        .single();
-
-      if (existingUser) {
+      // Client-side validation
+      if (data.username.length < 3) {
         toast({
-          title: 'Username Already Exists',
-          description: `The username "${data.username}" is already taken. Please choose a different username.`,
-          variant: 'destructive',
+          title: "Validation Error",
+          description: "Username must be at least 3 characters long",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data.password.length < 6) {
+        toast({
+          title: "Validation Error", 
+          description: "Password must be at least 6 characters long",
+          variant: "destructive",
         });
         return;
       }
 
-      // If no existing user found, proceed with creation
       const { data: result, error } = await supabase
         .rpc('create_user_account', {
-          p_username: data.username,
+          p_username: data.username.trim(),
           p_password: data.password,
-          p_first_name: data.firstName,
-          p_last_name: data.lastName,
+          p_first_name: data.firstName.trim(),
+          p_last_name: data.lastName.trim(),
           p_role: data.role
         });
 
       if (error) {
         console.error('Supabase error:', error);
-        throw error;
+        
+        let errorMessage = "Failed to create account";
+        
+        if (error.message.includes("Username already exists")) {
+          errorMessage = "Username already exists. Please choose a different username.";
+        } else if (error.message.includes("Username must be at least 3 characters")) {
+          errorMessage = "Username must be at least 3 characters long.";
+        } else if (error.message.includes("password at least 6 characters")) {
+          errorMessage = "Password must be at least 6 characters long.";
+        }
+        
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({
@@ -148,21 +166,9 @@ const AccountManagement: React.FC = () => {
       fetchAccounts(); // Refresh the list
     } catch (error: any) {
       console.error('Error creating account:', error);
-      
-      // Handle specific error cases
-      let errorMessage = 'Failed to create account. Please try again.';
-      
-      if (error?.code === '23505') {
-        errorMessage = 'This username is already taken. Please choose a different username.';
-      } else if (error?.message?.includes('duplicate')) {
-        errorMessage = 'This username is already taken. Please choose a different username.';
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      
       toast({
         title: 'Error',
-        description: errorMessage,
+        description: 'Failed to create account. Please try again.',
         variant: 'destructive',
       });
     }
@@ -230,6 +236,16 @@ const AccountManagement: React.FC = () => {
     if (!editingAccount) return;
 
     try {
+      // Client-side validation
+      if (data.newPassword.length < 6) {
+        toast({
+          title: "Validation Error",
+          description: "Password must be at least 6 characters long",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase.rpc('update_user_password', {
         p_user_id: editingAccount.id,
         p_new_password: data.newPassword
@@ -237,14 +253,26 @@ const AccountManagement: React.FC = () => {
 
       if (error) {
         console.error('Supabase error:', error);
-        throw error;
+        
+        let errorMessage = "Failed to update password";
+        
+        if (error.message.includes("Password must be at least 6 characters")) {
+          errorMessage = "Password must be at least 6 characters long.";
+        }
+        
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+        return;
       }
 
-      // Update the local state
+      // Update the local state (note: password will now be hashed, so don't display it)
       setAccounts(prev => 
         prev.map(account => 
           account.id === editingAccount.id 
-            ? { ...account, password: data.newPassword }
+            ? { ...account, password: "••••••••" } // Hide hashed password
             : account
         )
       );
@@ -406,9 +434,9 @@ const AccountManagement: React.FC = () => {
                       <TableCell>
                         <code className="bg-muted px-2 py-1 rounded text-sm">{account.username}</code>
                       </TableCell>
-                      <TableCell>
-                        <code className="bg-muted px-2 py-1 rounded text-sm">{account.password}</code>
-                      </TableCell>
+                       <TableCell>
+                         <code className="bg-muted px-2 py-1 rounded text-sm">••••••••</code>
+                       </TableCell>
                       <TableCell>
                         <Badge variant={account.role === 'manager' ? 'default' : 'secondary'}>
                           {account.role}

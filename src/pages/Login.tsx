@@ -41,9 +41,33 @@ const Login: React.FC = () => {
   }
 
   const validateInput = (value: string): boolean => {
-    // Basic input validation to prevent injection attacks
-    const dangerousChars = /[<>'";&]/;
-    return !dangerousChars.test(value) && value.length <= 50;
+    // Enhanced validation to prevent common attacks
+    const dangerousPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /on\w+=/i,
+      /<iframe/i,
+      /<object/i,
+      /<embed/i,
+      /eval\(/i,
+      /expression\(/i,
+      /vbscript:/i,
+      /data:/i
+    ];
+    
+    // Check for dangerous patterns
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(value)) {
+        return false;
+      }
+    }
+    
+    // Check length limits and basic format
+    if (value.length > 100 || value.length < 1) {
+      return false;
+    }
+    
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,31 +75,43 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setError('');
 
-    // Input validation
-    if (!validateInput(username) || !validateInput(password)) {
-      setError('Invalid characters in username or password');
+    // Enhanced input validation
+    if (!username.trim() || !password.trim()) {
+      setError('Username and password are required');
       setIsLoading(false);
       return;
     }
-
-    if (username.length < 3 || password.length < 3) {
-      setError('Username and password must be at least 3 characters long');
+    
+    if (username.trim().length < 3) {
+      setError('Username must be at least 3 characters long');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!validateInput(username) || !validateInput(password)) {
+      setError('Invalid characters detected in input');
       setIsLoading(false);
       return;
     }
 
     try {
-      const success = await login(username, password);
+      const success = await login(username.trim(), password);
       if (success) {
         toast({
           title: 'Login Successful',
           description: 'Welcome to PTL Order System',
         });
       } else {
-        setError('Invalid username or password');
+        setError('Invalid username or password. Please check your credentials.');
       }
     } catch (err) {
-      setError('An error occurred during login');
+      setError('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -84,6 +120,12 @@ const Login: React.FC = () => {
 
   const handleBoardLookup = async () => {
     if (!boardId.trim()) return;
+    
+    // Validate board ID input
+    if (!validateInput(boardId)) {
+      setLookupError('Invalid characters in board ID');
+      return;
+    }
     
     setLookupLoading(true);
     setLookupError('');

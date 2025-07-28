@@ -473,9 +473,17 @@ export type Database = {
           break_started_at: string
         }[]
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      hash_password: {
+        Args: { password_text: string }
+        Returns: string
       }
       save_session: {
         Args: {
@@ -491,6 +499,10 @@ export type Database = {
       }
       update_user_password: {
         Args: { p_user_id: string; p_new_password: string }
+        Returns: boolean
+      }
+      verify_password: {
+        Args: { password_text: string; password_hash: string }
         Returns: boolean
       }
     }

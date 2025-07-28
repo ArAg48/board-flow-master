@@ -67,10 +67,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
+      // Input validation
+      if (!username?.trim() || !password?.trim()) {
+        console.error('Username and password are required');
+        setIsLoading(false);
+        return false;
+      }
+      
+      if (username.trim().length < 3) {
+        console.error('Username must be at least 3 characters');
+        setIsLoading(false);
+        return false;
+      }
+      
       // Use database function to authenticate credentials first
       const { data, error } = await supabase
         .rpc('authenticate_user', {
-          input_username: username,
+          input_username: username.trim(),
           input_password: password
         });
 
@@ -95,11 +108,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Create user profile in state using the authenticated user data
         const userProfile: User = {
           id: user_id,
-          username: username,
+          username: username.trim(),
           role: user_role,
           firstName: username === 'manager' ? 'Manager' : username.charAt(0).toUpperCase() + username.slice(1),
           lastName: 'User',
-          email: `${username}@ptl.local`,
+          email: `${username.trim()}@ptl.local`,
           createdAt: new Date().toISOString(),
         };
         setUser(userProfile);
