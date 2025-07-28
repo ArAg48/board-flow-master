@@ -209,23 +209,25 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
         .upsert({
           qr_code: qrCode,
           board_type: ptlOrder.boardType,
-          assembly_number: ptlOrder.boardType, // Using board type as assembly for now
-          sequence_number: qrCode, // Using QR code as sequence number
+          assembly_number: ptlOrder.boardType,
+          sequence_number: qrCode,
           test_status: testResult,
           test_date: new Date().toISOString(),
           ptl_order_id: ptlOrder.id,
-          technician_id: user?.id,
+          technician_id: user?.id || null,
           test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
+        }, {
+          onConflict: 'qr_code,ptl_order_id'
         });
 
       if (error) throw error;
       
-      // The database trigger will automatically update progress, but we can also
-      // manually call it to ensure consistency
-      await supabase.rpc('update_ptl_progress', { p_ptl_order_id: ptlOrder.id });
+      // Refresh PTL progress after saving
+      await supabase.rpc('refresh_ptl_progress');
       
     } catch (error) {
       console.error('Error saving board data:', error);
+      throw error;
     }
   };
 

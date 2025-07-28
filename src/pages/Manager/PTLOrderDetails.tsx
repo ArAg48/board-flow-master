@@ -68,7 +68,7 @@ const PTLOrderDetails: React.FC = () => {
   const loadBoardData = async () => {
     try {
       const { data, error } = await supabase
-        .from('board_data')
+        .from('board_data_with_technician')
         .select(`
           id,
           qr_code,
@@ -76,7 +76,7 @@ const PTLOrderDetails: React.FC = () => {
           test_date,
           test_results,
           technician_id,
-          profiles!board_data_technician_id_fkey(full_name)
+          technician_name
         `)
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
@@ -91,8 +91,8 @@ const PTLOrderDetails: React.FC = () => {
         test_date: item.test_date || '',
         test_results: item.test_results,
         technician_id: item.technician_id || '',
-        profiles: item.profiles && Array.isArray(item.profiles) && item.profiles.length > 0 
-          ? { full_name: item.profiles[0].full_name } 
+        profiles: item.technician_name 
+          ? { full_name: item.technician_name } 
           : undefined
       }));
       

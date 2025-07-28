@@ -75,13 +75,6 @@ export type Database = {
             referencedRelation: "ptl_orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "board_data_technician_id_fkey"
-            columns: ["technician_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       hardware_orders: {
@@ -446,7 +439,40 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      board_data_with_technician: {
+        Row: {
+          assembly_number: string | null
+          board_type: string | null
+          created_at: string | null
+          hardware_order_id: string | null
+          id: string | null
+          ptl_order_id: string | null
+          qr_code: string | null
+          sequence_number: string | null
+          technician_id: string | null
+          technician_name: string | null
+          test_date: string | null
+          test_results: Json | null
+          test_status: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_data_hardware_order_id_fkey"
+            columns: ["hardware_order_id"]
+            isOneToOne: false
+            referencedRelation: "hardware_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_data_ptl_order_id_fkey"
+            columns: ["ptl_order_id"]
+            isOneToOne: false
+            referencedRelation: "ptl_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       authenticate_user: {
@@ -562,6 +588,10 @@ export type Database = {
           sale_code: string
           technician_name: string
         }[]
+      }
+      refresh_ptl_progress: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       save_session: {
         Args: {
