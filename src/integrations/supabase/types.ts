@@ -157,6 +157,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ptl_order_progress: {
+        Row: {
+          board_type: string
+          completion_percentage: number | null
+          created_at: string | null
+          failed_count: number | null
+          id: string
+          passed_count: number | null
+          ptl_order_number: string
+          quantity: number
+          scanned_count: number | null
+          status: Database["public"]["Enums"]["order_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          board_type: string
+          completion_percentage?: number | null
+          created_at?: string | null
+          failed_count?: number | null
+          id: string
+          passed_count?: number | null
+          ptl_order_number: string
+          quantity: number
+          scanned_count?: number | null
+          status: Database["public"]["Enums"]["order_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          board_type?: string
+          completion_percentage?: number | null
+          created_at?: string | null
+          failed_count?: number | null
+          id?: string
+          passed_count?: number | null
+          ptl_order_number?: string
+          quantity?: number
+          scanned_count?: number | null
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ptl_orders: {
         Row: {
           board_type: string
