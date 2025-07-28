@@ -72,13 +72,6 @@ export type Database = {
             foreignKeyName: "board_data_ptl_order_id_fkey"
             columns: ["ptl_order_id"]
             isOneToOne: false
-            referencedRelation: "ptl_order_progress"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "board_data_ptl_order_id_fkey"
-            columns: ["ptl_order_id"]
-            isOneToOne: false
             referencedRelation: "ptl_orders"
             referencedColumns: ["id"]
           },
@@ -301,13 +294,6 @@ export type Database = {
             foreignKeyName: "repair_entries_ptl_order_id_fkey"
             columns: ["ptl_order_id"]
             isOneToOne: false
-            referencedRelation: "ptl_order_progress"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "repair_entries_ptl_order_id_fkey"
-            columns: ["ptl_order_id"]
-            isOneToOne: false
             referencedRelation: "ptl_orders"
             referencedColumns: ["id"]
           },
@@ -391,13 +377,6 @@ export type Database = {
             foreignKeyName: "scan_sessions_ptl_order_id_fkey"
             columns: ["ptl_order_id"]
             isOneToOne: false
-            referencedRelation: "ptl_order_progress"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scan_sessions_ptl_order_id_fkey"
-            columns: ["ptl_order_id"]
-            isOneToOne: false
             referencedRelation: "ptl_orders"
             referencedColumns: ["id"]
           },
@@ -412,22 +391,7 @@ export type Database = {
       }
     }
     Views: {
-      ptl_order_progress: {
-        Row: {
-          active_time_minutes: number | null
-          board_type: string | null
-          completion_percentage: number | null
-          failed_count: number | null
-          id: string | null
-          passed_count: number | null
-          ptl_order_number: string | null
-          quantity: number | null
-          scanned_count: number | null
-          status: Database["public"]["Enums"]["order_status"] | null
-          total_time_minutes: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       authenticate_user: {
@@ -475,9 +439,39 @@ export type Database = {
           break_started_at: string
         }[]
       }
+      get_board_progress: {
+        Args: { p_ptl_order_id?: string }
+        Returns: {
+          ptl_order_id: string
+          ptl_order_number: string
+          total_boards: number
+          scanned_boards: number
+          passed_boards: number
+          failed_boards: number
+          pending_boards: number
+          completion_percentage: number
+          pass_rate: number
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      get_ptl_order_progress: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          ptl_order_number: string
+          board_type: string
+          quantity: number
+          status: Database["public"]["Enums"]["order_status"]
+          scanned_count: number
+          passed_count: number
+          failed_count: number
+          completion_percentage: number
+          total_time_minutes: number
+          active_time_minutes: number
+        }[]
       }
       get_user_profiles: {
         Args: Record<PropertyKey, never>
