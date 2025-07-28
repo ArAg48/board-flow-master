@@ -92,7 +92,7 @@ const Login: React.FC = () => {
         .from('board_data')
         .select(`
           *,
-          ptl_orders(ptl_order_number, board_type),
+          ptl_orders(ptl_order_number, board_type, firmware_revision, date_code, sale_code),
           profiles(full_name)
         `)
         .eq('qr_code', boardId.trim())
@@ -106,11 +106,12 @@ const Login: React.FC = () => {
 
       setBoardDetails({
         boardId: data.qr_code,
+        serialNumber: data.sequence_number,
         assemblyNumber: data.assembly_number,
-        revision: data.board_type,
-        saleCode: data.ptl_orders?.ptl_order_number || 'N/A',
-        firmwareVersion: 'N/A',
-        dateCode: 'N/A',
+        hardwareRevision: data.board_type,
+        saleCode: data.ptl_orders?.sale_code || data.ptl_orders?.ptl_order_number || 'N/A',
+        firmwareVersion: data.ptl_orders?.firmware_revision || 'N/A',
+        dateCode: data.ptl_orders?.date_code || 'N/A',
         status: data.test_status === 'pass' ? 'Tested - Passed' : 
                 data.test_status === 'fail' ? 'Tested - Failed' : 'Pending',
         testDate: data.test_date ? new Date(data.test_date).toLocaleDateString() : 'N/A',
@@ -225,19 +226,23 @@ const Login: React.FC = () => {
                   <p className="font-medium">{boardDetails.boardId}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Assembly:</span>
+                  <span className="text-muted-foreground">Serial Number:</span>
+                  <p className="font-medium">{boardDetails.serialNumber}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Assembly Number:</span>
                   <p className="font-medium">{boardDetails.assemblyNumber}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Revision:</span>
-                  <p className="font-medium">{boardDetails.revision}</p>
+                  <span className="text-muted-foreground">Hardware Revision:</span>
+                  <p className="font-medium">{boardDetails.hardwareRevision}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Sale Code:</span>
                   <p className="font-medium">{boardDetails.saleCode}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Firmware:</span>
+                  <span className="text-muted-foreground">Firmware Version:</span>
                   <p className="font-medium">{boardDetails.firmwareVersion}</p>
                 </div>
                 <div>

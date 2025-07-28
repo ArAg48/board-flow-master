@@ -178,6 +178,24 @@ const ScanValidator: React.FC = () => {
         return;
       }
 
+      // Get all board scan data for this PTL order to restore accurate counts
+      const { data: existingBoardData } = await supabase
+        .from('board_data')
+        .select('qr_code, test_status, test_date, test_results')
+        .eq('ptl_order_id', ptlOrder.id)
+        .order('test_date', { ascending: true });
+
+      // Convert board data to scan entries to restore the count
+      const restoredScannedEntries = existingBoardData?.map((board, index) => ({
+        id: crypto.randomUUID(),
+        boxIndex: index % (sessionData.session_data?.testerConfig?.scanBoxes || 1),
+        qrCode: board.qr_code,
+        isValid: true,
+        timestamp: new Date(board.test_date || Date.now()),
+        testResult: board.test_status === 'pass' ? 'pass' as const : 'fail' as const,
+        failureReason: typeof board.test_results === 'object' && board.test_results && 'failure_reason' in board.test_results ? (board.test_results as any).failure_reason : undefined
+      })) || [];
+
       // Reconstruct the session from stored data
       const storedData = sessionData.session_data;
       const reconstructedSession: ValidationSession = {
@@ -189,10 +207,7 @@ const ScanValidator: React.FC = () => {
         pausedTime: sessionData.paused_at ? new Date(sessionData.paused_at) : undefined,
         breakTime: sessionData.break_started_at ? new Date(sessionData.break_started_at) : undefined,
         status: sessionData.break_started_at ? 'break' : 'paused',
-        scannedEntries: (storedData.scannedEntries || []).map((entry: any) => ({
-          ...entry,
-          timestamp: new Date(entry.timestamp)
-        })),
+        scannedEntries: restoredScannedEntries, // Use restored board data instead of session data
         totalDuration: storedData.totalDuration || 0
       };
 
