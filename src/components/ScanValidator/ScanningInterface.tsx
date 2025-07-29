@@ -204,6 +204,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      // Use the unique constraint to properly handle updates
       const { error } = await supabase
         .from('board_data')
         .upsert({
@@ -217,13 +218,14 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
           technician_id: user?.id || null,
           test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
         }, {
-          onConflict: 'qr_code,ptl_order_id'
+          onConflict: 'qr_code,ptl_order_id',
+          ignoreDuplicates: false
         });
 
       if (error) throw error;
       
-      // Refresh PTL progress after saving
-      await supabase.rpc('refresh_ptl_progress');
+      // Refresh PTL progress after saving using the updated counting function
+      await supabase.rpc('update_ptl_progress', { p_ptl_order_id: ptlOrder.id });
       
     } catch (error) {
       console.error('Error saving board data:', error);

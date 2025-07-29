@@ -101,7 +101,7 @@ const PTLOrders: React.FC = () => {
 
   const fetchOrderCounts = async () => {
     try {
-      // Use the new view for getting progress with timing data
+      // Use the updated counting function to get accurate board counts
       const { data, error } = await supabase
         .from('ptl_order_progress')
         .select('*');
@@ -112,34 +112,42 @@ const PTLOrders: React.FC = () => {
       
       (data || []).forEach(order => {
         counts[order.id] = { 
-          scanned: order.scanned_count, 
-          passed: order.passed_count, 
-          failed: order.failed_count,
-          totalTime: order.total_time_minutes
+          scanned: Number(order.scanned_count), 
+          passed: Number(order.passed_count), 
+          failed: Number(order.failed_count),
+          totalTime: Number(order.total_time_minutes)
         };
       });
 
       setOrderCounts(counts);
     } catch (error) {
       console.error('Error fetching order counts:', error);
-      // Fallback to original method if view fails
-      const { data, error: fallbackError } = await supabase
-        .from('board_data')
-        .select('ptl_order_id, test_status');
+      // Fallback to using the updated counting function directly
+      try {
+        const { data: ptlOrders } = await supabase
+          .from('ptl_orders')
+          .select('id');
 
-      if (!fallbackError) {
         const counts: {[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}} = {};
         
-        (data || []).forEach(board => {
-          if (!counts[board.ptl_order_id]) {
-            counts[board.ptl_order_id] = { scanned: 0, passed: 0, failed: 0, totalTime: 0 };
+        for (const order of ptlOrders || []) {
+          const { data: countData } = await supabase
+            .rpc('count_scanned_boards', { p_ptl_order_id: order.id });
+          
+          if (countData && countData.length > 0) {
+            const boardCount = countData[0];
+            counts[order.id] = {
+              scanned: Number(boardCount.total_count),
+              passed: Number(boardCount.pass_count),
+              failed: Number(boardCount.fail_count),
+              totalTime: 0 // Will be filled by timing data
+            };
           }
-          counts[board.ptl_order_id].scanned++;
-          if (board.test_status === 'pass') counts[board.ptl_order_id].passed++;
-          if (board.test_status === 'fail') counts[board.ptl_order_id].failed++;
-        });
+        }
 
         setOrderCounts(counts);
+      } catch (fallbackError) {
+        console.error('Fallback counting also failed:', fallbackError);
       }
     }
   };
