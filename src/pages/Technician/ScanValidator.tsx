@@ -34,10 +34,16 @@ const ScanValidator: React.FC = () => {
       
       // Set up interval to refresh PTL orders every 30 seconds
       const interval = setInterval(() => {
-        loadPTLOrders();
+        if (user) {
+          loadPTLOrders();
+        }
       }, 30000);
       
       return () => clearInterval(interval);
+    } else {
+      // Clear orders when user logs out
+      setAvailableOrders([]);
+      setLoading(false);
     }
   }, [user]);
 
