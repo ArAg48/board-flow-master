@@ -6,6 +6,10 @@ export interface PTLOrder {
   expectedCount: number;
   priority: 'high' | 'medium' | 'low';
   dueDate: Date;
+  scannedCount?: number;
+  passedCount?: number;
+  failedCount?: number;
+  status?: string;
 }
 
 export interface TesterConfig {

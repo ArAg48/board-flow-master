@@ -61,6 +61,13 @@ const PTLOrders: React.FC = () => {
     fetchHardwareOrders();
     fetchPTLOrders();
     fetchOrderCounts();
+    
+    // Refresh counts every 30 seconds to show real-time progress
+    const interval = setInterval(() => {
+      fetchOrderCounts();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchHardwareOrders = async () => {
@@ -195,8 +202,8 @@ const PTLOrders: React.FC = () => {
       setIsDialogOpen(false);
       setEditingOrder(null);
       form.reset();
-      fetchPTLOrders(); // Refresh the list
-      fetchOrderCounts(); // Refresh counts
+      await fetchPTLOrders(); // Refresh the list
+      await fetchOrderCounts(); // Refresh counts
     } catch (error) {
       toast({
         title: 'Error',
@@ -230,7 +237,7 @@ const PTLOrders: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'active': return 'bg-green-100 text-green-800';
+      case 'in_progress': return 'bg-green-100 text-green-800';
       case 'completed': return 'bg-blue-100 text-blue-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';

@@ -123,6 +123,30 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
               </div>
             </div>
 
+            {/* Show progress if there's any */}
+            {(selectedOrder.scannedCount || 0) > 0 && (
+              <div className="border-t pt-3 mt-3">
+                <div className="text-sm font-medium mb-2">Current Progress:</div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="text-center p-2 bg-muted rounded">
+                    <div className="font-semibold">{selectedOrder.scannedCount}</div>
+                    <div className="text-muted-foreground">Scanned</div>
+                  </div>
+                  <div className="text-center p-2 bg-green-50 text-green-700 rounded">
+                    <div className="font-semibold">{selectedOrder.passedCount || 0}</div>
+                    <div>Passed</div>
+                  </div>
+                  <div className="text-center p-2 bg-red-50 text-red-700 rounded">
+                    <div className="font-semibold">{selectedOrder.failedCount || 0}</div>
+                    <div>Failed</div>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-center text-muted-foreground">
+                  {selectedOrder.status === 'in_progress' ? 'Testing in progress' : 'Ready to continue'}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 p-2 bg-muted rounded">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               <span className="text-sm">

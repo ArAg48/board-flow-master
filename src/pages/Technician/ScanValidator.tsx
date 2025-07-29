@@ -45,23 +45,36 @@ const ScanValidator: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch PTL orders with hardware order details
+      // Fetch PTL orders with hardware order details - include both pending and in_progress
       const { data: ptlOrdersData, error: ptlError } = await supabase
         .from('ptl_orders')
         .select(`
           *,
           hardware_orders(starting_sequence)
         `)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'in_progress'])
         .order('created_at', { ascending: false });
 
       if (ptlError) throw ptlError;
+
+      // Fetch progress data for all orders
+      const orderIds = (ptlOrdersData || []).map(order => order.id);
+      const { data: progressData } = await supabase
+        .from('ptl_order_progress')
+        .select('*')
+        .in('id', orderIds);
+
+      const progressMap = (progressData || []).reduce((acc, progress) => {
+        acc[progress.id] = progress;
+        return acc;
+      }, {} as Record<string, any>);
 
       // Transform database records to PTLOrder format
       const transformedOrders: PTLOrder[] = (ptlOrdersData || []).map(order => {
         const hardwareOrder = order.hardware_orders as any;
         const startSequence = hardwareOrder?.starting_sequence || '411E0000001';
         const first4Chars = startSequence.substring(0, 4);
+        const progress = progressMap[order.id];
         
         return {
           id: order.id,
@@ -70,7 +83,11 @@ const ScanValidator: React.FC = () => {
           expectedFormat: `^${first4Chars}\\d{7}$`, // First 4 chars + 7 digits
           expectedCount: order.quantity,
           priority: 'medium' as const, // Default priority
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default to 7 days from now
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 7 days from now
+          scannedCount: progress?.scanned_count || 0,
+          passedCount: progress?.passed_count || 0,
+          failedCount: progress?.failed_count || 0,
+          status: order.status,
         };
       });
 
