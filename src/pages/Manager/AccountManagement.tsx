@@ -15,6 +15,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
 
 const createAccountSchema = z.object({
@@ -47,6 +48,7 @@ interface Account {
 
 const AccountManagement: React.FC = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -176,6 +178,16 @@ const AccountManagement: React.FC = () => {
 
   const toggleAccountStatus = async (id: string) => {
     try {
+      // Check if current user is a manager
+      if (user?.role !== 'manager') {
+        toast({
+          title: 'Access Denied',
+          description: 'Only managers can toggle account status.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const { data, error } = await supabase.rpc('toggle_user_status', {
         p_user_id: id
       });
@@ -202,7 +214,7 @@ const AccountManagement: React.FC = () => {
       console.error('Error toggling account status:', error);
       toast({
         title: 'Error',
-        description: 'Only managers can toggle account status.',
+        description: 'Failed to toggle account status. Please try again.',
         variant: 'destructive',
       });
     }
@@ -210,14 +222,21 @@ const AccountManagement: React.FC = () => {
 
   const deleteAccount = async (id: string) => {
     try {
+      // Check if current user is a manager
+      if (user?.role !== 'manager') {
+        toast({
+          title: 'Access Denied',
+          description: 'Only managers can delete accounts.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const { data, error } = await supabase.rpc('delete_user_account', {
         p_user_id: id
       });
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       if (data) {
         const account = accounts.find(acc => acc.id === id);
@@ -238,7 +257,7 @@ const AccountManagement: React.FC = () => {
       console.error('Error deleting account:', error);
       toast({
         title: 'Error',
-        description: 'Only managers can delete accounts.',
+        description: 'Failed to delete account. Please try again.',
         variant: 'destructive',
       });
     }
