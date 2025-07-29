@@ -139,6 +139,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_active: boolean | null
           password: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -148,6 +149,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
           password?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -157,6 +159,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
           password?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -577,6 +580,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           created_at: string
           updated_at: string
+          is_active: boolean
         }[]
       }
       get_user_role: {
@@ -618,6 +622,10 @@ export type Database = {
           p_break_started_at?: string
         }
         Returns: string
+      }
+      toggle_user_status: {
+        Args: { p_user_id: string }
+        Returns: boolean
       }
       update_ptl_progress: {
         Args: { p_ptl_order_id: string }

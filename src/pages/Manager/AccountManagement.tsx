@@ -77,7 +77,7 @@ const AccountManagement: React.FC = () => {
         role: profile.role as 'manager' | 'technician',
         firstName: profile.full_name?.split(' ')[0] || '',
         lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
-        isActive: true, // We'll assume all profiles are active for now
+        isActive: profile.is_active,
         createdAt: new Date(profile.created_at).toISOString().split('T')[0],
         password: '••••••••', // Never expose real passwords
       }));
@@ -174,20 +174,38 @@ const AccountManagement: React.FC = () => {
     }
   };
 
-  const toggleAccountStatus = (id: string) => {
-    setAccounts(prev => 
-      prev.map(account => 
-        account.id === id 
-          ? { ...account, isActive: !account.isActive }
-          : account
-      )
-    );
-    
-    const account = accounts.find(acc => acc.id === id);
-    toast({
-      title: 'Account Status Updated',
-      description: `${account?.firstName} ${account?.lastName}'s account has been ${account?.isActive ? 'deactivated' : 'activated'}.`,
-    });
+  const toggleAccountStatus = async (id: string) => {
+    try {
+      const { data, error } = await supabase.rpc('toggle_user_status', {
+        p_user_id: id
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        // Update local state
+        setAccounts(prev => 
+          prev.map(account => 
+            account.id === id 
+              ? { ...account, isActive: !account.isActive }
+              : account
+          )
+        );
+        
+        const account = accounts.find(acc => acc.id === id);
+        toast({
+          title: 'Account Status Updated',
+          description: `${account?.firstName} ${account?.lastName}'s account has been ${account?.isActive ? 'deactivated' : 'activated'}.`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error toggling account status:', error);
+      toast({
+        title: 'Error',
+        description: 'Only managers can toggle account status.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const deleteAccount = async (id: string) => {
