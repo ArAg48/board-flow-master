@@ -336,7 +336,6 @@ const ScanValidator: React.FC = () => {
             .from('board_data')
             .select('qr_code, test_status, test_date, test_results, technician_id')
             .eq('ptl_order_id', order.id)
-            .eq('technician_id', user.id)
             .order('test_date', { ascending: true });
 
           if (boardData && boardData.length > 0) {
