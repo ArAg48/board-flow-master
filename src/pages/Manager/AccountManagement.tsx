@@ -24,6 +24,7 @@ const createAccountSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   role: z.enum(['manager', 'technician'], { required_error: 'Please select a role' }),
+  cwStamp: z.string().optional(),
 });
 
 const editPasswordSchema = z.object({
@@ -105,8 +106,11 @@ const AccountManagement: React.FC = () => {
       firstName: '',
       lastName: '',
       role: undefined,
+      cwStamp: '',
     },
   });
+
+  const selectedRole = form.watch('role');
 
   const onSubmit = async (data: CreateAccountForm) => {
     try {
@@ -421,6 +425,21 @@ const AccountManagement: React.FC = () => {
                   <p className="text-sm text-destructive">{form.formState.errors.role.message}</p>
                 )}
               </div>
+
+              {selectedRole === 'technician' && (
+                <div className="space-y-2">
+                  <Label htmlFor="cwStamp">CW Stamp</Label>
+                  <Input
+                    id="cwStamp"
+                    {...form.register('cwStamp')}
+                    placeholder="Enter CW stamp for technician"
+                    className={form.formState.errors.cwStamp ? 'border-destructive' : ''}
+                  />
+                  {form.formState.errors.cwStamp && (
+                    <p className="text-sm text-destructive">{form.formState.errors.cwStamp.message}</p>
+                  )}
+                </div>
+              )}
 
               <Button type="submit" className="w-full">
                 Create Account
