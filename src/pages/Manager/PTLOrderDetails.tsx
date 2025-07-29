@@ -76,7 +76,7 @@ const PTLOrderDetails: React.FC = () => {
           test_date,
           test_results,
           technician_id,
-          profiles!board_data_technician_id_fkey(full_name)
+          profiles(full_name)
         `)
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
