@@ -331,27 +331,42 @@ const ScanValidator: React.FC = () => {
 
         // No active session found, check if there's any existing progress
         if (order.scannedCount && order.scannedCount > 0) {
-          // There's existing progress, check for the most recent session to resume
-          const { data: recentSessions } = await supabase
-            .from('scan_sessions')
-            .select('*')
+          // There's existing progress, fetch all board data and create session with progress
+          const { data: boardData } = await supabase
+            .from('board_data')
+            .select('qr_code, test_status, test_date, test_results, technician_id')
             .eq('ptl_order_id', order.id)
             .eq('technician_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
+            .order('test_date', { ascending: true });
 
-          if (recentSessions && recentSessions.length > 0) {
-            const recentSession = recentSessions[0];
-            setResumeDialog({ 
-              open: true, 
-              session: {
-                session_id: recentSession.id,
-                ptl_order_id: recentSession.ptl_order_id,
-                session_data: recentSession.session_data,
-                start_time: recentSession.start_time,
-                paused_at: recentSession.paused_at,
-                break_started_at: recentSession.break_started_at
-              }
+          if (boardData && boardData.length > 0) {
+            // Create new session with existing board progress
+            const newSessionId = crypto.randomUUID();
+            const scannedEntries = boardData.map((board, index) => ({
+              id: crypto.randomUUID(),
+              boxIndex: index % 4, // Distribute across available boxes
+              qrCode: board.qr_code,
+              isValid: true,
+              timestamp: new Date(board.test_date),
+              testResult: board.test_status as 'pass' | 'fail',
+              failureReason: board.test_status === 'fail' ? (typeof board.test_results === 'object' && board.test_results && 'failure_reason' in board.test_results ? (board.test_results as any).failure_reason : undefined) : undefined
+            }));
+
+            const newSession: ValidationSession = {
+              id: newSessionId,
+              ptlOrder: order,
+              testerConfig: { type: 4, scanBoxes: 4 },
+              preTestVerification: { testerCheck: true, firmwareCheck: true },
+              startTime: new Date(),
+              status: 'scanning',
+              scannedEntries,
+              totalDuration: 0
+            };
+
+            setCurrentSession(newSession);
+            toast({
+              title: 'Session Created',
+              description: `Session created with ${boardData.length} existing boards`
             });
             return;
           }
