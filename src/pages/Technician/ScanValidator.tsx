@@ -55,8 +55,15 @@ const ScanValidator: React.FC = () => {
   }, [currentSession, user]);
 
   const loadPTLOrders = async () => {
+    if (!user) {
+      console.log('No user found, skipping PTL orders load');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('Loading PTL orders for user:', user.id);
       
       // Fetch PTL orders with hardware order details - include both pending and in_progress
       const { data: ptlOrdersData, error: ptlError } = await supabase
