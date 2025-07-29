@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Eye, Clipboard, Link } from 'lucide-react';
+import { Plus, Edit, Eye, Clipboard, Link, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -232,6 +232,35 @@ const PTLOrders: React.FC = () => {
   const handleViewDetails = (order: PTLOrder) => {
     setSelectedOrder(order);
     setViewOrderDetails(true);
+  };
+
+  const handleDelete = async (order: PTLOrder) => {
+    if (!confirm(`Are you sure you want to delete PTL order ${order.ptl_order_number}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('ptl_orders')
+        .delete()
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'PTL Order Deleted',
+        description: `Order ${order.ptl_order_number} has been deleted successfully.`,
+      });
+
+      await fetchPTLOrders();
+      await fetchOrderCounts();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete PTL order.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -498,6 +527,9 @@ const PTLOrders: React.FC = () => {
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleDelete(order)}>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
