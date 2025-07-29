@@ -31,6 +31,13 @@ const ScanValidator: React.FC = () => {
     if (user) {
       loadPTLOrders();
       checkForActiveSession();
+      
+      // Set up interval to refresh PTL orders every 30 seconds
+      const interval = setInterval(() => {
+        loadPTLOrders();
+      }, 30000);
+      
+      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -261,11 +268,17 @@ const ScanValidator: React.FC = () => {
     setCurrentSession(null);
   };
 
-  const handleOrderSelect = (order: PTLOrder) => {
+  const handleOrderSelect = async (order: PTLOrder) => {
     if (!currentSession) {
+      // Refresh the order data to get the latest progress before starting
+      await loadPTLOrders();
+      
+      // Find the updated order with latest progress
+      const updatedOrder = availableOrders.find(o => o.id === order.id) || order;
+      
       const newSession: ValidationSession = {
         id: crypto.randomUUID(),
-        ptlOrder: order,
+        ptlOrder: updatedOrder,
         testerConfig: { type: 1, scanBoxes: 1 },
         preTestVerification: {
           testerCheck: false,
