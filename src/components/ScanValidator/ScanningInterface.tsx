@@ -12,6 +12,7 @@ import { TesterConfig, ScanEntry, PTLOrder } from '@/types/scan-validator';
 import { Scan, CheckCircle, XCircle, Coffee, Pause, Play, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ScanningInterfaceProps {
   testerConfig: TesterConfig;
@@ -50,6 +51,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   });
   const [failureReason, setFailureReason] = useState('');
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const validateQRFormat = (qrCode: string): boolean => {
     try {
@@ -202,8 +204,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
   const saveBoardData = async (qrCode: string, testResult: 'pass' | 'fail', failureReason?: string) => {
     try {
-      // For now, we'll use a placeholder technician_id until the auth mapping is fixed
-      // Use the unique constraint to properly handle updates
+      // Use the current authenticated user as technician_id
       const { error } = await supabase
         .from('board_data')
         .upsert({
@@ -214,7 +215,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
           test_status: testResult,
           test_date: new Date().toISOString(),
           ptl_order_id: ptlOrder.id,
-          technician_id: null, // Skip technician_id for now to avoid foreign key error
+          technician_id: user?.id || null,
           test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
         }, {
           onConflict: 'qr_code,ptl_order_id',
