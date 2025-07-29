@@ -269,11 +269,16 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       console.error('Error creating repair entry:', error);
     }
 
-    // Remove from validated boards since it's now processed
+    // Clear the scan box input and remove from validated boards
     const newValidatedBoards = { ...validatedBoards };
     delete newValidatedBoards[failureDialog.boxIndex];
     setValidatedBoards(newValidatedBoards);
+    
+    const newInputs = [...scanInputs];
+    newInputs[failureDialog.boxIndex] = '';
+    setScanInputs(newInputs);
 
+    // Close dialog and reset state
     setFailureDialog({ open: false, boxIndex: -1, qrCode: '' });
     setFailureReason('');
 
