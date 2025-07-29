@@ -139,7 +139,8 @@ const AccountManagement: React.FC = () => {
           p_password: data.password,
           p_first_name: data.firstName.trim(),
           p_last_name: data.lastName.trim(),
-          p_role: data.role
+          p_role: data.role,
+          p_cw_stamp: data.role === 'technician' ? data.cwStamp?.trim() || null : null
         });
 
       if (error) {

@@ -512,13 +512,22 @@ export type Database = {
         }[]
       }
       create_user_account: {
-        Args: {
-          p_username: string
-          p_password: string
-          p_first_name: string
-          p_last_name: string
-          p_role: Database["public"]["Enums"]["user_role"]
-        }
+        Args:
+          | {
+              p_username: string
+              p_password: string
+              p_first_name: string
+              p_last_name: string
+              p_role: Database["public"]["Enums"]["user_role"]
+            }
+          | {
+              p_username: string
+              p_password: string
+              p_first_name: string
+              p_last_name: string
+              p_role: Database["public"]["Enums"]["user_role"]
+              p_cw_stamp?: string
+            }
         Returns: string
       }
       deactivate_session: {
