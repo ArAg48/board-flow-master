@@ -168,6 +168,9 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     }
 
     try {
+      // Create all entries first
+      const newEntries: ScanEntry[] = [];
+      
       for (const [boxIndex, qrCode] of unfailedBoards) {
         console.log(`Processing board: ${qrCode} in box ${boxIndex}`);
         
@@ -183,10 +186,13 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
         // Save board data to database
         await saveBoardData(qrCode, 'pass');
         
-        // Add to scan entries
-        console.log('Adding entry to session:', entry);
-        onScanEntry(entry);
+        newEntries.push(entry);
+        console.log('Created entry for session:', entry);
       }
+      
+      // Add all entries to session at once
+      console.log(`Adding ${newEntries.length} entries to session at once`);
+      newEntries.forEach(entry => onScanEntry(entry));
 
       // Clear the passed boards from validated boards and inputs
       const newValidatedBoards = { ...validatedBoards };

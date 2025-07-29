@@ -328,15 +328,17 @@ const ScanValidator: React.FC = () => {
     if (!currentSession) return;
 
     console.log('handleScanEntry called with:', entry);
-    console.log('Current session scanned entries before:', currentSession.scannedEntries.length);
 
-    const updatedSession = {
-      ...currentSession,
-      scannedEntries: [...currentSession.scannedEntries, entry]
-    };
-    
-    console.log('Updated session scanned entries after:', updatedSession.scannedEntries.length);
-    setCurrentSession(updatedSession);
+    // Use functional setState to ensure we get the most current state
+    setCurrentSession(prevSession => {
+      console.log('Current session scanned entries before:', prevSession.scannedEntries.length);
+      const updatedSession = {
+        ...prevSession,
+        scannedEntries: [...prevSession.scannedEntries, entry]
+      };
+      console.log('Updated session scanned entries after:', updatedSession.scannedEntries.length);
+      return updatedSession;
+    });
   };
 
   const handlePause = () => {
