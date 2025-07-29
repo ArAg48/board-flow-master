@@ -299,7 +299,7 @@ const ScanValidator: React.FC = () => {
 
   const handleOrderSelect = async (order: PTLOrder) => {
     if (!currentSession && user?.id) {
-      // Check if there's an existing active session for this PTL order
+      // First check if there's an existing active session for this PTL order
       try {
         const { data: existingSessions, error } = await supabase
           .from('scan_sessions')
@@ -313,7 +313,7 @@ const ScanValidator: React.FC = () => {
         if (error) throw error;
 
         if (existingSessions && existingSessions.length > 0) {
-          // Found an existing session, set up resume dialog
+          // Found an existing active session, set up resume dialog
           const existingSession = existingSessions[0];
           setResumeDialog({ 
             open: true, 
@@ -327,6 +327,34 @@ const ScanValidator: React.FC = () => {
             }
           });
           return;
+        }
+
+        // No active session found, check if there's any existing progress
+        if (order.scannedCount && order.scannedCount > 0) {
+          // There's existing progress, check for the most recent session to resume
+          const { data: recentSessions } = await supabase
+            .from('scan_sessions')
+            .select('*')
+            .eq('ptl_order_id', order.id)
+            .eq('technician_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (recentSessions && recentSessions.length > 0) {
+            const recentSession = recentSessions[0];
+            setResumeDialog({ 
+              open: true, 
+              session: {
+                session_id: recentSession.id,
+                ptl_order_id: recentSession.ptl_order_id,
+                session_data: recentSession.session_data,
+                start_time: recentSession.start_time,
+                paused_at: recentSession.paused_at,
+                break_started_at: recentSession.break_started_at
+              }
+            });
+            return;
+          }
         }
       } catch (error) {
         console.error('Error checking for existing session:', error);
