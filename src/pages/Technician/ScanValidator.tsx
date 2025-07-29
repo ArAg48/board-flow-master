@@ -216,14 +216,17 @@ const ScanValidator: React.FC = () => {
         return;
       }
 
-      // Get all board scan data for this PTL order to restore accurate counts
+      // Get all board scan data for this PTL order and session to restore accurate counts
       const { data: existingBoardData } = await supabase
         .from('board_data')
-        .select('qr_code, test_status, test_date, test_results')
+        .select('qr_code, test_status, test_date, test_results, technician_id')
         .eq('ptl_order_id', ptlOrder.id)
+        .eq('technician_id', user?.id)
         .order('test_date', { ascending: true });
 
-      // Convert board data to scan entries to restore the count
+      console.log('Resuming session with existing board data:', existingBoardData);
+
+      // Convert board data to scan entries to restore the session state
       const restoredScannedEntries = existingBoardData?.map((board, index) => ({
         id: crypto.randomUUID(),
         boxIndex: index % (sessionData.session_data?.testerConfig?.scanBoxes || 1),
@@ -233,6 +236,8 @@ const ScanValidator: React.FC = () => {
         testResult: board.test_status === 'pass' ? 'pass' as const : 'fail' as const,
         failureReason: typeof board.test_results === 'object' && board.test_results && 'failure_reason' in board.test_results ? (board.test_results as any).failure_reason : undefined
       })) || [];
+
+      console.log('Restored scan entries:', restoredScannedEntries);
 
       // Reconstruct the session from stored data
       const storedData = sessionData.session_data;
