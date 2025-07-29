@@ -202,8 +202,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
   const saveBoardData = async (qrCode: string, testResult: 'pass' | 'fail', failureReason?: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      // For now, we'll use a placeholder technician_id until the auth mapping is fixed
       // Use the unique constraint to properly handle updates
       const { error } = await supabase
         .from('board_data')
@@ -215,7 +214,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
           test_status: testResult,
           test_date: new Date().toISOString(),
           ptl_order_id: ptlOrder.id,
-          technician_id: user?.id || null,
+          technician_id: null, // Skip technician_id for now to avoid foreign key error
           test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
         }, {
           onConflict: 'qr_code,ptl_order_id',
@@ -236,57 +235,66 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   const handleFailureSubmit = async () => {
     if (!failureReason.trim()) return;
 
-    const entry: ScanEntry = {
-      id: crypto.randomUUID(),
-      boxIndex: failureDialog.boxIndex,
-      qrCode: failureDialog.qrCode,
-      isValid: true,
-      timestamp: new Date(),
-      testResult: 'fail',
-      failureReason
-    };
-
-    onScanEntry(entry);
-
-    // Save board data and create repair entry
-    await saveBoardData(failureDialog.qrCode, 'fail', failureReason);
-
     try {
-      const { error } = await supabase
-        .from('repair_entries')
-        .insert({
-          qr_code: failureDialog.qrCode,
-          board_type: ptlOrder.boardType,
-          failure_reason: failureReason,
-          failure_date: new Date().toISOString().split('T')[0],
-          repair_status: 'pending',
-          ptl_order_id: ptlOrder.id,
-          original_session_id: sessionId
-        });
+      const entry: ScanEntry = {
+        id: crypto.randomUUID(),
+        boxIndex: failureDialog.boxIndex,
+        qrCode: failureDialog.qrCode,
+        isValid: true,
+        timestamp: new Date(),
+        testResult: 'fail',
+        failureReason
+      };
 
-      if (error) throw error;
+      onScanEntry(entry);
+
+      // Save board data and create repair entry
+      await saveBoardData(failureDialog.qrCode, 'fail', failureReason);
+
+      try {
+        const { error } = await supabase
+          .from('repair_entries')
+          .insert({
+            qr_code: failureDialog.qrCode,
+            board_type: ptlOrder.boardType,
+            failure_reason: failureReason,
+            failure_date: new Date().toISOString().split('T')[0],
+            repair_status: 'pending',
+            ptl_order_id: ptlOrder.id,
+            original_session_id: sessionId
+          });
+
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error creating repair entry:', error);
+      }
+
+      // Clear the scan box input and remove from validated boards
+      const newValidatedBoards = { ...validatedBoards };
+      delete newValidatedBoards[failureDialog.boxIndex];
+      setValidatedBoards(newValidatedBoards);
+      
+      const newInputs = [...scanInputs];
+      newInputs[failureDialog.boxIndex] = '';
+      setScanInputs(newInputs);
+
+      // Close dialog and reset state
+      setFailureDialog({ open: false, boxIndex: -1, qrCode: '' });
+      setFailureReason('');
+
+      toast({
+        title: "Board Failed",
+        description: `Box ${failureDialog.boxIndex + 1}: ${failureDialog.qrCode}`,
+        variant: 'destructive'
+      });
     } catch (error) {
-      console.error('Error creating repair entry:', error);
+      console.error('Error in failure submission:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save board failure. Please try again.",
+        variant: 'destructive'
+      });
     }
-
-    // Clear the scan box input and remove from validated boards
-    const newValidatedBoards = { ...validatedBoards };
-    delete newValidatedBoards[failureDialog.boxIndex];
-    setValidatedBoards(newValidatedBoards);
-    
-    const newInputs = [...scanInputs];
-    newInputs[failureDialog.boxIndex] = '';
-    setScanInputs(newInputs);
-
-    // Close dialog and reset state
-    setFailureDialog({ open: false, boxIndex: -1, qrCode: '' });
-    setFailureReason('');
-
-    toast({
-      title: "Board Failed",
-      description: `Box ${failureDialog.boxIndex + 1}: ${failureDialog.qrCode}`,
-      variant: 'destructive'
-    });
   };
 
   const getBoxStats = (boxIndex: number) => {
