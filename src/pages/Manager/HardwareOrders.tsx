@@ -88,6 +88,11 @@ const HardwareOrders: React.FC = () => {
 
       console.log('Form data submitted:', data);
       console.log('Current user:', user);
+      console.log('Current user role:', user?.role);
+      
+      // Test current user role
+      const { data: roleTest, error: roleError } = await supabase.rpc('get_current_user_role');
+      console.log('RPC get_current_user_role result:', roleTest, roleError);
       
       const endingSequence = calculateEndingSequence(data.starting_sequence, data.quantity);
       const orderData = { 
