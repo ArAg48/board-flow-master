@@ -32,6 +32,18 @@ const HardwareOrders: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  // Check if user has manager role
+  useEffect(() => {
+    if (user && user.role !== 'manager') {
+      toast({
+        title: 'Access Denied',
+        description: 'You need manager permissions to access this page.',
+        variant: 'destructive',
+      });
+      return;
+    }
+  }, [user, toast]);
+
   const form = useForm<HardwareOrderForm>({
     defaultValues: {
       po_number: '',
