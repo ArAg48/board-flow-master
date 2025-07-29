@@ -54,6 +54,16 @@ const ScanValidator: React.FC = () => {
     }
   }, [currentSession, user]);
 
+  // Listen for PTL progress updates to refresh order data
+  useEffect(() => {
+    const handleProgressUpdate = () => {
+      loadPTLOrders();
+    };
+
+    window.addEventListener('ptlProgressUpdated', handleProgressUpdate);
+    return () => window.removeEventListener('ptlProgressUpdated', handleProgressUpdate);
+  }, []);
+
   const loadPTLOrders = async () => {
     if (!user) {
       console.log('No user found, skipping PTL orders load');

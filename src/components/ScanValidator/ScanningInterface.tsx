@@ -307,6 +307,9 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       // Refresh PTL progress after saving using the updated counting function
       await supabase.rpc('update_ptl_progress', { p_ptl_order_id: ptlOrder.id });
       
+      // Trigger a refresh of PTL order data in the parent component
+      window.dispatchEvent(new CustomEvent('ptlProgressUpdated', { detail: { orderId: ptlOrder.id } }));
+      
     } catch (error) {
       console.error('Error saving board data:', error);
       throw error;
