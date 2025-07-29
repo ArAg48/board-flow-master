@@ -288,7 +288,41 @@ const ScanValidator: React.FC = () => {
   };
 
   const handleOrderSelect = async (order: PTLOrder) => {
-    if (!currentSession) {
+    if (!currentSession && user?.id) {
+      // Check if there's an existing active session for this PTL order
+      try {
+        const { data: existingSessions, error } = await supabase
+          .from('scan_sessions')
+          .select('*')
+          .eq('ptl_order_id', order.id)
+          .eq('technician_id', user.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        if (existingSessions && existingSessions.length > 0) {
+          // Found an existing session, set up resume dialog
+          const existingSession = existingSessions[0];
+          setResumeDialog({ 
+            open: true, 
+            session: {
+              session_id: existingSession.id,
+              ptl_order_id: existingSession.ptl_order_id,
+              session_data: existingSession.session_data,
+              start_time: existingSession.start_time,
+              paused_at: existingSession.paused_at,
+              break_started_at: existingSession.break_started_at
+            }
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking for existing session:', error);
+      }
+
+      // No existing session found, create a new one
       // Refresh the order data to get the latest progress before starting
       await loadPTLOrders();
       
