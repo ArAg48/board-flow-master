@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Eye, Clipboard, Link, Trash2 } from 'lucide-react';
+import { Plus, Edit, Eye, Clipboard, Link, Trash2, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -36,6 +36,7 @@ const PTLOrders: React.FC = () => {
   const [hardwareOrders, setHardwareOrders] = useState<HardwareOrder[]>([]);
   const [orders, setOrders] = useState<PTLOrder[]>([]);
   const [orderCounts, setOrderCounts] = useState<{[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}}>({});
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
@@ -273,6 +274,15 @@ const PTLOrders: React.FC = () => {
     }
   };
 
+  // Filter orders based on search term
+  const filteredOrders = orders.filter(order =>
+    order.ptl_order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.board_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.sale_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.firmware_revision?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.date_code?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -469,6 +479,17 @@ const PTLOrders: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+              <Input
+                placeholder="Search orders by PTL number, board type, sale code, firmware..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -484,7 +505,7 @@ const PTLOrders: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => {
+              {filteredOrders.map((order) => {
                 const hardwareOrder = hardwareOrders.find(h => h.id === order.hardware_order_id);
                 const counts = orderCounts[order.id] || { scanned: 0, passed: 0, failed: 0, totalTime: 0 };
                 return (

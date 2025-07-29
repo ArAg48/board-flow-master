@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Eye, Package } from 'lucide-react';
+import { Plus, Edit, Eye, Package, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,7 @@ interface HardwareOrderForm {
 
 const HardwareOrders: React.FC = () => {
   const [orders, setOrders] = useState<HardwareOrder[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<HardwareOrder | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<HardwareOrder | null>(null);
@@ -210,6 +211,14 @@ const HardwareOrders: React.FC = () => {
     }
   };
 
+  // Filter orders based on search term
+  const filteredOrders = orders.filter(order =>
+    order.po_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.assembly_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.starting_sequence.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.ending_sequence?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -336,6 +345,17 @@ const HardwareOrders: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+              <Input
+                placeholder="Search orders by PO number, assembly, or sequence..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -349,7 +369,7 @@ const HardwareOrders: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.po_number}</TableCell>
                   <TableCell>{order.assembly_number}</TableCell>
