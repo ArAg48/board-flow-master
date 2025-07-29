@@ -155,6 +155,9 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       return !existingEntry; // Only include boards that haven't been processed yet
     });
     
+    console.log('Pass All Unfailed - Found unfailed boards:', unfailedBoards.length);
+    console.log('Pass All Unfailed - Current scanned entries count:', scannedEntries.length);
+    
     if (unfailedBoards.length === 0) {
       toast({
         title: "No Unfailed Boards",
@@ -166,6 +169,8 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
     try {
       for (const [boxIndex, qrCode] of unfailedBoards) {
+        console.log(`Processing board: ${qrCode} in box ${boxIndex}`);
+        
         const entry: ScanEntry = {
           id: crypto.randomUUID(),
           boxIndex: parseInt(boxIndex),
@@ -179,6 +184,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
         await saveBoardData(qrCode, 'pass');
         
         // Add to scan entries
+        console.log('Adding entry to session:', entry);
         onScanEntry(entry);
       }
 

@@ -327,10 +327,15 @@ const ScanValidator: React.FC = () => {
   const handleScanEntry = (entry: ScanEntry) => {
     if (!currentSession) return;
 
+    console.log('handleScanEntry called with:', entry);
+    console.log('Current session scanned entries before:', currentSession.scannedEntries.length);
+
     const updatedSession = {
       ...currentSession,
       scannedEntries: [...currentSession.scannedEntries, entry]
     };
+    
+    console.log('Updated session scanned entries after:', updatedSession.scannedEntries.length);
     setCurrentSession(updatedSession);
   };
 
