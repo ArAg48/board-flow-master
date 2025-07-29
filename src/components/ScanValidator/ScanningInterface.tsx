@@ -146,21 +146,26 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     }
   };
 
-  // Add functionality to pass all scanned boards at once
-  const handlePassAllBoards = async () => {
-    const validatedBoardEntries = Object.entries(validatedBoards);
+  // Pass all unfailed boards - only boards that are scanned but not yet passed or failed
+  const handlePassAllUnfailed = async () => {
+    // Count boards that are scanned (in validatedBoards) but not yet passed or failed
+    const unfailedBoards = Object.entries(validatedBoards).filter(([boxIndex, qrCode]) => {
+      // Check if this board has already been processed (passed or failed)
+      const existingEntry = scannedEntries.find(entry => entry.qrCode === qrCode);
+      return !existingEntry; // Only include boards that haven't been processed yet
+    });
     
-    if (validatedBoardEntries.length === 0) {
+    if (unfailedBoards.length === 0) {
       toast({
-        title: "No Boards to Pass",
-        description: "Scan some boards first",
+        title: "No Unfailed Boards",
+        description: "All scanned boards have already been processed",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      for (const [boxIndex, qrCode] of validatedBoardEntries) {
+      for (const [boxIndex, qrCode] of unfailedBoards) {
         const entry: ScanEntry = {
           id: crypto.randomUUID(),
           boxIndex: parseInt(boxIndex),
@@ -177,19 +182,24 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
         onScanEntry(entry);
       }
 
-      // Clear all validated boards and inputs
-      setValidatedBoards({});
-      setScanInputs(Array(testerConfig.scanBoxes).fill(''));
+      // Clear the passed boards from validated boards and inputs
+      const newValidatedBoards = { ...validatedBoards };
+      const newInputs = [...scanInputs];
       
-      // Reset active box to first box
-      setActiveBox(0);
+      unfailedBoards.forEach(([boxIndex]) => {
+        delete newValidatedBoards[parseInt(boxIndex)];
+        newInputs[parseInt(boxIndex)] = '';
+      });
+      
+      setValidatedBoards(newValidatedBoards);
+      setScanInputs(newInputs);
 
       toast({
-        title: "All Boards Passed",
-        description: `${validatedBoardEntries.length} boards marked as passed`,
+        title: "Unfailed Boards Passed",
+        description: `${unfailedBoards.length} boards marked as passed`,
       });
     } catch (error) {
-      console.error('Error passing all boards:', error);
+      console.error('Error passing unfailed boards:', error);
       toast({
         title: "Error",
         description: "Failed to save some board data. Please try again.",
@@ -472,12 +482,18 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                   Take Break
                 </Button>
                  <Button 
-                   onClick={handlePassAllBoards} 
+                   onClick={handlePassAllUnfailed} 
                    variant="default"
-                   disabled={Object.keys(validatedBoards).length === 0}
+                   disabled={Object.entries(validatedBoards).filter(([boxIndex, qrCode]) => {
+                     const existingEntry = scannedEntries.find(entry => entry.qrCode === qrCode);
+                     return !existingEntry;
+                   }).length === 0}
                  >
                    <CheckCircle className="h-4 w-4 mr-2" />
-                   Pass All Scanned Boards
+                   Pass All Unfailed ({Object.entries(validatedBoards).filter(([boxIndex, qrCode]) => {
+                     const existingEntry = scannedEntries.find(entry => entry.qrCode === qrCode);
+                     return !existingEntry;
+                   }).length})
                  </Button>
                  <Button 
                    onClick={onFinishPTL} 
