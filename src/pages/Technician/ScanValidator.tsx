@@ -112,6 +112,7 @@ const ScanValidator: React.FC = () => {
       });
 
       setAvailableOrders(transformedOrders);
+      console.log('Loaded PTL orders with progress:', transformedOrders);
     } catch (error) {
       console.error('Error loading PTL orders:', error);
       toast({
