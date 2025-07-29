@@ -43,6 +43,13 @@ const HardwareOrderDetails: React.FC = () => {
     if (id) {
       loadHardwareOrderDetails();
       loadPTLOrders();
+      
+      // Refresh PTL order progress every 30 seconds
+      const interval = setInterval(() => {
+        loadPTLOrders();
+      }, 30000);
+      
+      return () => clearInterval(interval);
     }
   }, [id]);
 
@@ -76,24 +83,28 @@ const HardwareOrderDetails: React.FC = () => {
 
       if (error) throw error;
 
-      // Calculate statistics for each PTL order
-      const ptlOrdersWithStats = await Promise.all((data || []).map(async (order) => {
-        const { data: sessions } = await supabase
-          .from('scan_sessions')
-          .select('pass_count, fail_count, total_scanned')
-          .eq('ptl_order_id', order.id);
+      // Get progress data from the ptl_order_progress table instead
+      const orderIds = (data || []).map(order => order.id);
+      const { data: progressData } = await supabase
+        .from('ptl_order_progress')
+        .select('*')
+        .in('id', orderIds);
 
-        const totalScanned = sessions?.reduce((sum, s) => sum + s.total_scanned, 0) || 0;
-        const totalPassed = sessions?.reduce((sum, s) => sum + s.pass_count, 0) || 0;
-        const totalFailed = sessions?.reduce((sum, s) => sum + s.fail_count, 0) || 0;
+      const progressMap = (progressData || []).reduce((acc, progress) => {
+        acc[progress.id] = progress;
+        return acc;
+      }, {} as Record<string, any>);
 
+      // Transform PTL orders with accurate progress data
+      const ptlOrdersWithStats = (data || []).map(order => {
+        const progress = progressMap[order.id];
         return {
           ...order,
-          tested: totalScanned,
-          passed: totalPassed,
-          failed: totalFailed,
+          tested: progress?.scanned_count || 0,
+          passed: progress?.passed_count || 0,
+          failed: progress?.failed_count || 0,
         };
-      }));
+      });
 
       setPtlOrders(ptlOrdersWithStats);
     } catch (error) {
