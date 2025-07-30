@@ -549,9 +549,6 @@ const PTLOrders: React.FC = () => {
                         <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDelete(order)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
