@@ -286,14 +286,6 @@ const Login: React.FC = () => {
                     <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Assembly Number</TableCell>
-                    <TableCell className="font-mono">{boardDetails.assemblyNumber}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Hardware Revision</TableCell>
-                    <TableCell>{boardDetails.hardwareRevision}</TableCell>
-                  </TableRow>
-                  <TableRow>
                     <TableCell className="font-medium">Sale Code</TableCell>
                     <TableCell className="font-mono">{boardDetails.saleCode}</TableCell>
                   </TableRow>
