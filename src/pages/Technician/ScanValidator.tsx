@@ -226,12 +226,11 @@ const ScanValidator: React.FC = () => {
         return;
       }
 
-      // Get all board scan data for this PTL order and session to restore accurate counts
+      // Get all board scan data for this PTL order to restore accurate counts
       const { data: existingBoardData } = await supabase
         .from('board_data')
         .select('qr_code, test_status, test_date, test_results, technician_id')
         .eq('ptl_order_id', ptlOrder.id)
-        .eq('technician_id', user?.id)
         .order('test_date', { ascending: true });
 
       console.log('Resuming session with existing board data:', existingBoardData);
