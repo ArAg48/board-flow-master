@@ -255,11 +255,11 @@ const ScanValidator: React.FC = () => {
         id: sessionData.session_id,
         ptlOrder,
         testerConfig: storedData.testerConfig || { type: 1, scanBoxes: 1 },
-        preTestVerification: storedData.preTestVerification || { testerCheck: true, firmwareCheck: true },
+        preTestVerification: { testerCheck: false, firmwareCheck: false }, // Reset verification for resumed sessions
         startTime: new Date(storedData.startTime || sessionData.start_time),
         pausedTime: sessionData.paused_at ? new Date(sessionData.paused_at) : undefined,
         breakTime: sessionData.break_started_at ? new Date(sessionData.break_started_at) : undefined,
-        status: sessionData.break_started_at ? 'break' : 'paused',
+        status: 'pre-test', // Always require pre-test verification when resuming
         scannedEntries: restoredScannedEntries, // Use restored board data instead of session data
         totalDuration: storedData.totalDuration || 0
       };
