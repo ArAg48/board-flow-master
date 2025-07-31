@@ -1,5 +1,5 @@
 // API client for PHP backend
-const API_BASE_URL = 'http://localhost/backend/api'; // Update this to your PHP backend URL
+const API_BASE_URL = 'https://ckt-work-inventory.com/api'; // PHP backend URL
 
 class ApiClient {
   private baseUrl: string;
