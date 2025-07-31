@@ -2,9 +2,9 @@
 // Database configuration
 class Database {
     private $host = 'localhost';
-    private $dbname = 'work_inventory';
-    private $username = 'your_db_username';
-    private $password = 'your_db_password';
+    private $dbname = 'cpses_ax6szfw66e_work_inventory'; // Your actual database name from cPanel
+    private $username = 'cpses_ax6szfw66e'; // Your MySQL username from cPanel
+    private $password = 'your_actual_mysql_password'; // Your MySQL password from cPanel
     private $pdo;
 
     public function connect() {
