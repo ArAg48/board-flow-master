@@ -593,6 +593,7 @@ export type Database = {
           created_at: string
           updated_at: string
           is_active: boolean
+          cw_stamp: string
         }[]
       }
       get_user_role: {
@@ -641,6 +642,10 @@ export type Database = {
       }
       update_ptl_progress: {
         Args: { p_ptl_order_id: string }
+        Returns: boolean
+      }
+      update_user_cw_stamp: {
+        Args: { p_user_id: string; p_cw_stamp: string }
         Returns: boolean
       }
       update_user_password: {

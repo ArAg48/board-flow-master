@@ -31,8 +31,13 @@ const editPasswordSchema = z.object({
   newPassword: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+const editCwStampSchema = z.object({
+  cwStamp: z.string().optional(),
+});
+
 type CreateAccountForm = z.infer<typeof createAccountSchema>;
 type EditPasswordForm = z.infer<typeof editPasswordSchema>;
+type EditCwStampForm = z.infer<typeof editCwStampSchema>;
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -55,11 +60,19 @@ const AccountManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editCwStampDialogOpen, setEditCwStampDialogOpen] = useState(false);
 
   const editPasswordForm = useForm<EditPasswordForm>({
     resolver: zodResolver(editPasswordSchema),
     defaultValues: {
       newPassword: '',
+    },
+  });
+
+  const editCwStampForm = useForm<EditCwStampForm>({
+    resolver: zodResolver(editCwStampSchema),
+    defaultValues: {
+      cwStamp: '',
     },
   });
 
@@ -339,6 +352,58 @@ const AccountManagement: React.FC = () => {
     }
   };
 
+  const editCwStamp = (account: Account) => {
+    setEditingAccount(account);
+    editCwStampForm.reset({ cwStamp: account.cwStamp || '' });
+    setEditCwStampDialogOpen(true);
+  };
+
+  const onCwStampUpdate = async (data: EditCwStampForm) => {
+    if (!editingAccount) return;
+
+    try {
+      const { error } = await supabase.rpc('update_user_cw_stamp', {
+        p_user_id: editingAccount.id,
+        p_cw_stamp: data.cwStamp || null
+      });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update CW stamp',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Update the local state
+      setAccounts(prev => 
+        prev.map(account => 
+          account.id === editingAccount.id 
+            ? { ...account, cwStamp: data.cwStamp }
+            : account
+        )
+      );
+
+      toast({
+        title: 'CW Stamp Updated',
+        description: `CW stamp for ${editingAccount.firstName} ${editingAccount.lastName} has been updated successfully.`,
+      });
+
+      setEditCwStampDialogOpen(false);
+      setEditingAccount(null);
+      editCwStampForm.reset();
+    } catch (error: any) {
+      console.error('Error updating CW stamp:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update CW stamp. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -504,7 +569,29 @@ const AccountManagement: React.FC = () => {
                        </TableCell>
                        <TableCell>
                          {account.role === 'technician' && account.cwStamp ? (
-                           <code className="bg-muted px-2 py-1 rounded text-sm">{account.cwStamp}</code>
+                           <div className="flex items-center gap-2">
+                             <code className="bg-muted px-2 py-1 rounded text-sm">{account.cwStamp}</code>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => editCwStamp(account)}
+                               className="h-6 w-6 p-0"
+                             >
+                               <Edit className="h-3 w-3" />
+                             </Button>
+                           </div>
+                         ) : account.role === 'technician' ? (
+                           <div className="flex items-center gap-2">
+                             <span className="text-muted-foreground">-</span>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => editCwStamp(account)}
+                               className="h-6 w-6 p-0"
+                             >
+                               <Edit className="h-3 w-3" />
+                             </Button>
+                           </div>
                          ) : (
                            <span className="text-muted-foreground">-</span>
                          )}
@@ -594,6 +681,40 @@ const AccountManagement: React.FC = () => {
               </Button>
               <Button type="submit">
                 Update Password
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit CW Stamp Dialog */}
+      <Dialog open={editCwStampDialogOpen} onOpenChange={setEditCwStampDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit CW Stamp</DialogTitle>
+            <DialogDescription>
+              Change the CW stamp for {editingAccount?.firstName} {editingAccount?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={editCwStampForm.handleSubmit(onCwStampUpdate)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="cwStamp">CW Stamp</Label>
+              <Input
+                id="cwStamp"
+                {...editCwStampForm.register('cwStamp')}
+                placeholder="Enter CW stamp"
+                className={editCwStampForm.formState.errors.cwStamp ? 'border-destructive' : ''}
+              />
+              {editCwStampForm.formState.errors.cwStamp && (
+                <p className="text-sm text-destructive">{editCwStampForm.formState.errors.cwStamp.message}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditCwStampDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Update CW Stamp
               </Button>
             </DialogFooter>
           </form>
