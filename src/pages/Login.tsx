@@ -297,25 +297,6 @@ const Login: React.FC = () => {
                     <TableCell className="font-medium">Date Code</TableCell>
                     <TableCell className="font-mono">{boardDetails.dateCode}</TableCell>
                   </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Status</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        boardDetails.status === 'Tested - Passed' ? 'default' :
-                        boardDetails.status === 'Tested - Failed' ? 'destructive' : 'secondary'
-                      }>
-                        {boardDetails.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Test Date</TableCell>
-                    <TableCell>{boardDetails.testDate}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Technician</TableCell>
-                    <TableCell>{boardDetails.technicianName}</TableCell>
-                  </TableRow>
                 </TableBody>
               </Table>
             </div>

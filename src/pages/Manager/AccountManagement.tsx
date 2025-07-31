@@ -45,6 +45,7 @@ interface Account {
   isActive: boolean;
   createdAt: string;
   password: string;
+  cwStamp?: string;
 }
 
 const AccountManagement: React.FC = () => {
@@ -83,6 +84,7 @@ const AccountManagement: React.FC = () => {
         isActive: profile.is_active,
         createdAt: new Date(profile.created_at).toISOString().split('T')[0],
         password: '••••••••', // Never expose real passwords
+        cwStamp: profile.cw_stamp,
       }));
 
       setAccounts(formattedAccounts);
@@ -466,6 +468,7 @@ const AccountManagement: React.FC = () => {
                     <TableHead>Username</TableHead>
                     <TableHead>Password</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>CW Stamp</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -473,11 +476,11 @@ const AccountManagement: React.FC = () => {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center">Loading accounts...</TableCell>
+                      <TableCell colSpan={7} className="text-center">Loading accounts...</TableCell>
                     </TableRow>
                   ) : accounts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center">No accounts found</TableCell>
+                      <TableCell colSpan={7} className="text-center">No accounts found</TableCell>
                     </TableRow>
                   ) : (
                     accounts.map((account) => (
@@ -494,12 +497,19 @@ const AccountManagement: React.FC = () => {
                        <TableCell>
                          <code className="bg-muted px-2 py-1 rounded text-sm">••••••••</code>
                        </TableCell>
-                      <TableCell>
-                        <Badge variant={account.role === 'manager' ? 'default' : 'secondary'}>
-                          {account.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
+                       <TableCell>
+                         <Badge variant={account.role === 'manager' ? 'default' : 'secondary'}>
+                           {account.role}
+                         </Badge>
+                       </TableCell>
+                       <TableCell>
+                         {account.role === 'technician' && account.cwStamp ? (
+                           <code className="bg-muted px-2 py-1 rounded text-sm">{account.cwStamp}</code>
+                         ) : (
+                           <span className="text-muted-foreground">-</span>
+                         )}
+                       </TableCell>
+                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={account.isActive}
