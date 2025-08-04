@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { apiClient } from '@/lib/api';
 
 export interface User {
   id: string;
@@ -14,7 +13,6 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
@@ -36,31 +34,37 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session);
-        setSession(session);
-        
-        // Don't fetch profile for anonymous sessions - we handle user data differently
-        if (!session) {
-          setUser(null);
-        }
-        setIsLoading(false);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    // Check for existing token on app start
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      // Verify token with backend
+      apiClient.verifyToken(token)
+        .then((response) => {
+          if (response.success && response.user) {
+            setUser({
+              id: response.user.id,
+              username: response.user.username,
+              role: response.user.role,
+              firstName: response.user.first_name,
+              lastName: response.user.last_name,
+              email: response.user.email || `${response.user.username}@ckt-works.com`,
+              createdAt: response.user.created_at || new Date().toISOString(),
+            });
+          }
+        })
+        .catch((error) => {
+          console.error('Token verification failed:', error);
+          localStorage.removeItem('auth_token');
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
       setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -80,40 +84,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return false;
       }
       
-      // Use database function to authenticate credentials first
-      const { data, error } = await supabase
-        .rpc('authenticate_user', {
-          input_username: username.trim(),
-          input_password: password
-        });
+      // Authenticate with PHP backend
+      const response = await apiClient.login(username.trim(), password);
 
-      if (error) {
-        console.error('Authentication error:', error);
-        setIsLoading(false);
-        return false;
-      }
-      
-      if (data && data.length > 0) {
-        const { user_id, user_role } = data[0];
-        
-        // Sign in anonymously to create a session
-        const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
-        
-        if (authError) {
-          console.error('Session creation error:', authError);
-          setIsLoading(false);
-          return false;
-        }
-
-        // Create user profile in state using the authenticated user data
+      if (response.success && response.user) {
+        // Create user profile from backend response
         const userProfile: User = {
-          id: user_id,
-          username: username.trim(),
-          role: user_role,
-          firstName: username === 'manager' ? 'Manager' : username.charAt(0).toUpperCase() + username.slice(1),
-          lastName: 'User',
-          email: `${username.trim()}@ptl.local`,
-          createdAt: new Date().toISOString(),
+          id: response.user.id,
+          username: response.user.username,
+          role: response.user.role,
+          firstName: response.user.first_name,
+          lastName: response.user.last_name,
+          email: response.user.email || `${response.user.username}@ckt-works.com`,
+          createdAt: response.user.created_at || new Date().toISOString(),
         };
         setUser(userProfile);
         setIsLoading(false);
@@ -133,27 +116,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Deactivate any active sessions before logging out
     if (user?.id) {
       try {
-        const { data: activeSessions } = await supabase.rpc('get_active_session_for_user', { 
-          user_id: user.id 
-        });
-        
-        if (activeSessions && activeSessions.length > 0) {
-          await supabase.rpc('deactivate_session', { 
-            p_session_id: activeSessions[0].session_id 
-          });
-        }
+        await apiClient.deactivateSession(user.id);
       } catch (error) {
         console.error('Error during session cleanup:', error);
       }
     }
     
-    await supabase.auth.signOut();
+    // Remove token and clear user state
+    apiClient.removeToken();
     setUser(null);
-    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
