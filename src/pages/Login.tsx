@@ -157,10 +157,6 @@ const Login: React.FC = () => {
           saleCode: board.sale_code || board.ptl_order_number || 'N/A',
           firmwareVersion: board.firmware_revision || 'N/A',
           dateCode: board.date_code || 'N/A',
-          status: board.test_status === 'pass' ? 'Tested - Passed' : 
-                  board.test_status === 'fail' ? 'Tested - Failed' : 'Pending',
-          testDate: board.test_date ? new Date(board.test_date).toLocaleDateString() : 'N/A',
-          technicianName: board.technician_name || 'N/A',
         });
       } else {
         console.log('No board data found for:', boardId);
