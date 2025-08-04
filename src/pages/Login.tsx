@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/lib/api';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -132,32 +132,42 @@ const Login: React.FC = () => {
     setBoardDetails(null);
 
     try {
-      // Use PHP backend API to lookup board
-      const response = await apiClient.lookupBoard(boardId.trim());
+      // Use the new secure lookup function
+      const { data, error } = await supabase
+        .rpc('lookup_board_details', { p_qr_code: boardId.trim() });
 
-      if (!response.success || !response.board) {
+      if (error || !data || data.length === 0) {
         setLookupError('Board ID not found');
         setLookupLoading(false);
         return;
       }
 
-      const board = response.board;
-      console.log('Board data found:', board);
-      
-      // Extract serial number as last 7 digits
-      const serialNumber = board.sequence_number ? board.sequence_number.slice(-7) : 'N/A';
-      
-      setBoardDetails({
-        boardId: board.qr_code,
-        serialNumber: serialNumber,
-        assemblyNumber: board.assembly_number,
-        hardwareRevision: board.board_type,
-        saleCode: board.sale_code || board.ptl_order_number || 'N/A',
-        firmwareVersion: board.firmware_revision || 'N/A',
-        dateCode: board.date_code || 'N/A',
-      });
+      if (data && data.length > 0) {
+        const board = data[0]; // Get first result from RPC function
+        console.log('Board data found:', board);
+        
+        // Extract serial number as last 7 digits
+        const serialNumber = board.sequence_number ? board.sequence_number.slice(-7) : 'N/A';
+        
+        setBoardDetails({
+          boardId: board.qr_code,
+          serialNumber: serialNumber,
+          assemblyNumber: board.assembly_number,
+          hardwareRevision: board.board_type,
+          saleCode: board.sale_code || board.ptl_order_number || 'N/A',
+          firmwareVersion: board.firmware_revision || 'N/A',
+          dateCode: board.date_code || 'N/A',
+          status: board.test_status === 'pass' ? 'Tested - Passed' : 
+                  board.test_status === 'fail' ? 'Tested - Failed' : 'Pending',
+          testDate: board.test_date ? new Date(board.test_date).toLocaleDateString() : 'N/A',
+          technicianName: board.technician_name || 'N/A',
+        });
+      } else {
+        console.log('No board data found for:', boardId);
+        setBoardDetails(null);
+        setLookupError(`No board found with ID: ${boardId}`);
+      }
     } catch (err) {
-      console.error('Board lookup error:', err);
       setLookupError('Error looking up board details');
     } finally {
       setLookupLoading(false);
