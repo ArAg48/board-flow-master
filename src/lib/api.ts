@@ -1,5 +1,5 @@
 // API client for PHP backend
-const API_BASE_URL = 'https://ckt-works-inventory.com/backend/api'; // PHP backend URL
+const API_BASE_URL = 'https://ckt-works-inventory.com/api'; // PHP backend URL
 
 class ApiClient {
   private baseUrl: string;
