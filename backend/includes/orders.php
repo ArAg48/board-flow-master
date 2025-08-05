@@ -1,5 +1,5 @@
 <?php
-require_once 'config/database.php';
+require_once '../config/database.php';
 
 class Orders {
     private $db;
@@ -83,7 +83,7 @@ class Orders {
     public function getPTLOrders() {
         try {
             $stmt = $this->db->prepare("
-                SELECT po.*, ho.po_number as hardware_po_number, p.full_name as created_by_name
+                SELECT po.*, ho.po_number as hardware_po_number, ho.starting_sequence, p.full_name as created_by_name
                 FROM ptl_orders po
                 LEFT JOIN hardware_orders ho ON po.hardware_order_id = ho.id
                 LEFT JOIN profiles p ON po.created_by = p.id
@@ -156,7 +156,7 @@ class Orders {
         }
     }
 
-    // Get PTL order progress
+    // Get PTL order progress with proper counting for condition #5
     public function getPTLOrderProgress() {
         try {
             $stmt = $this->db->prepare("
@@ -170,11 +170,16 @@ class Orders {
                     COALESCE(bd_stats.pass_count, 0) as passed_count,
                     COALESCE(bd_stats.fail_count, 0) as failed_count,
                     CASE 
-                        WHEN po.quantity > 0 THEN (COALESCE(bd_stats.total_count, 0) / po.quantity * 100)
+                        WHEN po.quantity > 0 THEN (COALESCE(bd_stats.pass_count, 0) / po.quantity * 100)
                         ELSE 0
                     END as completion_percentage,
                     COALESCE(ss_stats.total_time, 0) as total_time_minutes,
-                    COALESCE(ss_stats.active_time, 0) as active_time_minutes
+                    COALESCE(ss_stats.active_time, 0) as active_time_minutes,
+                    -- Check if order needs more passed boards (condition #5)
+                    CASE 
+                        WHEN COALESCE(bd_stats.pass_count, 0) < po.quantity THEN 'continue'
+                        ELSE 'complete'
+                    END as ptl_status
                 FROM ptl_orders po
                 LEFT JOIN (
                     SELECT 
