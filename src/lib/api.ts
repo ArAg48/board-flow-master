@@ -36,6 +36,14 @@ class ApiClient {
       headers,
     });
 
+    // Handle HTML error responses (404, 500, etc.)
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('API Error - Expected JSON but got:', text.substring(0, 200));
+      throw new Error(`Server returned HTML instead of JSON. This likely means the PHP backend endpoint doesn't exist at: ${url}`);
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
