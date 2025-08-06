@@ -8,14 +8,14 @@ class Auth {
         $this->db = (new Database())->getConnection();
     }
 
-    // Hash password
+    // Store password as plain text (no security required)
     public function hashPassword($password) {
-        return password_hash($password, PASSWORD_DEFAULT);
+        return $password;
     }
 
-    // Verify password
-    public function verifyPassword($password, $hash) {
-        return password_verify($password, $hash);
+    // Verify password as plain text
+    public function verifyPassword($password, $storedPassword) {
+        return $password === $storedPassword;
     }
 
     // Authenticate user
@@ -54,7 +54,7 @@ class Auth {
 
             // Generate UUID
             $userId = $this->generateUUID();
-            $hashedPassword = $this->hashPassword($password);
+            $plainPassword = $this->hashPassword($password);
             $fullName = trim($firstName . ' ' . $lastName);
 
             $stmt = $this->db->prepare("
@@ -62,7 +62,7 @@ class Auth {
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
             
-            $stmt->execute([$userId, $username, $hashedPassword, $fullName, $role, $cwStamp]);
+            $stmt->execute([$userId, $username, $plainPassword, $fullName, $role, $cwStamp]);
             return $userId;
         } catch (Exception $e) {
             throw $e;
@@ -104,9 +104,9 @@ class Auth {
                 throw new Exception('Password must be at least 6 characters');
             }
 
-            $hashedPassword = $this->hashPassword($newPassword);
+            $plainPassword = $this->hashPassword($newPassword);
             $stmt = $this->db->prepare("UPDATE profiles SET password = ? WHERE id = ?");
-            $stmt->execute([$hashedPassword, $userId]);
+            $stmt->execute([$plainPassword, $userId]);
             return $stmt->rowCount() > 0;
         } catch (Exception $e) {
             throw $e;
