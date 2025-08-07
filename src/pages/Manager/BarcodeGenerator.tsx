@@ -58,13 +58,13 @@ const BarcodeGenerator: React.FC = () => {
         try {
           JsBarcode(canvas, fullText, {
             format: 'CODE128',
-            width: 2.4,
-            height: 72,
+            width: 3,
+            height: 60,
             displayValue: true,
-            fontSize: 14,
+            fontSize: 16,
             textAlign: 'center',
             textPosition: 'bottom',
-            margin: 8,
+            margin: 4,
             background: '#ffffff',
             lineColor: '#000000'
           });
@@ -99,129 +99,10 @@ const BarcodeGenerator: React.FC = () => {
       return;
     }
 
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error('Failed to open print window');
-      return;
-    }
-
-    const printContent = printableRef.current?.innerHTML || '';
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Barcode Labels - Panduit c100x025yjj</title>
-          <style>
-            @page {
-              size: 8.5in 11in;
-              margin: 0.5in;
-            }
-            
-            body {
-              margin: 0;
-              padding: 0;
-              font-family: Arial, sans-serif;
-              background: white;
-            }
-            
-            .print-container {
-              width: 7.5in;
-              margin: 0 auto;
-            }
-            
-            .barcode-grid {
-              display: grid;
-              grid-template-columns: repeat(7, 1fr);
-              gap: 0.05in;
-              width: 100%;
-            }
-            
-            .barcode-cell {
-              width: 1in;
-              height: 0.5in;
-              border: 1px solid #ddd;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              padding: 0.02in;
-              box-sizing: border-box;
-              page-break-inside: avoid;
-            }
-            
-            .barcode-cell img {
-              max-width: 0.9in;
-              max-height: 0.4in;
-              object-fit: contain;
-            }
-            
-            .barcode-text {
-              font-size: 6px;
-              text-align: center;
-              margin-top: 1px;
-              font-weight: bold;
-            }
-            
-            @media print {
-              .print-container {
-                margin: 0;
-                width: 100%;
-              }
-              
-              .barcode-cell {
-                border: 1px solid #000;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="print-container">
-            ${printContent}
-          </div>
-        </body>
-      </html>
-    `);
-
-    printWindow.document.close();
-    
-    // Wait for images to load before printing
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 1000);
-  };
-
-  const downloadBarcodes = () => {
-    if (generatedBarcodes.length === 0) {
-      toast.error('No barcodes to download');
-      return;
-    }
-
-    // Create a zip-like download by creating multiple links
-    generatedBarcodes.forEach((barcode, index) => {
-      const link = document.createElement('a');
-      link.href = barcode.dataUrl;
-      link.download = `barcode_${barcode.fullText}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-
-    toast.success('Barcode downloads started');
-  };
-
-  const downloadLabelSheet = () => {
-    if (generatedBarcodes.length === 0) {
-      toast.error('No barcodes to download');
-      return;
-    }
-
     // Create a print-ready sheet
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      toast.error('Failed to open download window');
+      toast.error('Failed to open print window');
       return;
     }
 
@@ -272,8 +153,8 @@ const BarcodeGenerator: React.FC = () => {
             }
             
             .barcode-cell img {
-              max-width: 0.95in;
-              max-height: 0.2in;
+              max-width: 1in;
+              max-height: 0.25in;
               object-fit: contain;
             }
             
@@ -298,11 +179,31 @@ const BarcodeGenerator: React.FC = () => {
 
     printWindow.document.close();
     
-    // Wait for images to load then trigger download/print
+    // Wait for images to load then trigger print
     setTimeout(() => {
       printWindow.print();
     }, 1000);
   };
+
+  const downloadBarcodes = () => {
+    if (generatedBarcodes.length === 0) {
+      toast.error('No barcodes to download');
+      return;
+    }
+
+    // Create a zip-like download by creating multiple links
+    generatedBarcodes.forEach((barcode, index) => {
+      const link = document.createElement('a');
+      link.href = barcode.dataUrl;
+      link.download = `barcode_${barcode.fullText}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    toast.success('Barcode downloads started');
+  };
+
 
   const clearBarcodes = () => {
     setGeneratedBarcodes([]);
@@ -386,14 +287,10 @@ const BarcodeGenerator: React.FC = () => {
 
               {generatedBarcodes.length > 0 && (
                 <div className="space-y-2">
-                  <Button onClick={downloadLabelSheet} variant="default" className="w-full">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Label Sheet
-                  </Button>
                   <div className="flex gap-2">
-                    <Button onClick={handlePrint} variant="outline" className="flex-1">
+                    <Button onClick={handlePrint} variant="default" className="flex-1">
                       <Printer className="h-4 w-4 mr-2" />
-                      Preview Print
+                      Print
                     </Button>
                     <Button onClick={downloadBarcodes} variant="outline" className="flex-1">
                       <Download className="h-4 w-4 mr-2" />
