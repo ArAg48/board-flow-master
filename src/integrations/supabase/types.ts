@@ -583,6 +583,20 @@ export type Database = {
           active_time_minutes: number
         }[]
       }
+      get_user_credentials: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          username: string
+          password: string
+          full_name: string
+          role: Database["public"]["Enums"]["user_role"]
+          is_active: boolean
+          cw_stamp: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
       get_user_profiles: {
         Args: Record<PropertyKey, never>
         Returns: {
