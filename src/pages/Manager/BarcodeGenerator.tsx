@@ -212,6 +212,98 @@ const BarcodeGenerator: React.FC = () => {
     toast.success('Barcode downloads started');
   };
 
+  const downloadLabelSheet = () => {
+    if (generatedBarcodes.length === 0) {
+      toast.error('No barcodes to download');
+      return;
+    }
+
+    // Create a print-ready sheet
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Failed to open download window');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Barcode Labels - Panduit c100x025yjj</title>
+          <style>
+            @page {
+              size: 8.5in 11in;
+              margin: 0;
+            }
+            
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: Arial, sans-serif;
+              background: white;
+            }
+            
+            .label-sheet {
+              width: 8.5in;
+              height: 11in;
+              position: relative;
+              margin: 0;
+              padding: 0;
+            }
+            
+            .barcode-grid {
+              position: absolute;
+              top: 0.875in;
+              left: 0.45in;
+              width: 7.6in;
+              display: grid;
+              grid-template-columns: repeat(7, 1in);
+              grid-column-gap: 0.1in;
+              grid-row-gap: 0.08in;
+            }
+            
+            .barcode-cell {
+              width: 1in;
+              height: 0.25in;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+            }
+            
+            .barcode-cell img {
+              max-width: 0.95in;
+              max-height: 0.2in;
+              object-fit: contain;
+            }
+            
+            @media print {
+              body { -webkit-print-color-adjust: exact; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="label-sheet">
+            <div class="barcode-grid">
+              ${generatedBarcodes.map(barcode => `
+                <div class="barcode-cell">
+                  <img src="${barcode.dataUrl}" alt="${barcode.fullText}" />
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    
+    // Wait for images to load then trigger download/print
+    setTimeout(() => {
+      printWindow.print();
+    }, 1000);
+  };
+
   const clearBarcodes = () => {
     setGeneratedBarcodes([]);
     toast.success('Barcodes cleared');
@@ -293,15 +385,21 @@ const BarcodeGenerator: React.FC = () => {
               </Button>
 
               {generatedBarcodes.length > 0 && (
-                <div className="flex gap-2">
-                  <Button onClick={handlePrint} variant="outline" className="flex-1">
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print
-                  </Button>
-                  <Button onClick={downloadBarcodes} variant="outline" className="flex-1">
+                <div className="space-y-2">
+                  <Button onClick={downloadLabelSheet} variant="default" className="w-full">
                     <Download className="h-4 w-4 mr-2" />
-                    Download
+                    Download Label Sheet
                   </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={handlePrint} variant="outline" className="flex-1">
+                      <Printer className="h-4 w-4 mr-2" />
+                      Preview Print
+                    </Button>
+                    <Button onClick={downloadBarcodes} variant="outline" className="flex-1">
+                      <Download className="h-4 w-4 mr-2" />
+                      Individual
+                    </Button>
+                  </div>
                 </div>
               )}
 
