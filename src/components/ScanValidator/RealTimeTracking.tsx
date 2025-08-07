@@ -37,12 +37,23 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   };
 
   const getStats = () => {
-    const total = session.scannedEntries.length;
-    const passed = session.scannedEntries.filter(e => e.testResult === 'pass').length;
-    const failed = session.scannedEntries.filter(e => e.testResult === 'fail').length;
+    // Calculate session-specific stats (what this technician did)
+    const sessionStart = session.startTime;
+    const sessionEntries = session.scannedEntries.filter(e => 
+      e.timestamp >= sessionStart
+    );
+    
+    const total = sessionEntries.length;
+    const passed = sessionEntries.filter(e => e.testResult === 'pass').length;
+    const failed = sessionEntries.filter(e => e.testResult === 'fail').length;
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     
-    return { total, passed, failed, passRate };
+    // Overall order progress
+    const overallPassed = session.ptlOrder.passedCount || 0;
+    const expectedCount = session.ptlOrder.expectedCount;
+    const remainingNeeded = Math.max(0, expectedCount - overallPassed);
+    
+    return { total, passed, failed, passRate, overallPassed, expectedCount, remainingNeeded };
   };
 
   const getProductivity = () => {
@@ -144,16 +155,15 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
           </div>
         </div>
 
-        {/* Progress Bar */}
+        {/* Session Progress */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Progress</span>
-            <span>{Math.round((stats.total / session.ptlOrder.expectedCount) * 100)}%</span>
+            <span>Session Progress</span>
+            <span>{stats.total} scanned this session</span>
           </div>
-          <Progress 
-            value={(stats.total / session.ptlOrder.expectedCount) * 100} 
-            className="h-2"
-          />
+          <div className="text-xs text-muted-foreground">
+            Order needs {stats.remainingNeeded} more passed boards ({stats.overallPassed}/{stats.expectedCount} passed total)
+          </div>
         </div>
 
         {/* Pass Rate Progress */}

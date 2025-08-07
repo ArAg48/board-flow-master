@@ -262,7 +262,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    <Wrench className="h-4 w-4 text-yellow-500" />
                     <span className="text-sm">Repaired</span>
                   </div>
                   <span className="font-semibold">{stats.boardsRepaired}</span>
@@ -399,6 +399,15 @@ const Dashboard: React.FC = () => {
                     </p>
                   </CardContent>
                 </Card>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate('/')}
+                  className="w-full"
+                >
+                  Return to Dashboard
+                </Button>
               </div>
             </CardContent>
           </Card>
