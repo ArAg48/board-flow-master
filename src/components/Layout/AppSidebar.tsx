@@ -21,6 +21,7 @@ import {
   Users,
   BarChart3,
   FileText,
+  QrCode,
 } from 'lucide-react';
 
 const managerItems = [
@@ -30,6 +31,7 @@ const managerItems = [
   { title: 'Order Overview', url: '/order-overview', icon: Search },
   { title: 'Account Management', url: '/account-management', icon: Users },
   { title: 'Log History', url: '/log-history', icon: History },
+  { title: 'Barcode Generator', url: '/barcode-generator', icon: QrCode },
 ];
 
 const technicianItems = [
