@@ -17,7 +17,7 @@ interface GeneratedBarcode {
 }
 
 const BarcodeGenerator: React.FC = () => {
-  const [baseText, setBaseText] = useState('assembly');
+  const [baseText, setBaseText] = useState('');
   const [startingNumber, setStartingNumber] = useState(1);
   const [quantity, setQuantity] = useState(5);
   const [generatedBarcodes, setGeneratedBarcodes] = useState<GeneratedBarcode[]>([]);
