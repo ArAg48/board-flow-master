@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Scan,
   Wrench,
-  History
+  History,
+  Target
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -342,75 +343,127 @@ const Dashboard: React.FC = () => {
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Access your main tools</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card 
-                  className="cursor-pointer hover:bg-accent transition-colors"
-                  onClick={() => navigate('/scan-validator')}
-                >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Scan className="h-5 w-5" />
-                      Scan Validator
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Start a new scanning session
-                    </p>
-                  </CardContent>
-                </Card>
-                
-                <Card 
-                  className="cursor-pointer hover:bg-accent transition-colors"
-                  onClick={() => navigate('/repair-log')}
-                >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Wrench className="h-5 w-5" />
-                      Repair Log
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      View and update repairs
-                    </p>
-                  </CardContent>
-                </Card>
-                
-                <Card 
-                  className="cursor-pointer hover:bg-accent transition-colors"
-                  onClick={() => navigate('/scan-history')}
-                >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <History className="h-5 w-5" />
-                      Scan History
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Review past scans
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate('/dashboard')}
-                  className="w-full"
-                >
-                  Return to Dashboard
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>Access your main tools</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  <Card 
+                    className="cursor-pointer hover:bg-accent transition-colors"
+                    onClick={() => navigate('/scan-validator')}
+                  >
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Scan className="h-5 w-5" />
+                        Scan Validator
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        Start a new scanning session
+                      </p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card 
+                    className="cursor-pointer hover:bg-accent transition-colors"
+                    onClick={() => navigate('/repair-log')}
+                  >
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Wrench className="h-5 w-5" />
+                        Repair Log
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        View and update repairs
+                      </p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card 
+                    className="cursor-pointer hover:bg-accent transition-colors"
+                    onClick={() => navigate('/scan-history')}
+                  >
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <History className="h-5 w-5" />
+                        Scan History
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        Review past scans
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <Button 
+                    variant="outline"
+                    onClick={() => navigate('/dashboard')}
+                    className="w-full"
+                  >
+                    Return to Dashboard
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Personal Dashboard</CardTitle>
+                <CardDescription>Your daily progress and achievements</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium">Today's Goal</span>
+                    </div>
+                    <span className="text-sm font-bold">50 boards</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="text-sm font-medium">Completed</span>
+                    </div>
+                    <span className="text-sm font-bold">{stats.todayTests}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-medium">Quality Score</span>
+                    </div>
+                    <Badge variant={stats.techSuccessRate >= 95 ? 'default' : 'secondary'}>
+                      {stats.techSuccessRate}%
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm font-medium">Avg. Speed</span>
+                    </div>
+                    <span className="text-sm font-bold">{stats.techAvgTime}</span>
+                  </div>
+                  
+                  <div className="pt-2 border-t">
+                    <div className="text-xs text-muted-foreground text-center">
+                      Keep up the great work! 🎯
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </>
       )}
     </div>
