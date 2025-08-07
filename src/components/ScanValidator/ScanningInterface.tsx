@@ -473,13 +473,16 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                         Fail
                       </Button>
                     </div>
-                   <div className="text-xs text-center space-y-1">
-                     <div>Total: {stats.total}</div>
-                     <div className="flex justify-center gap-2">
-                       <span className="text-green-600">✓{stats.passed}</span>
-                       <span className="text-red-600">✗{stats.failed}</span>
-                     </div>
-                   </div>
+          <div className="text-xs text-center space-y-1">
+            <div>Session: {stats.total}</div>
+            <div className="flex justify-center gap-2">
+              <span className="text-green-600">✓{stats.passed}</span>
+              <span className="text-red-600">✗{stats.failed}</span>
+            </div>
+            <div className="text-muted-foreground">
+              Overall: {(ptlOrder.passedCount || 0) + stats.passed}/{ptlOrder.expectedCount} passed
+            </div>
+          </div>
                  </div>
               );
             })}
@@ -510,13 +513,17 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                      return !existingEntry;
                    }).length})
                  </Button>
-                 <Button 
-                   onClick={onFinishPTL} 
-                   variant="default"
-                   disabled={scannedEntries.length === 0}
-                 >
-                   Finish PTL
-                 </Button>
+                  <Button 
+                    onClick={onFinishPTL} 
+                    variant="default"
+                    disabled={scannedEntries.length === 0}
+                    className="flex-col gap-1 h-auto py-2"
+                  >
+                    <span>Finish PTL</span>
+                    <span className="text-xs opacity-75">
+                      ({(ptlOrder.passedCount || 0) + scannedEntries.filter(e => e.testResult === 'pass').length}/{ptlOrder.expectedCount} passed)
+                    </span>
+                  </Button>
               </>
             ) : (
               <Button onClick={onResume}>

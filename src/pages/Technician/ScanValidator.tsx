@@ -446,15 +446,33 @@ const ScanValidator: React.FC = () => {
 
   const handleFinishPTL = () => {
     if (currentSession) {
+      // Check if we've reached the expected number of passed boards
+      const currentPassed = currentSession.scannedEntries.filter(e => e.testResult === 'pass').length;
+      const expectedCount = currentSession.ptlOrder.expectedCount;
+      const overallPassed = (currentSession.ptlOrder.passedCount || 0) + currentPassed;
+      
+      if (overallPassed < expectedCount) {
+        const remaining = expectedCount - overallPassed;
+        toast({
+          title: "Order Not Complete",
+          description: `Need ${remaining} more passed boards to complete this order (${overallPassed}/${expectedCount} passed)`,
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setCurrentSession({ ...currentSession, status: 'post-test' });
     }
   };
 
   const handlePostTestComplete = async () => {
     if (currentSession) {
+      const endTime = new Date();
+      const duration = Math.floor((endTime.getTime() - currentSession.startTime.getTime()) / (1000 * 60));
+      
       const updatedSession = {
         ...currentSession,
-        endTime: new Date(),
+        endTime,
         status: 'completed' as const
       };
       setCurrentSession(updatedSession);
@@ -462,13 +480,12 @@ const ScanValidator: React.FC = () => {
       // Final save to ensure all data is persisted
       try {
         const stats = getSessionStats();
-        const duration = Math.floor((updatedSession.endTime!.getTime() - currentSession.startTime.getTime()) / (1000 * 60));
 
         await supabase
           .from('scan_sessions')
           .update({
             status: 'completed',
-            end_time: updatedSession.endTime.toISOString(),
+            end_time: endTime.toISOString(),
             total_scanned: stats.total,
             pass_count: stats.passed,
             fail_count: stats.failed,
@@ -482,17 +499,19 @@ const ScanValidator: React.FC = () => {
         await supabase.rpc('deactivate_session', {
           p_session_id: currentSession.id
         });
+        
+        // Show completion message with session duration
+        const hours = Math.floor(duration / 60);
+        const minutes = duration % 60;
+        const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        
+        toast({
+          title: "Session Completed",
+          description: `Processed ${stats.total} boards in ${durationText} - ${stats.passed} passed, ${stats.failed} failed`
+        });
       } catch (error) {
         console.error('Error finalizing session:', error);
       }
-      
-      const passed = currentSession.scannedEntries.filter(e => e.testResult === 'pass').length;
-      const failed = currentSession.scannedEntries.filter(e => e.testResult === 'fail').length;
-      
-      toast({
-        title: "Session Completed",
-        description: `Processed ${currentSession.scannedEntries.length} boards - ${passed} passed, ${failed} failed`
-      });
     }
   };
 
