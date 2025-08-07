@@ -17,7 +17,7 @@ interface GeneratedBarcode {
 }
 
 const BarcodeGenerator: React.FC = () => {
-  const [baseText, setBaseText] = useState('');
+  const [baseText, setBaseText] = useState('assembly');
   const [startingNumber, setStartingNumber] = useState(1);
   const [quantity, setQuantity] = useState(5);
   const [generatedBarcodes, setGeneratedBarcodes] = useState<GeneratedBarcode[]>([]);
@@ -307,7 +307,7 @@ const BarcodeGenerator: React.FC = () => {
                 id="baseText"
                 value={baseText}
                 onChange={(e) => setBaseText(e.target.value)}
-                placeholder="Enter base text (e.g., 'PART-')"
+                placeholder="assembly"
                 maxLength={20}
               />
             </div>
@@ -445,33 +445,6 @@ const BarcodeGenerator: React.FC = () => {
         </Card>
       </div>
 
-      {/* Example Usage */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Usage Example</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <h4 className="font-medium mb-2">Step 1: Base Text</h4>
-              <p className="text-muted-foreground">Enter your base text like "PART-" or "ITEM"</p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Step 2: Starting Number</h4>
-              <p className="text-muted-foreground">Enter starting number with leading zeros like "0000001"</p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Step 3: Quantity</h4>
-              <p className="text-muted-foreground">Specify how many barcodes to generate</p>
-            </div>
-          </div>
-          <Separator className="my-4" />
-          <div className="text-sm text-muted-foreground">
-            <p><strong>Result:</strong> If you enter "PART-" as base text, "0000001" as starting number, and quantity of 3:</p>
-            <p className="mt-1">You'll get: PART-0000001, PART-0000002, PART-0000003</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
