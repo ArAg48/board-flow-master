@@ -36,30 +36,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is already logged in using localStorage
     checkUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await loadUserProfile(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-      }
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await loadUserProfile(session.user);
+      const storedSession = localStorage.getItem('supabase_user_session');
+      if (storedSession) {
+        const session = JSON.parse(storedSession);
+        // Load the full profile using the stored session
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.userId)
+          .single();
+
+        if (!error && profile) {
+          const nameParts = profile.full_name?.split(' ') || [];
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+
+          setUser({
+            id: profile.id,
+            username: profile.username,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: profile.full_name || '',
+            role: profile.role,
+            is_active: profile.is_active,
+            cw_stamp: profile.cw_stamp
+          });
+        } else {
+          // If profile fetch fails, clear invalid session
+          localStorage.removeItem('supabase_user_session');
+        }
       }
     } catch (error) {
       console.error('Error checking user session:', error);
+      // Clear invalid session on error
+      localStorage.removeItem('supabase_user_session');
     } finally {
       setIsLoading(false);
     }
