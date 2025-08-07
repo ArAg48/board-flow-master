@@ -30,8 +30,8 @@ const BarcodeGenerator: React.FC = () => {
       return;
     }
 
-    if (quantity < 1 || quantity > 1000) {
-      toast.error('Quantity must be between 1 and 1000');
+    if (quantity < 1 || quantity > 210) {
+      toast.error('Quantity must be between 1 and 210');
       return;
     }
 
