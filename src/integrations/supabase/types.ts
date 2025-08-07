@@ -378,6 +378,9 @@ export type Database = {
           paused_at: string | null
           ptl_order_id: string
           session_data: Json | null
+          session_fail_count: number | null
+          session_pass_count: number | null
+          session_scanned_count: number | null
           start_time: string
           status: Database["public"]["Enums"]["session_status"]
           technician_id: string
@@ -402,6 +405,9 @@ export type Database = {
           paused_at?: string | null
           ptl_order_id: string
           session_data?: Json | null
+          session_fail_count?: number | null
+          session_pass_count?: number | null
+          session_scanned_count?: number | null
           start_time?: string
           status?: Database["public"]["Enums"]["session_status"]
           technician_id: string
@@ -426,6 +432,9 @@ export type Database = {
           paused_at?: string | null
           ptl_order_id?: string
           session_data?: Json | null
+          session_fail_count?: number | null
+          session_pass_count?: number | null
+          session_scanned_count?: number | null
           start_time?: string
           status?: Database["public"]["Enums"]["session_status"]
           technician_id?: string
@@ -660,6 +669,16 @@ export type Database = {
       }
       update_ptl_progress: {
         Args: { p_ptl_order_id: string }
+        Returns: boolean
+      }
+      update_session_counts: {
+        Args: {
+          p_session_id: string
+          p_scanned_count: number
+          p_pass_count: number
+          p_fail_count: number
+          p_duration_minutes: number
+        }
         Returns: boolean
       }
       update_user_cw_stamp: {
