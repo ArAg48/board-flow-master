@@ -61,7 +61,7 @@ const BarcodeGenerator: React.FC = () => {
             width: 1.0,
             height: 14,
             displayValue: true,
-            fontSize: 14,
+            fontSize: 10,
             textAlign: 'center',
             textPosition: 'bottom',
             margin: 1,
