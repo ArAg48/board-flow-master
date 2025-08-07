@@ -60,15 +60,22 @@ const BarcodeGenerator: React.FC = () => {
             format: 'CODE128',
             width: 0.4,
             height: 16,
-            displayValue: true,
-            fontSize: 6,
-            textAlign: 'center',
-            textPosition: 'top',
-            textMargin: -8,
+            displayValue: false,
             margin: 1,
             background: '#ffffff',
             lineColor: '#000000'
           });
+
+          // Draw white text on top of the barcode
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 6px Arial';
+            ctx.textAlign = 'center';
+            const x = canvas.width / 2;
+            const y = canvas.height / 2 + 2; // Center vertically
+            ctx.fillText(fullText, x, y);
+          }
 
           const dataUrl = canvas.toDataURL('image/png');
           
