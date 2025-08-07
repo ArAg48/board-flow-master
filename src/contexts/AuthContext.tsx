@@ -143,6 +143,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Failed to load user profile');
       }
 
+      // Sign in with Supabase auth to establish proper session for RLS
+      // Create a dummy email from username for Supabase auth
+      const dummyEmail = `${username}@internal.local`;
+      
+      try {
+        // Try to sign in with existing auth user
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: dummyEmail,
+          password: password
+        });
+
+        // If user doesn't exist in auth, create them
+        if (authError && authError.message.includes('Invalid login credentials')) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: dummyEmail,
+            password: password,
+            options: {
+              data: {
+                user_id: profile.id
+              }
+            }
+          });
+
+          if (signUpError) {
+            console.error('Auth signup error:', signUpError);
+            // Continue without auth session if signup fails
+          }
+        }
+      } catch (authError) {
+        console.error('Auth setup error:', authError);
+        // Continue without auth session if auth setup fails
+      }
+
       // Split full_name into first_name and last_name
       const nameParts = profile.full_name?.split(' ') || [];
       const firstName = nameParts[0] || '';
@@ -159,7 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cw_stamp: profile.cw_stamp
       });
 
-      // Store a simple token for session persistence (not a real JWT)
+      // Store a simple token for session persistence
       localStorage.setItem('supabase_user_session', JSON.stringify({
         userId: profile.id,
         username: profile.username,
