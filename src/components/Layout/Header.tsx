@@ -19,7 +19,7 @@ export const Header: React.FC = () => {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 text-sm">
           <User className="h-4 w-4" />
-          <span className="font-medium">{user?.firstName} {user?.lastName}</span>
+          <span className="font-medium">{user?.first_name} {user?.last_name}</span>
           <span className="text-muted-foreground">({user?.role})</span>
         </div>
         

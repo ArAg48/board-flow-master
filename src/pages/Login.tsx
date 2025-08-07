@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -132,18 +132,10 @@ const Login: React.FC = () => {
     setBoardDetails(null);
 
     try {
-      // Use the new secure lookup function
-      const { data, error } = await supabase
-        .rpc('lookup_board_details', { p_qr_code: boardId.trim() });
+      const response = await apiClient.lookupBoard(boardId.trim());
 
-      if (error || !data || data.length === 0) {
-        setLookupError('Board ID not found');
-        setLookupLoading(false);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        const board = data[0]; // Get first result from RPC function
+      if (response.success && response.board) {
+        const board = response.board;
         console.log('Board data found:', board);
         
         // Extract serial number as last 7 digits

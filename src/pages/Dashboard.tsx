@@ -177,7 +177,7 @@ const Dashboard: React.FC = () => {
             {user?.role === 'manager' ? 'Manager' : 'Technician'}
           </Badge>
           <span className="text-sm text-muted-foreground">
-            Welcome back, {user?.firstName || user?.username}!
+            Welcome back, {user?.first_name || user?.username}!
           </span>
         </div>
       </div>

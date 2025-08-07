@@ -5,10 +5,14 @@ export interface User {
   id: string;
   username: string;
   role: 'manager' | 'technician';
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  createdAt: string;
+  phone: string;
+  cw_stamp: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AuthContextType {
