@@ -302,7 +302,7 @@ const BarcodeGenerator: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="baseText">Base Text</Label>
+              <Label htmlFor="baseText">Assembly</Label>
               <Input
                 id="baseText"
                 value={baseText}
