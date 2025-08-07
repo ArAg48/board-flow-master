@@ -7,9 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { History, Search, Filter, TrendingUp, Users, Target } from 'lucide-react';
+import { History, Search, Filter, TrendingUp, Users, Target, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface SessionHistory {
   id: string;
@@ -49,6 +50,7 @@ const ScanHistory: React.FC = () => {
   const [filters, setFilters] = useState<HistoryFilters>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSession, setSelectedSession] = useState<SessionHistory | null>(null);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -135,6 +137,10 @@ const ScanHistory: React.FC = () => {
           <h1 className="text-3xl font-bold">Scan History</h1>
           <p className="text-muted-foreground">View and analyze past validation sessions</p>
         </div>
+        <Button variant="outline" onClick={() => navigate('/dashboard')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
       </div>
 
       {/* Summary Stats */}

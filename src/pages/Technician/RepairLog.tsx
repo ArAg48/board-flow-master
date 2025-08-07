@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Wrench, Search, Filter, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Wrench, Search, Filter, Clock, CheckCircle, XCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface RepairEntry {
   id: string;
@@ -45,6 +46,7 @@ const RepairLog: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<RepairEntry | null>(null);
   const [repairNotes, setRepairNotes] = useState('');
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -159,6 +161,10 @@ const RepairLog: React.FC = () => {
           <h1 className="text-3xl font-bold">Repair Log</h1>
           <p className="text-muted-foreground">Track and manage failed board repairs</p>
         </div>
+        <Button variant="outline" onClick={() => navigate('/dashboard')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
       </div>
 
       {/* Filters and Search */}
