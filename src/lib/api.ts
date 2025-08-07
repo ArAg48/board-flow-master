@@ -55,7 +55,7 @@ class ApiClient {
 
   // Authentication
   async login(username: string, password: string) {
-    const response = await this.request('/auth.php', {
+    const response = await this.request('/api/auth.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'login',
@@ -79,7 +79,7 @@ class ApiClient {
     role: string;
     cw_stamp?: string;
   }) {
-    return this.request('/auth.php', {
+    return this.request('/api/auth.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'create_user',
@@ -89,7 +89,7 @@ class ApiClient {
   }
 
   async getUsers() {
-    return this.request('/auth.php', {
+    return this.request('/api/auth.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'get_users',
@@ -98,7 +98,7 @@ class ApiClient {
   }
 
   async toggleUserStatus(userId: string) {
-    return this.request('/auth.php', {
+    return this.request('/api/auth.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'toggle_user_status',
@@ -108,7 +108,7 @@ class ApiClient {
   }
 
   async updatePassword(userId: string, newPassword: string) {
-    return this.request('/auth.php', {
+    return this.request('/api/auth.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'update_password',
@@ -119,7 +119,7 @@ class ApiClient {
   }
 
   async deleteUser(userId: string) {
-    return this.request('/auth.php', {
+    return this.request('/api/auth.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'delete_user',
@@ -129,7 +129,7 @@ class ApiClient {
   }
 
   async verifyToken(token: string) {
-    return this.request('/auth.php', {
+    return this.request('/api/auth.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'verify_token',
@@ -140,19 +140,19 @@ class ApiClient {
 
   // Orders
   async getHardwareOrders() {
-    return this.request('/orders.php?type=hardware');
+    return this.request('/api/orders.php?type=hardware');
   }
 
   async getPTLOrders() {
-    return this.request('/orders.php?type=ptl');
+    return this.request('/api/orders.php?type=ptl');
   }
 
   async getPTLOrderProgress() {
-    return this.request('/orders.php?type=ptl_progress');
+    return this.request('/api/orders.php?type=ptl_progress');
   }
 
   async createHardwareOrder(orderData: any) {
-    return this.request('/orders.php', {
+    return this.request('/api/orders.php', {
       method: 'POST',
       body: JSON.stringify({
         type: 'hardware',
@@ -162,7 +162,7 @@ class ApiClient {
   }
 
   async createPTLOrder(orderData: any) {
-    return this.request('/orders.php', {
+    return this.request('/api/orders.php', {
       method: 'POST',
       body: JSON.stringify({
         type: 'ptl',
@@ -172,7 +172,7 @@ class ApiClient {
   }
 
   async updateHardwareOrder(id: string, orderData: any) {
-    return this.request('/orders.php', {
+    return this.request('/api/orders.php', {
       method: 'PUT',
       body: JSON.stringify({
         type: 'hardware',
@@ -183,7 +183,7 @@ class ApiClient {
   }
 
   async updatePTLOrder(id: string, orderData: any) {
-    return this.request('/orders.php', {
+    return this.request('/api/orders.php', {
       method: 'PUT',
       body: JSON.stringify({
         type: 'ptl',
@@ -195,29 +195,29 @@ class ApiClient {
 
   // Scanner
   async lookupBoard(qrCode: string) {
-    return this.request(`/scanner.php?action=lookup_board&qr_code=${encodeURIComponent(qrCode)}`);
+    return this.request(`/api/scanner.php?action=lookup_board&qr_code=${encodeURIComponent(qrCode)}`);
   }
 
   async countScannedBoards(ptlOrderId: string) {
-    return this.request(`/scanner.php?action=count_boards&ptl_order_id=${ptlOrderId}`);
+    return this.request(`/api/scanner.php?action=count_boards&ptl_order_id=${ptlOrderId}`);
   }
 
   async getActiveSession(userId?: string) {
     const url = userId 
-      ? `/scanner.php?action=active_session&user_id=${userId}`
-      : '/scanner.php?action=active_session';
+      ? `/api/scanner.php?action=active_session&user_id=${userId}`
+      : '/api/scanner.php?action=active_session';
     return this.request(url);
   }
 
   async getScanHistory(technicianId?: string) {
     const url = technicianId
-      ? `/scanner.php?action=scan_history&technician_id=${technicianId}`
-      : '/scanner.php?action=scan_history';
+      ? `/api/scanner.php?action=scan_history&technician_id=${technicianId}`
+      : '/api/scanner.php?action=scan_history';
     return this.request(url);
   }
 
   async saveBoardScan(scanData: any) {
-    return this.request('/scanner.php', {
+    return this.request('/api/scanner.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'save_board_scan',
@@ -234,7 +234,7 @@ class ApiClient {
     paused_at?: string;
     break_started_at?: string;
   }) {
-    return this.request('/scanner.php', {
+    return this.request('/api/scanner.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'save_session',
@@ -244,7 +244,7 @@ class ApiClient {
   }
 
   async deactivateSession(sessionId: string) {
-    return this.request('/scanner.php', {
+    return this.request('/api/scanner.php', {
       method: 'POST',
       body: JSON.stringify({
         action: 'deactivate_session',
