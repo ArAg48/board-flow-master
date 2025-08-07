@@ -37,10 +37,10 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   };
 
   const getStats = () => {
-    // Calculate session-specific stats (what this technician did)
+    // Calculate session-specific stats (what this technician did THIS session)
     const sessionStart = session.startTime;
     const sessionEntries = session.scannedEntries.filter(e => 
-      e.timestamp >= sessionStart
+      e.testResult && e.timestamp >= sessionStart
     );
     
     const total = sessionEntries.length;
@@ -48,7 +48,7 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
     const failed = sessionEntries.filter(e => e.testResult === 'fail').length;
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     
-    // Overall order progress
+    // Overall order progress (from PTL order data)
     const overallPassed = session.ptlOrder.passedCount || 0;
     const expectedCount = session.ptlOrder.expectedCount;
     const remainingNeeded = Math.max(0, expectedCount - overallPassed);
@@ -59,7 +59,8 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   const getProductivity = () => {
     const duration = getDuration();
     const totalMinutes = duration.total / 60000;
-    const scansPerHour = totalMinutes > 0 ? Math.round((session.scannedEntries.length / totalMinutes) * 60) : 0;
+    const sessionStats = getStats();
+    const scansPerHour = totalMinutes > 0 ? Math.round((sessionStats.total / totalMinutes) * 60) : 0;
     
     return { scansPerHour };
   };

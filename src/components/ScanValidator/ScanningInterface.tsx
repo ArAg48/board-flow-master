@@ -123,6 +123,29 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       // Add to scan entries
       onScanEntry(entry);
 
+      // Check if we've reached the expected count (check overall order progress)
+      // Need to refresh PTL order data first to get accurate counts
+      try {
+        const { data: progressData } = await supabase
+          .from('ptl_order_progress')
+          .select('passed_count')
+          .eq('id', ptlOrder.id)
+          .single();
+
+        const currentPassed = progressData?.passed_count || 0;
+        const newPassedCount = currentPassed + 1;
+        
+        if (newPassedCount >= ptlOrder.expectedCount) {
+          toast({
+            title: "Target Reached!",
+            description: `You have successfully passed ${ptlOrder.expectedCount} boards for this PTL order.`,
+            duration: 5000
+          });
+        }
+      } catch (error) {
+        console.error('Error checking progress:', error);
+      }
+
       // Clear the validated board and input
       const newValidatedBoards = { ...validatedBoards };
       delete newValidatedBoards[boxIndex];
@@ -193,6 +216,28 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       // Add all entries to session at once
       console.log(`Adding ${newEntries.length} entries to session at once`);
       newEntries.forEach(entry => onScanEntry(entry));
+
+      // Check if we've reached the expected count after passing all boards
+      try {
+        const { data: progressData } = await supabase
+          .from('ptl_order_progress')
+          .select('passed_count')
+          .eq('id', ptlOrder.id)
+          .single();
+
+        const currentPassed = progressData?.passed_count || 0;
+        const newPassedCount = currentPassed + newEntries.length;
+        
+        if (newPassedCount >= ptlOrder.expectedCount) {
+          toast({
+            title: "Target Reached!",
+            description: `You have successfully passed ${ptlOrder.expectedCount} boards for this PTL order.`,
+            duration: 5000
+          });
+        }
+      } catch (error) {
+        console.error('Error checking progress:', error);
+      }
 
       // Clear the passed boards from validated boards and inputs
       const newValidatedBoards = { ...validatedBoards };
@@ -513,17 +558,13 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                      return !existingEntry;
                    }).length})
                  </Button>
-                  <Button 
-                    onClick={onFinishPTL} 
-                    variant="default"
-                    disabled={scannedEntries.length === 0}
-                    className="flex-col gap-1 h-auto py-2"
-                  >
-                    <span>Finish PTL</span>
-                    <span className="text-xs opacity-75">
-                      ({(ptlOrder.passedCount || 0) + scannedEntries.filter(e => e.testResult === 'pass').length}/{ptlOrder.expectedCount} passed)
-                    </span>
-                  </Button>
+                   <Button 
+                     onClick={onFinishPTL} 
+                     variant="default"
+                     disabled={scannedEntries.length === 0}
+                   >
+                     Finish PTL
+                   </Button>
               </>
             ) : (
               <Button onClick={onResume}>

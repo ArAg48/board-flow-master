@@ -328,47 +328,8 @@ const ScanValidator: React.FC = () => {
           return;
         }
 
-        // No active session found, check if there's any existing progress
-        if (order.scannedCount && order.scannedCount > 0) {
-          // There's existing progress, fetch all board data and create session with progress
-          const { data: boardData } = await supabase
-            .from('board_data')
-            .select('qr_code, test_status, test_date, test_results, technician_id')
-            .eq('ptl_order_id', order.id)
-            .order('test_date', { ascending: true });
-
-          if (boardData && boardData.length > 0) {
-            // Create new session with existing board progress
-            const newSessionId = crypto.randomUUID();
-            const scannedEntries = boardData.map((board, index) => ({
-              id: crypto.randomUUID(),
-              boxIndex: index % 4, // Distribute across available boxes
-              qrCode: board.qr_code,
-              isValid: true,
-              timestamp: new Date(board.test_date),
-              testResult: board.test_status as 'pass' | 'fail',
-              failureReason: board.test_status === 'fail' ? (typeof board.test_results === 'object' && board.test_results && 'failure_reason' in board.test_results ? (board.test_results as any).failure_reason : undefined) : undefined
-            }));
-
-            const newSession: ValidationSession = {
-              id: newSessionId,
-              ptlOrder: order,
-              testerConfig: { type: 4, scanBoxes: 4 },
-              preTestVerification: { testerCheck: true, firmwareCheck: true },
-              startTime: new Date(),
-              status: 'scanning',
-              scannedEntries,
-              totalDuration: 0
-            };
-
-            setCurrentSession(newSession);
-            toast({
-              title: 'Session Created',
-              description: `Session created with ${boardData.length} existing boards`
-            });
-            return;
-          }
-        }
+        // No active session found, start a fresh session
+        // Don't load existing board data into the session - session should only track what THIS session scans
       } catch (error) {
         console.error('Error checking for existing session:', error);
       }
@@ -539,11 +500,15 @@ const ScanValidator: React.FC = () => {
   const getSessionStats = () => {
     if (!currentSession) return { total: 0, passed: 0, failed: 0, passRate: 0 };
     
-    // Count all entries with test results, not just unique QR codes
-    const entriesWithResults = currentSession.scannedEntries.filter(entry => entry.testResult);
-    const total = entriesWithResults.length;
-    const passed = entriesWithResults.filter(e => e.testResult === 'pass').length;
-    const failed = entriesWithResults.filter(e => e.testResult === 'fail').length;
+    // Only count entries that were scanned during THIS session (after session start time)
+    const sessionStart = currentSession.startTime;
+    const sessionEntries = currentSession.scannedEntries.filter(entry => 
+      entry.testResult && entry.timestamp >= sessionStart
+    );
+    
+    const total = sessionEntries.length;
+    const passed = sessionEntries.filter(e => e.testResult === 'pass').length;
+    const failed = sessionEntries.filter(e => e.testResult === 'fail').length;
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     
     return { total, passed, failed, passRate };
