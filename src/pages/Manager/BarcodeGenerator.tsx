@@ -307,7 +307,6 @@ const BarcodeGenerator: React.FC = () => {
                 id="baseText"
                 value={baseText}
                 onChange={(e) => setBaseText(e.target.value)}
-                placeholder="assembly"
                 maxLength={20}
               />
             </div>
