@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,30 +13,34 @@ interface GeneratedBarcode {
   id: string;
   text: string;
   fullText: string;
-  dataUrl: string;
+  svgElement: string;
 }
 
 const BarcodeGenerator: React.FC = () => {
   const [baseText, setBaseText] = useState('');
-  const [startingNumber, setStartingNumber] = useState('0000001');
-  const [quantity, setQuantity] = useState(1);
+  const [startingNumber, setStartingNumber] = useState(1);
+  const [quantity, setQuantity] = useState(5);
   const [generatedBarcodes, setGeneratedBarcodes] = useState<GeneratedBarcode[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const printableRef = useRef<HTMLDivElement>(null);
 
-  const generateBarcodes = async () => {
+  const generateBarcodes = () => {
     if (!baseText.trim()) {
-      toast.error('Please enter base text for the barcode');
+      toast.error('Please enter a base text for the barcode.');
       return;
     }
 
-    if (quantity < 1 || quantity > 210) {
-      toast.error('Quantity must be between 1 and 210');
+    if (isNaN(startingNumber) || startingNumber < 0) {
+      toast.error('Please enter a valid starting number (non-negative integer).');
       return;
     }
 
-    if (!startingNumber.trim()) {
-      toast.error('Please enter a starting number');
+    if (quantity < 1) {
+      toast.error('Please enter a valid number of barcodes (at least 1).');
+      return;
+    }
+
+    if (quantity > 1000) {
+      toast.error('For performance reasons, please generate a maximum of 1000 barcodes at a time.');
       return;
     }
 
@@ -44,50 +48,44 @@ const BarcodeGenerator: React.FC = () => {
     const barcodes: GeneratedBarcode[] = [];
 
     try {
-      // Parse starting number and preserve leading zeros
-      const startNum = parseInt(startingNumber);
-      const numLength = startingNumber.length;
-
       for (let i = 0; i < quantity; i++) {
-        const currentNumber = (startNum + i).toString().padStart(numLength, '0');
-        const fullText = `${baseText.trim()}${currentNumber}`;
-        
-        // Create a temporary canvas to generate barcode
-        const canvas = document.createElement('canvas');
-        
+        const currentNumber = startingNumber + i;
+        const paddedNumber = String(currentNumber).padStart(7, '0');
+        const barcodeValue = `${baseText.trim()}${paddedNumber}`;
+
+        // Create a temporary div to render the barcode SVG
+        const tempDiv = document.createElement('div');
+        const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        tempSvg.id = `temp-barcode-${i}`;
+        tempDiv.appendChild(tempSvg);
+
         try {
-          JsBarcode(canvas, fullText, {
-            format: 'CODE128',
-            width: 0.4,
-            height: 16,
+          JsBarcode(tempSvg, barcodeValue, {
+            format: "CODE128",
             displayValue: false,
-            margin: 1,
-            background: '#ffffff',
-            lineColor: '#000000'
+            height: 16,
+            width: 0.64,
+            margin: 0,
+            lineColor: "#000000",
+            textMargin: 0,
+            fontOptions: "bold",
+            fontSize: 0
           });
 
-          // Draw white text on top of the barcode
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 6px Arial';
-            ctx.textAlign = 'center';
-            const x = canvas.width / 2;
-            const y = canvas.height / 2 + 2; // Center vertically
-            ctx.fillText(fullText, x, y);
-          }
-
-          const dataUrl = canvas.toDataURL('image/png');
-          
           barcodes.push({
             id: `barcode-${i}`,
-            text: currentNumber,
-            fullText: fullText,
-            dataUrl: dataUrl
+            text: paddedNumber,
+            fullText: barcodeValue,
+            svgElement: tempSvg.outerHTML
           });
         } catch (error) {
-          console.error(`Error generating barcode ${i + 1}:`, error);
-          toast.error(`Error generating barcode ${i + 1}`);
+          console.error(`Error generating barcode for value "${barcodeValue}":`, error);
+          barcodes.push({
+            id: `barcode-${i}`,
+            text: paddedNumber,
+            fullText: barcodeValue,
+            svgElement: `<div style="color:#ef4444; font-size:0.1in; text-align:center;">Error: ${barcodeValue}</div>`
+          });
         }
       }
 
@@ -101,13 +99,79 @@ const BarcodeGenerator: React.FC = () => {
     }
   };
 
+  const generateBarcodeHtmlContent = () => {
+    if (!baseText.trim()) return '';
+    if (isNaN(startingNumber) || startingNumber < 0) return '';
+    if (quantity < 1 || quantity > 1000) return '';
+
+    let barcodesHtml = '';
+    for (let i = 0; i < quantity; i++) {
+      const currentNumber = startingNumber + i;
+      const paddedNumber = String(currentNumber).padStart(7, '0');
+      const barcodeValue = `${baseText.trim()}${paddedNumber}`;
+
+      const tempDiv = document.createElement('div');
+      const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      tempSvg.id = `temp-barcode-${i}`;
+      tempDiv.appendChild(tempSvg);
+
+      try {
+        JsBarcode(tempSvg, barcodeValue, {
+          format: "CODE128",
+          displayValue: true,
+          height: 12,
+          width: 0.64,
+          margin: 0,
+          lineColor: "#000000",
+          textMargin: 0,
+          fontOptions: "bold",
+          fontSize: 9
+        });
+
+        const svgInnerHtml = tempSvg.outerHTML;
+
+        barcodesHtml += `
+          <div class="barcode-item">
+            ${svgInnerHtml}
+          </div>
+        `;
+      } catch (error) {
+        console.error(`Error generating barcode for value "${barcodeValue}" during print preparation:`, error);
+        barcodesHtml += `
+          <div class="barcode-item" style="color:#ef4444; font-size:0.1in; text-align:center;">
+            Error: ${barcodeValue}
+          </div>
+        `;
+      }
+    }
+    return barcodesHtml;
+  };
+
   const handlePrint = () => {
-    if (generatedBarcodes.length === 0) {
-      toast.error('No barcodes to print');
+    if (!baseText.trim()) {
+      toast.error('Please enter a base text for the barcode before printing.');
+      return;
+    }
+    if (isNaN(startingNumber) || startingNumber < 0) {
+      toast.error('Please enter a valid starting number (non-negative integer) before printing.');
+      return;
+    }
+    if (quantity < 1) {
+      toast.error('Please enter a valid number of barcodes (at least 1) before printing.');
+      return;
+    }
+    if (quantity > 1000) {
+      toast.error('For performance and print stability, please generate a maximum of 1000 barcodes for printing at a time.');
       return;
     }
 
-    // Create a print-ready sheet
+    const barcodesHtml = generateBarcodeHtmlContent();
+
+    if (!barcodesHtml) {
+      toast.error('Could not generate barcodes for printing. Please check your input.');
+      return;
+    }
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error('Failed to open print window');
@@ -117,99 +181,101 @@ const BarcodeGenerator: React.FC = () => {
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
-        <head>
-          <title>Barcode Labels - Panduit c100x025yjj</title>
-          <style>
-            @page {
-              size: 8.5in 11in;
-              margin: 0;
-            }
-            
+      <head>
+        <title>Print Barcodes</title>
+        <style>
+          body {
+            font-family: 'Inter', sans-serif;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+            background-color: #fff !important;
+            display: block !important;
+            overflow: visible !important;
+          }
+          #printContainer {
+            display: grid;
+            grid-template-columns: repeat(7, 1in);
+            gap: 0.1in;
+            row-gap: 0.08in;
+            width: 7.6in;
+            margin-left: 0.105in !important;
+            margin-top: 0.41in !important;
+            padding: 0 !important;
+            max-width: 8.5in;
+            justify-content: start;
+          }
+          .barcode-item {
+            width: 1in;
+            height: 0.25in;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            box-sizing: border-box;
+          }
+          .barcode-item svg {
+            max-width: 95%;
+            height: auto;
+            display: block;
+          }
+          @media print {
             body {
-              margin: 0;
-              padding: 0;
-              font-family: Arial, sans-serif;
-              background: white;
+              background-color: #fff !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: block !important;
+              overflow: visible !important;
+              box-sizing: border-box !important;
             }
-            
-            .label-sheet {
-              width: 8.5in;
-              height: 11in;
-              position: relative;
-              margin: 0;
-              padding: 0;
+            #printContainer {
+              border: none !important;
+              padding: 0 !important;
+              grid-template-columns: repeat(7, 1in) !important;
+              gap: 0.1in !important;
+              row-gap: 0.08in !important;
+              width: 7.6in !important;
+              margin-left: 0.105in !important;
+              margin-top: 0.41in !important;
+              max-width: 8.5in !important;
+              justify-content: start !important;
+              display: grid !important;
             }
-            
-            .barcode-grid {
-              position: absolute;
-              top: 0.875in;
-              left: 0.45in;
-              width: 7.6in;
-              display: grid;
-              grid-template-columns: repeat(7, 1in);
-              grid-column-gap: 0.1in;
-              grid-row-gap: 0.08in;
+            .barcode-item {
+              width: 1in !important;
+              height: 0.25in !important;
+              border: none !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: center !important;
+              align-items: center !important;
+              overflow: hidden !important;
+              box-sizing: border-box !important;
             }
-            
-            .barcode-cell {
-              width: 1in;
-              height: 0.25in;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              overflow: hidden;
+            .barcode-item svg {
+              max-width: 95% !important;
+              height: auto !important;
+              display: block !important;
             }
-            
-            .barcode-cell img {
-              max-width: 1in;
-              max-height: 0.25in;
-              object-fit: contain;
-            }
-            
-            @media print {
-              body { -webkit-print-color-adjust: exact; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="label-sheet">
-            <div class="barcode-grid">
-              ${generatedBarcodes.map(barcode => `
-                <div class="barcode-cell">
-                  <img src="${barcode.dataUrl}" alt="${barcode.fullText}" />
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        </body>
+          }
+        </style>
+      </head>
+      <body>
+        <div id="printContainer">
+          ${barcodesHtml}
+        </div>
+        <script>
+          window.onload = function() {
+            setTimeout(() => {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
       </html>
     `);
-
     printWindow.document.close();
-    
-    // Wait for images to load then trigger print
-    setTimeout(() => {
-      printWindow.print();
-    }, 1000);
-  };
-
-  const downloadBarcodes = () => {
-    if (generatedBarcodes.length === 0) {
-      toast.error('No barcodes to download');
-      return;
-    }
-
-    // Create a zip-like download by creating multiple links
-    generatedBarcodes.forEach((barcode, index) => {
-      const link = document.createElement('a');
-      link.href = barcode.dataUrl;
-      link.download = `barcode_${barcode.fullText}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-
-    toast.success('Barcode downloads started');
   };
 
 
@@ -250,14 +316,12 @@ const BarcodeGenerator: React.FC = () => {
               <Label htmlFor="startingNumber">Starting Number</Label>
               <Input
                 id="startingNumber"
+                type="number"
                 value={startingNumber}
-                onChange={(e) => setStartingNumber(e.target.value)}
-                placeholder="0000001"
-                pattern="[0-9]+"
+                onChange={(e) => setStartingNumber(parseInt(e.target.value) || 1)}
+                placeholder="1"
+                min="0"
               />
-              <p className="text-xs text-muted-foreground">
-                Use leading zeros to maintain number format (e.g., 0000001)
-              </p>
             </div>
 
             <div className="space-y-2">
@@ -300,10 +364,10 @@ const BarcodeGenerator: React.FC = () => {
                       <Printer className="h-4 w-4 mr-2" />
                       Print
                     </Button>
-                    <Button onClick={downloadBarcodes} variant="outline" className="flex-1">
-                      <Download className="h-4 w-4 mr-2" />
-                      Individual
-                    </Button>
+                     <Button onClick={handlePrint} variant="outline" className="flex-1">
+                       <Download className="h-4 w-4 mr-2" />
+                       Download for Print
+                     </Button>
                   </div>
                 </div>
               )}
@@ -335,21 +399,22 @@ const BarcodeGenerator: React.FC = () => {
           </CardHeader>
           <CardContent>
             {generatedBarcodes.length > 0 ? (
-              <div 
-                ref={printableRef}
-                className="border border-gray-200 p-4 bg-white rounded-lg overflow-auto max-h-96"
-              >
-                <div className="barcode-grid grid grid-cols-7 gap-1">
+              <div className="border border-gray-200 p-4 bg-white rounded-lg overflow-auto max-h-96">
+                <div className="grid grid-cols-7 gap-1">
                   {generatedBarcodes.map((barcode) => (
                     <div
                       key={barcode.id}
-                      className="barcode-cell border border-gray-300 p-1 flex flex-col items-center justify-center bg-white"
-                      style={{ aspectRatio: '2/1' }}
+                      className="border border-gray-300 p-1 flex flex-col items-center justify-center bg-white"
+                      style={{ 
+                        aspectRatio: '4/1',
+                        width: '1in',
+                        height: '0.25in',
+                        minHeight: '0.25in'
+                      }}
                     >
-                      <img 
-                        src={barcode.dataUrl} 
-                        alt={barcode.fullText}
-                        className="max-w-full max-h-full object-contain"
+                      <div 
+                        dangerouslySetInnerHTML={{ __html: barcode.svgElement }}
+                        className="w-full h-full flex items-center justify-center"
                       />
                     </div>
                   ))}
@@ -358,8 +423,13 @@ const BarcodeGenerator: React.FC = () => {
                   {Array.from({ length: (7 - (generatedBarcodes.length % 7)) % 7 }).map((_, index) => (
                     <div
                       key={`empty-${index}`}
-                      className="barcode-cell border border-gray-300 border-dashed bg-gray-50"
-                      style={{ aspectRatio: '2/1' }}
+                      className="border border-gray-300 border-dashed bg-gray-50"
+                      style={{ 
+                        aspectRatio: '4/1',
+                        width: '1in',
+                        height: '0.25in',
+                        minHeight: '0.25in'
+                      }}
                     />
                   ))}
                 </div>
