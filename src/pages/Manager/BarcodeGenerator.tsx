@@ -39,8 +39,8 @@ const BarcodeGenerator: React.FC = () => {
       return;
     }
 
-    if (quantity > 1000) {
-      toast.error('For performance reasons, please generate a maximum of 1000 barcodes at a time.');
+    if (quantity > 210) {
+      toast.error('For performance reasons, please generate a maximum of 210 barcodes at a time.');
       return;
     }
 
@@ -102,7 +102,7 @@ const BarcodeGenerator: React.FC = () => {
   const generateBarcodeHtmlContent = () => {
     if (!baseText.trim()) return '';
     if (isNaN(startingNumber) || startingNumber < 0) return '';
-    if (quantity < 1 || quantity > 1000) return '';
+    if (quantity < 1 || quantity > 210) return '';
 
     let barcodesHtml = '';
     for (let i = 0; i < quantity; i++) {
@@ -160,8 +160,8 @@ const BarcodeGenerator: React.FC = () => {
       toast.error('Please enter a valid number of barcodes (at least 1) before printing.');
       return;
     }
-    if (quantity > 1000) {
-      toast.error('For performance and print stability, please generate a maximum of 1000 barcodes for printing at a time.');
+    if (quantity > 210) {
+      toast.error('For performance and print stability, please generate a maximum of 210 barcodes for printing at a time.');
       return;
     }
 
@@ -332,7 +332,7 @@ const BarcodeGenerator: React.FC = () => {
                 value={quantity}
                 onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                 min="1"
-                max="1000"
+                max="210"
               />
             </div>
 
