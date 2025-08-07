@@ -650,6 +650,10 @@ export type Database = {
         }
         Returns: string
       }
+      set_viewable_password: {
+        Args: { p_user_id: string; p_password: string }
+        Returns: boolean
+      }
       toggle_user_status: {
         Args: { p_user_id: string }
         Returns: boolean
