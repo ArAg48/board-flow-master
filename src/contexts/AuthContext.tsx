@@ -1,23 +1,22 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { apiClient } from '@/lib/api';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
 
-export interface User {
+// User interface for our app
+interface AppUser {
   id: string;
   username: string;
-  role: 'manager' | 'technician';
   first_name: string;
   last_name: string;
-  email: string;
-  phone: string;
-  cw_stamp: string | null;
+  full_name: string;
+  role: string;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  cw_stamp?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
-  login: (username: string, password: string) => Promise<boolean>;
+  user: AppUser | null;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -32,90 +31,144 @@ export const useAuth = () => {
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing token on mount
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // Verify token and get user data
-      verifyToken(token);
-    } else {
+    // Check if user is already logged in
+    checkUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await loadUserProfile(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
       setIsLoading(false);
-    }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const verifyToken = async (token: string) => {
+  const checkUser = async () => {
     try {
-      const response = await apiClient.verifyToken(token);
-      if (response.success) {
-        setUser(response.user);
-      } else {
-        localStorage.removeItem('auth_token');
-        apiClient.removeToken();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadUserProfile(session.user);
       }
     } catch (error) {
-      console.error('Token verification error:', error);
-      localStorage.removeItem('auth_token');
-      apiClient.removeToken();
+      console.error('Error checking user session:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const loadUserProfile = async (authUser: User) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error loading user profile:', error);
+        return;
+      }
+
+      if (profile) {
+        // Split full_name into first_name and last_name
+        const nameParts = profile.full_name?.split(' ') || [];
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        setUser({
+          id: profile.id,
+          username: profile.username,
+          first_name: firstName,
+          last_name: lastName,
+          full_name: profile.full_name || '',
+          role: profile.role,
+          is_active: profile.is_active,
+          cw_stamp: profile.cw_stamp
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
+
+  const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      
-      // Input validation
-      if (!username?.trim() || !password?.trim()) {
-        console.error('Username and password are required');
-        setIsLoading(false);
-        return false;
-      }
-      
-      if (username.trim().length < 3) {
-        console.error('Username must be at least 3 characters');
-        setIsLoading(false);
-        return false;
-      }
-      
-      // Use PHP backend to authenticate
-      const response = await apiClient.login(username.trim(), password);
 
-      if (response.success && response.user) {
-        setUser(response.user);
-        setIsLoading(false);
-        return true;
+      // Use Supabase function to authenticate
+      const { data, error } = await supabase.rpc('authenticate_user', {
+        input_username: username,
+        input_password: password
+      });
+
+      if (error || !data || data.length === 0) {
+        throw new Error('Invalid credentials');
       }
+
+      const userAuth = data[0];
       
-      setIsLoading(false);
-      return false;
+      // Load the full profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error('Failed to load user profile');
+      }
+
+      // Split full_name into first_name and last_name
+      const nameParts = profile.full_name?.split(' ') || [];
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      setUser({
+        id: profile.id,
+        username: profile.username,
+        first_name: firstName,
+        last_name: lastName,
+        full_name: profile.full_name || '',
+        role: profile.role,
+        is_active: profile.is_active,
+        cw_stamp: profile.cw_stamp
+      });
+
+      // Store a simple token for session persistence (not a real JWT)
+      localStorage.setItem('supabase_user_session', JSON.stringify({
+        userId: profile.id,
+        username: profile.username,
+        role: profile.role
+      }));
+
     } catch (error) {
       console.error('Login error:', error);
+      throw error;
+    } finally {
       setIsLoading(false);
-      return false;
     }
   };
 
   const logout = async () => {
-    // Deactivate any active sessions before logging out
-    if (user?.id) {
-      try {
-        await apiClient.deactivateSession(user.id);
-      } catch (error) {
-        console.error('Error during session cleanup:', error);
-      }
+    try {
+      await supabase.auth.signOut();
+      localStorage.removeItem('supabase_user_session');
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear user state even if logout fails
+      localStorage.removeItem('supabase_user_session');
+      setUser(null);
     }
-    
-    apiClient.removeToken();
-    setUser(null);
   };
 
   return (
@@ -124,3 +177,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+export type { AppUser as User };

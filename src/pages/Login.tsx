@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/lib/api';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -72,46 +72,37 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    // Enhanced input validation
+    
     if (!username.trim() || !password.trim()) {
       setError('Username and password are required');
       setIsLoading(false);
       return;
     }
-    
-    if (username.trim().length < 3) {
-      setError('Username must be at least 3 characters long');
-      setIsLoading(false);
-      return;
-    }
-    
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setIsLoading(false);
-      return;
-    }
-    
+
     if (!validateInput(username) || !validateInput(password)) {
       setError('Invalid characters detected in input');
       setIsLoading(false);
       return;
     }
 
+    if (username.trim().length < 3) {
+      setError('Username must be at least 3 characters');
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
     try {
-      const success = await login(username.trim(), password);
-      if (success) {
-        toast({
-          title: 'Login Successful',
-          description: 'Welcome to PTL Order System',
-        });
-      } else {
-        setError('Invalid username or password. Please check your credentials.');
-      }
-    } catch (err) {
-      setError('Login failed. Please try again.');
+      await login(username.trim(), password);
+      toast({
+        title: 'Login Successful',
+        description: 'Welcome to PTL Order System',
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -132,10 +123,16 @@ const Login: React.FC = () => {
     setBoardDetails(null);
 
     try {
-      const response = await apiClient.lookupBoard(boardId.trim());
+      const { data, error } = await supabase.rpc('lookup_board_details', {
+        p_qr_code: boardId.trim()
+      });
 
-      if (response.success && response.board) {
-        const board = response.board;
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data && data.length > 0) {
+        const board = data[0];
         console.log('Board data found:', board);
         
         // Extract serial number as last 7 digits
