@@ -152,7 +152,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean | null
-          password?: string
+          password: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           username: string
