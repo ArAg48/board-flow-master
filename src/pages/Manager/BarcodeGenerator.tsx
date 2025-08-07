@@ -58,13 +58,13 @@ const BarcodeGenerator: React.FC = () => {
         try {
           JsBarcode(canvas, fullText, {
             format: 'CODE128',
-            width: 1.0,
-            height: 14,
+            width: 0.8,
+            height: 18,
             displayValue: true,
             fontSize: 10,
             textAlign: 'center',
             textPosition: 'bottom',
-            margin: 1,
+            margin: 0,
             background: '#ffffff',
             lineColor: '#000000'
           });
