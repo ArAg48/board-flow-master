@@ -446,6 +446,12 @@ const ScanValidator: React.FC = () => {
 
   const handleFinishPTL = () => {
     if (currentSession) {
+      // Calculate session duration
+      const startTime = new Date(currentSession.startTime);
+      const endTime = new Date();
+      const durationMs = endTime.getTime() - startTime.getTime();
+      const durationMinutes = Math.floor(durationMs / (1000 * 60));
+      
       // Check if we've reached the expected number of passed boards
       const currentPassed = currentSession.scannedEntries.filter(e => e.testResult === 'pass').length;
       const expectedCount = currentSession.ptlOrder.expectedCount;

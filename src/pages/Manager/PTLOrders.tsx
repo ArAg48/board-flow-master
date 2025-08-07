@@ -616,18 +616,22 @@ const PTLOrders: React.FC = () => {
 
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Testing Progress</Label>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">0</p>
+                    <p className="text-2xl font-bold text-blue-600">{orderCounts[selectedOrder.id]?.scanned || 0}</p>
                     <p className="text-sm text-muted-foreground">Tested</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">0</p>
+                    <p className="text-2xl font-bold text-green-600">{orderCounts[selectedOrder.id]?.passed || 0}</p>
                     <p className="text-sm text-muted-foreground">Passed</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold text-red-600">0</p>
+                    <p className="text-2xl font-bold text-red-600">{orderCounts[selectedOrder.id]?.failed || 0}</p>
                     <p className="text-sm text-muted-foreground">Failed</p>
+                  </div>
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold text-purple-600">{orderCounts[selectedOrder.id]?.totalTime || 0}</p>
+                    <p className="text-sm text-muted-foreground">Minutes</p>
                   </div>
                 </div>
               </div>

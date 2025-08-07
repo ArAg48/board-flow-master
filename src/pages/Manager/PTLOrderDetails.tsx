@@ -35,7 +35,7 @@ const PTLOrderDetails: React.FC = () => {
   const [ptlOrder, setPtlOrder] = useState<PTLOrderDetail | null>(null);
   const [boardData, setBoardData] = useState<BoardData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, pending: 0, totalTime: 0 });
+  const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, repaired: 0, pending: 0, totalTime: 0 });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -83,11 +83,23 @@ const PTLOrderDetails: React.FC = () => {
 
       if (error) throw error;
       
+      // Check for repaired boards
+      const { data: repairData } = await supabase
+        .from('repair_entries')
+        .select('qr_code, repair_status')
+        .eq('ptl_order_id', id);
+      
+      const repairedBoards = new Set(
+        (repairData || [])
+          .filter(repair => repair.repair_status === 'completed')
+          .map(repair => repair.qr_code)
+      );
+      
       // Transform the data to match BoardData interface
       const transformedData: BoardData[] = (data || []).map(item => ({
         id: item.id,
         qr_code: item.qr_code,
-        test_status: item.test_status || 'pending',
+        test_status: repairedBoards.has(item.qr_code) ? 'repaired' : (item.test_status || 'pending'),
         test_date: item.test_date || '',
         test_results: item.test_results,
         technician_id: item.technician_id || '',
@@ -100,6 +112,7 @@ const PTLOrderDetails: React.FC = () => {
       const total = transformedData?.length || 0;
       const passed = transformedData?.filter(b => b.test_status === 'pass').length || 0;
       const failed = transformedData?.filter(b => b.test_status === 'fail').length || 0;
+      const repaired = transformedData?.filter(b => b.test_status === 'repaired').length || 0;
       const pending = transformedData?.filter(b => b.test_status === 'pending').length || 0;
 
       // Get timing data from ptl_order_progress to match the list view
@@ -111,7 +124,7 @@ const PTLOrderDetails: React.FC = () => {
 
       const totalTime = progressData?.total_time_minutes || 0;
 
-      setStats({ total, passed, failed, pending, totalTime });
+      setStats({ total, passed, failed, repaired, pending, totalTime });
     } catch (error) {
       console.error('Error loading board data:', error);
       toast({
@@ -130,6 +143,8 @@ const PTLOrderDetails: React.FC = () => {
         return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'fail':
         return <XCircle className="h-4 w-4 text-red-600" />;
+      case 'repaired':
+        return <CheckCircle className="h-4 w-4 text-blue-600" />;
       default:
         return <Clock className="h-4 w-4 text-yellow-600" />;
     }
@@ -141,6 +156,8 @@ const PTLOrderDetails: React.FC = () => {
         return <Badge variant="default" className="bg-green-100 text-green-800">Passed</Badge>;
       case 'fail':
         return <Badge variant="destructive">Failed</Badge>;
+      case 'repaired':
+        return <Badge variant="default" className="bg-blue-100 text-blue-800">Repaired</Badge>;
       default:
         return <Badge variant="secondary">Pending</Badge>;
     }
@@ -204,7 +221,7 @@ const PTLOrderDetails: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -225,13 +242,19 @@ const PTLOrderDetails: React.FC = () => {
         </Card>
         <Card>
           <CardContent className="p-6">
+            <div className="text-2xl font-bold text-blue-600">{stats.repaired}</div>
+            <div className="text-sm text-muted-foreground">Repaired</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
             <div className="text-sm text-muted-foreground">Pending</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-purple-600">
               {stats.totalTime > 0 ? `${Math.round(stats.totalTime)}` : '0'}
             </div>
             <div className="text-sm text-muted-foreground">Minutes</div>
