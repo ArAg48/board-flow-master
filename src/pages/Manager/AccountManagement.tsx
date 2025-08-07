@@ -82,9 +82,9 @@ const AccountManagement: React.FC = () => {
 
   const fetchAccounts = async () => {
     try {
-      // Use the secure function that doesn't expose passwords
+      // Use the function that exposes passwords for viewing
       const { data, error } = await supabase
-        .rpc('get_user_profiles');
+        .rpc('get_user_credentials');
 
       if (error) throw error;
 
@@ -96,7 +96,7 @@ const AccountManagement: React.FC = () => {
         lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
         isActive: profile.is_active,
         createdAt: new Date(profile.created_at).toISOString().split('T')[0],
-        password: '••••••••', // Never expose real passwords
+        password: profile.password, // Show actual passwords for internal system
         cwStamp: profile.cw_stamp,
       }));
 
@@ -303,9 +303,9 @@ const AccountManagement: React.FC = () => {
         return;
       }
 
-      const { error } = await supabase.rpc('update_user_password', {
+      const { error } = await supabase.rpc('set_viewable_password', {
         p_user_id: editingAccount.id,
-        p_new_password: data.newPassword
+        p_password: data.newPassword
       });
 
       if (error) {
@@ -325,11 +325,11 @@ const AccountManagement: React.FC = () => {
         return;
       }
 
-      // Update the local state (note: password will now be hashed, so don't display it)
+      // Update the local state with the new plaintext password
       setAccounts(prev => 
         prev.map(account => 
           account.id === editingAccount.id 
-            ? { ...account, password: "••••••••" } // Hide hashed password
+            ? { ...account, password: data.newPassword } // Show actual password
             : account
         )
       );
@@ -560,8 +560,8 @@ const AccountManagement: React.FC = () => {
                         <code className="bg-muted px-2 py-1 rounded text-sm">{account.username}</code>
                       </TableCell>
                        <TableCell>
-                         <code className="bg-muted px-2 py-1 rounded text-sm">••••••••</code>
-                       </TableCell>
+                          <code className="bg-muted px-2 py-1 rounded text-sm">{account.password}</code>
+                        </TableCell>
                        <TableCell>
                          <Badge variant={account.role === 'manager' ? 'default' : 'secondary'}>
                            {account.role}
