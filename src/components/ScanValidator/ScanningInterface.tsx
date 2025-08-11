@@ -561,10 +561,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                     <Button 
                       onClick={onFinishPTL} 
                       variant="default"
-                      disabled={
-                        scannedEntries.length === 0 || 
-                        (ptlOrder.passedCount || 0) < ptlOrder.expectedCount
-                      }
+                      disabled={scannedEntries.length === 0}
                     >
                       Finish PTL
                     </Button>

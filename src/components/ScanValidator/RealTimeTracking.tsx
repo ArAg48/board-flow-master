@@ -48,11 +48,10 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
     const sessionFailed = sessionEntries.filter(e => e.testResult === 'fail').length;
     const sessionPassRate = sessionTotal > 0 ? Math.round((sessionPassed / sessionTotal) * 100) : 0;
     
-    // Overall order progress (from PTL order data)
+    // Overall order progress (from PTL order data - this already includes all passed boards)
     const overallPassed = session.ptlOrder.passedCount || 0;
     const expectedCount = session.ptlOrder.expectedCount;
-    const currentTotalPassed = overallPassed + sessionPassed;
-    const remainingNeeded = Math.max(0, expectedCount - currentTotalPassed);
+    const remainingNeeded = Math.max(0, expectedCount - overallPassed);
     
     return { 
       sessionTotal, 
@@ -61,8 +60,7 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
       sessionPassRate, 
       overallPassed, 
       expectedCount, 
-      remainingNeeded,
-      currentTotalPassed
+      remainingNeeded
     };
   };
 
@@ -118,19 +116,19 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
       </CardHeader>
       <CardContent>
         {/* Overall PTL Progress Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-          <div className="text-sm font-medium text-blue-800 mb-2">PTL Order Progress</div>
-          <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <div className="text-base font-medium text-blue-800 mb-3">PTL Order Progress</div>
+          <div className="grid grid-cols-3 gap-3 text-sm">
             <div className="text-center">
-              <div className="font-semibold text-blue-900">{stats.currentTotalPassed}</div>
+              <div className="text-lg font-semibold text-blue-900">{stats.overallPassed}</div>
               <div className="text-blue-700">Passed Total</div>
             </div>
             <div className="text-center">
-              <div className="font-semibold text-blue-900">{stats.expectedCount}</div>
+              <div className="text-lg font-semibold text-blue-900">{stats.expectedCount}</div>
               <div className="text-blue-700">Required</div>
             </div>
             <div className="text-center">
-              <div className="font-semibold text-blue-900">{stats.remainingNeeded}</div>
+              <div className="text-lg font-semibold text-blue-900">{stats.remainingNeeded}</div>
               <div className="text-blue-700">Still Needed</div>
             </div>
           </div>
