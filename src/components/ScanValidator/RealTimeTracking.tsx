@@ -43,24 +43,34 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
       e.testResult && e.timestamp >= sessionStart
     );
     
-    const total = sessionEntries.length;
-    const passed = sessionEntries.filter(e => e.testResult === 'pass').length;
-    const failed = sessionEntries.filter(e => e.testResult === 'fail').length;
-    const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+    const sessionTotal = sessionEntries.length;
+    const sessionPassed = sessionEntries.filter(e => e.testResult === 'pass').length;
+    const sessionFailed = sessionEntries.filter(e => e.testResult === 'fail').length;
+    const sessionPassRate = sessionTotal > 0 ? Math.round((sessionPassed / sessionTotal) * 100) : 0;
     
     // Overall order progress (from PTL order data)
     const overallPassed = session.ptlOrder.passedCount || 0;
     const expectedCount = session.ptlOrder.expectedCount;
-    const remainingNeeded = Math.max(0, expectedCount - overallPassed);
+    const currentTotalPassed = overallPassed + sessionPassed;
+    const remainingNeeded = Math.max(0, expectedCount - currentTotalPassed);
     
-    return { total, passed, failed, passRate, overallPassed, expectedCount, remainingNeeded };
+    return { 
+      sessionTotal, 
+      sessionPassed, 
+      sessionFailed, 
+      sessionPassRate, 
+      overallPassed, 
+      expectedCount, 
+      remainingNeeded,
+      currentTotalPassed
+    };
   };
 
   const getProductivity = () => {
     const duration = getDuration();
     const totalMinutes = duration.total / 60000;
     const sessionStats = getStats();
-    const scansPerHour = totalMinutes > 0 ? Math.round((sessionStats.total / totalMinutes) * 60) : 0;
+    const scansPerHour = totalMinutes > 0 ? Math.round((sessionStats.sessionTotal / totalMinutes) * 60) : 0;
     
     return { scansPerHour };
   };
@@ -69,7 +79,7 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
     if (recentScans.length < 2) return 'stable';
     
     const recentPassRate = (recentScans.filter(s => s.testResult === 'pass').length / recentScans.length) * 100;
-    const overallPassRate = getStats().passRate;
+    const overallPassRate = getStats().sessionPassRate;
     
     if (recentPassRate > overallPassRate + 5) return 'improving';
     if (recentPassRate < overallPassRate - 5) return 'declining';
@@ -107,12 +117,31 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Overall PTL Progress Banner */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <div className="text-sm font-medium text-blue-800 mb-2">PTL Order Progress</div>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="text-center">
+              <div className="font-semibold text-blue-900">{stats.currentTotalPassed}</div>
+              <div className="text-blue-700">Passed Total</div>
+            </div>
+            <div className="text-center">
+              <div className="font-semibold text-blue-900">{stats.expectedCount}</div>
+              <div className="text-blue-700">Required</div>
+            </div>
+            <div className="text-center">
+              <div className="font-semibold text-blue-900">{stats.remainingNeeded}</div>
+              <div className="text-blue-700">Still Needed</div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {/* Session Duration */}
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <Clock className="h-4 w-4 text-blue-500" />
-              <span className="text-sm text-muted-foreground">Duration</span>
+              <span className="text-sm text-muted-foreground">Session Time</span>
             </div>
             <div className="text-xl font-bold">
               {duration.hours.toString().padStart(2, '0')}:
@@ -121,26 +150,26 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
             </div>
           </div>
 
-          {/* Total Scanned */}
+          {/* Session Scanned */}
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <Target className="h-4 w-4 text-purple-500" />
-              <span className="text-sm text-muted-foreground">Scanned</span>
+              <span className="text-sm text-muted-foreground">This Session</span>
             </div>
-            <div className="text-xl font-bold">{stats.total}</div>
+            <div className="text-xl font-bold">{stats.sessionTotal}</div>
             <div className="text-xs text-muted-foreground">
-              of {session.ptlOrder.expectedCount}
+              boards scanned
             </div>
           </div>
 
-          {/* Pass Rate */}
+          {/* Session Pass Rate */}
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
-              <span className="text-sm text-muted-foreground">Pass Rate</span>
+              <span className="text-sm text-muted-foreground">Session Quality</span>
               {getTrendIcon()}
             </div>
-            <div className="text-xl font-bold">{stats.passRate}%</div>
-            <Badge variant={stats.passRate >= 95 ? 'default' : stats.passRate >= 90 ? 'secondary' : 'destructive'} className="text-xs">
+            <div className="text-xl font-bold">{stats.sessionPassRate}%</div>
+            <Badge variant={stats.sessionPassRate >= 95 ? 'default' : stats.sessionPassRate >= 90 ? 'secondary' : 'destructive'} className="text-xs">
               {trend}
             </Badge>
           </div>
@@ -159,24 +188,27 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
         {/* Session Progress */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Session Progress</span>
-            <span>{stats.total} scanned this session</span>
+            <span>Current Session</span>
+            <span>{stats.sessionPassed} passed / {stats.sessionTotal} scanned</span>
           </div>
           <div className="text-xs text-muted-foreground">
-            Order needs {stats.remainingNeeded} more passed boards ({stats.overallPassed}/{stats.expectedCount} passed total)
+            {stats.remainingNeeded > 0 
+              ? `Need ${stats.remainingNeeded} more passed boards to complete order`
+              : 'Order completion target reached!'
+            }
           </div>
         </div>
 
-        {/* Pass Rate Progress */}
+        {/* Session Pass Rate Progress */}
         <div className="space-y-2 mt-4">
           <div className="flex justify-between text-sm">
-            <span>Quality Rate</span>
-            <span>{stats.passRate}%</span>
+            <span>Session Quality Rate</span>
+            <span>{stats.sessionPassRate}%</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div 
-              className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(stats.passRate)}`}
-              style={{ width: `${stats.passRate}%` }}
+              className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(stats.sessionPassRate)}`}
+              style={{ width: `${stats.sessionPassRate}%` }}
             />
           </div>
         </div>
