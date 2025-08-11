@@ -432,21 +432,8 @@ const ScanValidator: React.FC = () => {
           boardDataCount: boardData?.length || 0
         });
         
-        // Allow finishing if we've reached the target OR if we have scanned entries in this session
-        // and the overall progress is close to completion
-        if (currentPassedCount < expectedCount) {
-          const remaining = expectedCount - currentPassedCount;
-          
-          // More lenient check - allow if close to completion and has session activity
-          if (remaining > 5 || currentSession.scannedEntries.length === 0) {
-            toast({
-              title: "PTL Order Incomplete",
-              description: `Cannot finish PTL order. Still need ${remaining} more passed boards. Current: ${currentPassedCount}/${expectedCount}`,
-              variant: "destructive"
-            });
-            return;
-          }
-        }
+        // Allow finishing if there are scanned entries in this session
+        // Technicians can finish PTL orders early when needed
         
         // Ensure we have some activity in this session
         if (currentSession.scannedEntries.length === 0) {
