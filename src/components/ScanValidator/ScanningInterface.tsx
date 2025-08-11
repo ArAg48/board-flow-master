@@ -558,13 +558,16 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                      return !existingEntry;
                    }).length})
                  </Button>
-                   <Button 
-                     onClick={onFinishPTL} 
-                     variant="default"
-                     disabled={scannedEntries.length === 0}
-                   >
-                     Finish PTL
-                   </Button>
+                    <Button 
+                      onClick={onFinishPTL} 
+                      variant="default"
+                      disabled={
+                        scannedEntries.length === 0 || 
+                        (ptlOrder.passedCount || 0) < ptlOrder.expectedCount
+                      }
+                    >
+                      Finish PTL
+                    </Button>
               </>
             ) : (
               <Button onClick={onResume}>

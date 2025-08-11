@@ -424,11 +424,22 @@ const ScanValidator: React.FC = () => {
         const currentPassedCount = progressData?.passed_count || 0;
         const expectedCount = currentSession.ptlOrder.expectedCount;
         
+        // Strict validation - must have exactly the required number or more
         if (currentPassedCount < expectedCount) {
           const remaining = expectedCount - currentPassedCount;
           toast({
-            title: "Order Not Complete",
-            description: `Need ${remaining} more passed boards to complete this order (${currentPassedCount}/${expectedCount} passed)`,
+            title: "PTL Order Incomplete",
+            description: `Cannot finish PTL order. Still need ${remaining} more passed boards. Current: ${currentPassedCount}/${expectedCount}`,
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        // Additional validation - ensure we actually have scan entries in this session
+        if (currentSession.scannedEntries.length === 0) {
+          toast({
+            title: "No Scans in Session",
+            description: "Cannot finish PTL without any scanned boards in this session.",
             variant: "destructive"
           });
           return;
@@ -439,13 +450,12 @@ const ScanValidator: React.FC = () => {
         console.error('Error checking PTL progress:', error);
         toast({
           title: "Error",
-          description: "Could not verify PTL completion status",
+          description: "Could not verify PTL completion status. Please try again.",
           variant: "destructive"
         });
       }
     }
   };
-
   const handlePostTestComplete = async () => {
     if (currentSession) {
       const endTime = new Date();
