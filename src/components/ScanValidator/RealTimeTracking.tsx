@@ -4,6 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Clock, Target, Activity, Zap } from 'lucide-react';
 import { ScanEntry, ValidationSession } from '@/types/scan-validator';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RealTimeTrackingProps {
   session: ValidationSession;
@@ -12,6 +13,11 @@ interface RealTimeTrackingProps {
 const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [recentScans, setRecentScans] = useState<ScanEntry[]>([]);
+  const [liveProgress, setLiveProgress] = useState({
+    passedCount: session.ptlOrder.passedCount || 0,
+    scannedCount: session.ptlOrder.scannedCount || 0,
+    failedCount: session.ptlOrder.failedCount || 0
+  });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -25,6 +31,34 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
     const lastFiveScans = session.scannedEntries.slice(-5);
     setRecentScans(lastFiveScans);
   }, [session.scannedEntries]);
+
+  useEffect(() => {
+    // Listen for PTL progress updates and refresh data
+    const handleProgressUpdate = async (event: CustomEvent) => {
+      if (event.detail.orderId === session.ptlOrder.id) {
+        try {
+          const { data: progressData } = await supabase
+            .from('ptl_order_progress')
+            .select('passed_count, scanned_count, failed_count')
+            .eq('id', session.ptlOrder.id)
+            .single();
+
+          if (progressData) {
+            setLiveProgress({
+              passedCount: progressData.passed_count || 0,
+              scannedCount: progressData.scanned_count || 0,
+              failedCount: progressData.failed_count || 0
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching updated progress:', error);
+        }
+      }
+    };
+
+    window.addEventListener('ptlProgressUpdated', handleProgressUpdate as EventListener);
+    return () => window.removeEventListener('ptlProgressUpdated', handleProgressUpdate as EventListener);
+  }, [session.ptlOrder.id]);
 
   const getDuration = () => {
     const start = session.startTime;
@@ -48,8 +82,8 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
     const sessionFailed = sessionEntries.filter(e => e.testResult === 'fail').length;
     const sessionPassRate = sessionTotal > 0 ? Math.round((sessionPassed / sessionTotal) * 100) : 0;
     
-    // Overall order progress (from PTL order data - this already includes all passed boards)
-    const overallPassed = session.ptlOrder.passedCount || 0;
+    // Overall order progress (use live progress data for accurate real-time display)
+    const overallPassed = liveProgress.passedCount;
     const expectedCount = session.ptlOrder.expectedCount;
     const remainingNeeded = Math.max(0, expectedCount - overallPassed);
     
