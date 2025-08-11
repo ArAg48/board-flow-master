@@ -500,15 +500,10 @@ const ScanValidator: React.FC = () => {
   const getSessionStats = () => {
     if (!currentSession) return { total: 0, passed: 0, failed: 0, passRate: 0 };
     
-    // Only count entries that were scanned during THIS session (after session start time)
-    const sessionStart = currentSession.startTime;
-    const sessionEntries = currentSession.scannedEntries.filter(entry => 
-      entry.testResult && entry.timestamp >= sessionStart
-    );
-    
-    const total = sessionEntries.length;
-    const passed = sessionEntries.filter(e => e.testResult === 'pass').length;
-    const failed = sessionEntries.filter(e => e.testResult === 'fail').length;
+    // Show overall PTL order progress (all scanned entries for this order)
+    const total = currentSession.scannedEntries.filter(e => e.testResult).length;
+    const passed = currentSession.scannedEntries.filter(e => e.testResult === 'pass').length;
+    const failed = currentSession.scannedEntries.filter(e => e.testResult === 'fail').length;
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     
     return { total, passed, failed, passRate };
