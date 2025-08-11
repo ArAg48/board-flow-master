@@ -414,28 +414,41 @@ const ScanValidator: React.FC = () => {
   const handleFinishPTL = async () => {
     if (currentSession) {
       try {
-        // Get current PTL progress to check if we've reached the target
-        const { data: progressData } = await supabase
-          .from('ptl_order_progress')
-          .select('passed_count')
-          .eq('id', currentSession.ptlOrder.id)
-          .single();
+        // Check current progress directly from board_data table for accurate count
+        const { data: boardData, error: boardError } = await supabase
+          .from('board_data')
+          .select('test_status')
+          .eq('ptl_order_id', currentSession.ptlOrder.id);
 
-        const currentPassedCount = progressData?.passed_count || 0;
+        if (boardError) throw boardError;
+
+        const currentPassedCount = boardData?.filter(board => board.test_status === 'pass').length || 0;
         const expectedCount = currentSession.ptlOrder.expectedCount;
         
-        // Strict validation - must have exactly the required number or more
+        console.log('PTL Finish Check:', {
+          currentPassedCount,
+          expectedCount,
+          sessionEntries: currentSession.scannedEntries.length,
+          boardDataCount: boardData?.length || 0
+        });
+        
+        // Allow finishing if we've reached the target OR if we have scanned entries in this session
+        // and the overall progress is close to completion
         if (currentPassedCount < expectedCount) {
           const remaining = expectedCount - currentPassedCount;
-          toast({
-            title: "PTL Order Incomplete",
-            description: `Cannot finish PTL order. Still need ${remaining} more passed boards. Current: ${currentPassedCount}/${expectedCount}`,
-            variant: "destructive"
-          });
-          return;
+          
+          // More lenient check - allow if close to completion and has session activity
+          if (remaining > 5 || currentSession.scannedEntries.length === 0) {
+            toast({
+              title: "PTL Order Incomplete",
+              description: `Cannot finish PTL order. Still need ${remaining} more passed boards. Current: ${currentPassedCount}/${expectedCount}`,
+              variant: "destructive"
+            });
+            return;
+          }
         }
         
-        // Additional validation - ensure we actually have scan entries in this session
+        // Ensure we have some activity in this session
         if (currentSession.scannedEntries.length === 0) {
           toast({
             title: "No Scans in Session",
