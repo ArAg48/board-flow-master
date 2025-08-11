@@ -383,6 +383,12 @@ const ScanValidator: React.FC = () => {
         scannedEntries: [...prevSession.scannedEntries, entry]
       };
       console.log('Updated session scanned entries after:', updatedSession.scannedEntries.length);
+      
+      // Force a re-render to update stats display
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('sessionStatsUpdated'));
+      }, 100);
+      
       return updatedSession;
     });
   };
@@ -405,30 +411,38 @@ const ScanValidator: React.FC = () => {
     }
   };
 
-  const handleFinishPTL = () => {
+  const handleFinishPTL = async () => {
     if (currentSession) {
-      // Calculate session duration
-      const startTime = new Date(currentSession.startTime);
-      const endTime = new Date();
-      const durationMs = endTime.getTime() - startTime.getTime();
-      const durationMinutes = Math.floor(durationMs / (1000 * 60));
-      
-      // Check if we've reached the expected number of passed boards
-      const currentPassed = currentSession.scannedEntries.filter(e => e.testResult === 'pass').length;
-      const expectedCount = currentSession.ptlOrder.expectedCount;
-      const overallPassed = (currentSession.ptlOrder.passedCount || 0) + currentPassed;
-      
-      if (overallPassed < expectedCount) {
-        const remaining = expectedCount - overallPassed;
+      try {
+        // Get current PTL progress to check if we've reached the target
+        const { data: progressData } = await supabase
+          .from('ptl_order_progress')
+          .select('passed_count')
+          .eq('id', currentSession.ptlOrder.id)
+          .single();
+
+        const currentPassedCount = progressData?.passed_count || 0;
+        const expectedCount = currentSession.ptlOrder.expectedCount;
+        
+        if (currentPassedCount < expectedCount) {
+          const remaining = expectedCount - currentPassedCount;
+          toast({
+            title: "Order Not Complete",
+            description: `Need ${remaining} more passed boards to complete this order (${currentPassedCount}/${expectedCount} passed)`,
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        setCurrentSession({ ...currentSession, status: 'post-test' });
+      } catch (error) {
+        console.error('Error checking PTL progress:', error);
         toast({
-          title: "Order Not Complete",
-          description: `Need ${remaining} more passed boards to complete this order (${overallPassed}/${expectedCount} passed)`,
+          title: "Error",
+          description: "Could not verify PTL completion status",
           variant: "destructive"
         });
-        return;
       }
-      
-      setCurrentSession({ ...currentSession, status: 'post-test' });
     }
   };
 
@@ -508,6 +522,17 @@ const ScanValidator: React.FC = () => {
     
     return { total, passed, failed, passRate };
   };
+
+  // Add effect to listen for stats updates
+  useEffect(() => {
+    const handleStatsUpdate = () => {
+      // Force a re-render by updating a state value
+      setCurrentSession(prevSession => ({ ...prevSession }));
+    };
+    
+    window.addEventListener('sessionStatsUpdated', handleStatsUpdate);
+    return () => window.removeEventListener('sessionStatsUpdated', handleStatsUpdate);
+  }, []);
 
   const stats = getSessionStats();
 

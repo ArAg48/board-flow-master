@@ -414,55 +414,6 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Dashboard</CardTitle>
-                <CardDescription>Your daily progress and achievements</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-medium">Today's Goal</span>
-                    </div>
-                    <span className="text-sm font-bold">50 boards</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-sm font-medium">Completed</span>
-                    </div>
-                    <span className="text-sm font-bold">{stats.todayTests}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-orange-500" />
-                      <span className="text-sm font-medium">Quality Score</span>
-                    </div>
-                    <Badge variant={stats.techSuccessRate >= 95 ? 'default' : 'secondary'}>
-                      {stats.techSuccessRate}%
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm font-medium">Avg. Speed</span>
-                    </div>
-                    <span className="text-sm font-bold">{stats.techAvgTime}</span>
-                  </div>
-                  
-                  <div className="pt-2 border-t">
-                    <div className="text-xs text-muted-foreground text-center">
-                      Keep up the great work! 🎯
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </>
       )}
