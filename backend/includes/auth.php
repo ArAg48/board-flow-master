@@ -8,14 +8,14 @@ class Auth {
         $this->db = (new Database())->getConnection();
     }
 
-    // Hash password securely using bcrypt
+    // Store password as plain text (no security required)
     public function hashPassword($password) {
-        return password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        return $password;
     }
 
-    // Verify password against hash
+    // Verify password as plain text
     public function verifyPassword($password, $storedPassword) {
-        return password_verify($password, $storedPassword);
+        return $password === $storedPassword;
     }
 
     // Authenticate user
@@ -158,7 +158,7 @@ class Auth {
         $headerEncoded = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
         $payloadEncoded = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
 
-        $signature = hash_hmac('sha256', $headerEncoded . "." . $payloadEncoded, $this->getJWTSecret(), true);
+        $signature = hash_hmac('sha256', $headerEncoded . "." . $payloadEncoded, 'your-secret-key', true);
         $signatureEncoded = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
 
         return $headerEncoded . "." . $payloadEncoded . "." . $signatureEncoded;
@@ -176,7 +176,7 @@ class Auth {
         $signature = $parts[2];
 
         $expectedSignature = str_replace(['+', '/', '='], ['-', '_', ''], 
-            base64_encode(hash_hmac('sha256', $parts[0] . "." . $parts[1], $this->getJWTSecret(), true))
+            base64_encode(hash_hmac('sha256', $parts[0] . "." . $parts[1], 'your-secret-key', true))
         );
 
         if ($signature !== $expectedSignature) {
@@ -189,37 +189,6 @@ class Auth {
         }
 
         return $payloadData;
-    }
-
-    // Get JWT secret from environment or generate secure fallback
-    private function getJWTSecret() {
-        $secret = $_ENV['JWT_SECRET'] ?? null;
-        if (!$secret) {
-            // Generate a secure random secret if not set in environment
-            $secret = base64_encode(random_bytes(64));
-            error_log("Warning: JWT_SECRET not set in environment. Using generated secret.");
-        }
-        return $secret;
-    }
-
-    // Migrate existing plaintext passwords to hashed versions
-    public function migratePasswordsToHashed() {
-        try {
-            $stmt = $this->db->prepare("SELECT id, password FROM profiles WHERE password NOT LIKE '$2y$%'");
-            $stmt->execute();
-            $users = $stmt->fetchAll();
-
-            foreach ($users as $user) {
-                $hashedPassword = $this->hashPassword($user['password']);
-                $updateStmt = $this->db->prepare("UPDATE profiles SET password = ? WHERE id = ?");
-                $updateStmt->execute([$hashedPassword, $user['id']]);
-            }
-
-            return count($users);
-        } catch (PDOException $e) {
-            error_log("Password migration error: " . $e->getMessage());
-            return false;
-        }
     }
 }
 ?>

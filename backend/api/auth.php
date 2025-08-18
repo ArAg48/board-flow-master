@@ -23,20 +23,11 @@ try {
 
             switch ($action) {
                 case 'login':
-                    // Enhanced input validation
                     $username = $input['username'] ?? '';
                     $password = $input['password'] ?? '';
 
                     if (empty($username) || empty($password)) {
                         throw new Exception('Username and password are required');
-                    }
-                    
-                    // Sanitize inputs
-                    $username = filter_var(trim($username), FILTER_SANITIZE_STRING);
-                    
-                    // Validate input lengths
-                    if (strlen($username) < 3 || strlen($username) > 50 || strlen($password) < 6 || strlen($password) > 100) {
-                        throw new Exception('Invalid username or password format');
                     }
 
                     $user = $auth->authenticateUser($username, $password);
@@ -53,26 +44,12 @@ try {
                     break;
 
                 case 'create_user':
-                    // Enhanced input validation for user creation
-                    $required_fields = ['username', 'password', 'first_name', 'last_name', 'role'];
-                    foreach ($required_fields as $field) {
-                        if (!isset($input[$field]) || empty(trim($input[$field]))) {
-                            throw new Exception("Field '{$field}' is required");
-                        }
-                    }
-                    
-                    // Sanitize inputs
-                    $username = filter_var(trim($input['username']), FILTER_SANITIZE_STRING);
-                    $firstName = filter_var(trim($input['first_name']), FILTER_SANITIZE_STRING);
-                    $lastName = filter_var(trim($input['last_name']), FILTER_SANITIZE_STRING);
-                    $role = filter_var(trim($input['role']), FILTER_SANITIZE_STRING);
-                    $password = $input['password'];
-                    $cwStamp = isset($input['cw_stamp']) ? filter_var(trim($input['cw_stamp']), FILTER_SANITIZE_STRING) : null;
-                    
-                    // Validate role
-                    if (!in_array($role, ['manager', 'technician'])) {
-                        throw new Exception('Invalid role specified');
-                    }
+                    $username = $input['username'] ?? '';
+                    $password = $input['password'] ?? '';
+                    $firstName = $input['first_name'] ?? '';
+                    $lastName = $input['last_name'] ?? '';
+                    $role = $input['role'] ?? 'technician';
+                    $cwStamp = $input['cw_stamp'] ?? null;
 
                     $userId = $auth->createUserAccount($username, $password, $firstName, $lastName, $role, $cwStamp);
                     echo json_encode([

@@ -1,19 +1,11 @@
 <?php
 // Database configuration
 class Database {
-    private $host;
-    private $dbname;
-    private $username;
-    private $password;
+    private $host = 'localhost';
+    private $dbname = 'axxessup_cpses_ax6szfw66e_work_inventory';
+    private $username = 'axxessup_Arjun';
+    private $password = 'plop1128.';
     private $pdo;
-
-    public function __construct() {
-        // Load environment variables with fallbacks for development
-        $this->host = $_ENV['DB_HOST'] ?? 'localhost';
-        $this->dbname = $_ENV['DB_NAME'] ?? 'axxessup_cpses_ax6szfw66e_work_inventory';
-        $this->username = $_ENV['DB_USERNAME'] ?? 'axxessup_Arjun';
-        $this->password = $_ENV['DB_PASSWORD'] ?? 'plop1128.';
-    }
 
     public function connect() {
         if ($this->pdo === null) {
