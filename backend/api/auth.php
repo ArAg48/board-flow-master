@@ -33,11 +33,11 @@ try {
                     $user = $auth->authenticateUser($username, $password);
                     if ($user) {
                         $token = $auth->generateJWT($user['id'], $user['role']);
-                        echo json_encode([
+                        echo json_encode(array(
                             'success' => true,
                             'user' => $user,
                             'token' => $token
-                        ]);
+                        ));
                     } else {
                         throw new Exception('Invalid credentials');
                     }
@@ -52,58 +52,58 @@ try {
                     $cwStamp = isset($input['cw_stamp']) ? $input['cw_stamp'] : null;
 
                     $userId = $auth->createUserAccount($username, $password, $firstName, $lastName, $role, $cwStamp);
-                    echo json_encode([
+                    echo json_encode(array(
                         'success' => true,
                         'user_id' => $userId,
                         'message' => 'User created successfully'
-                    ]);
+                    ));
                     break;
 
                 case 'get_users':
                     $users = $auth->getUserProfiles();
-                    echo json_encode([
+                    echo json_encode(array(
                         'success' => true,
                         'users' => $users
-                    ]);
+                    ));
                     break;
 
                 case 'toggle_user_status':
                     $userId = isset($input['user_id']) ? $input['user_id'] : '';
                     $result = $auth->toggleUserStatus($userId);
-                    echo json_encode([
+                    echo json_encode(array(
                         'success' => $result,
                         'message' => $result ? 'User status updated' : 'Failed to update user status'
-                    ]);
+                    ));
                     break;
 
                 case 'update_password':
                     $userId = isset($input['user_id']) ? $input['user_id'] : '';
                     $newPassword = isset($input['new_password']) ? $input['new_password'] : '';
                     $result = $auth->updateUserPassword($userId, $newPassword);
-                    echo json_encode([
+                    echo json_encode(array(
                         'success' => $result,
                         'message' => $result ? 'Password updated' : 'Failed to update password'
-                    ]);
+                    ));
                     break;
 
                 case 'delete_user':
                     $userId = isset($input['user_id']) ? $input['user_id'] : '';
                     $result = $auth->deleteUserAccount($userId);
-                    echo json_encode([
+                    echo json_encode(array(
                         'success' => $result,
                         'message' => $result ? 'User deleted' : 'Failed to delete user'
-                    ]);
+                    ));
                     break;
 
                 case 'verify_token':
                     $token = isset($input['token']) ? $input['token'] : '';
                     $payload = $auth->verifyJWT($token);
                     if ($payload) {
-                        echo json_encode([
+                        echo json_encode(array(
                             'success' => true,
                             'user_id' => $payload['user_id'],
                             'role' => $payload['role']
-                        ]);
+                        ));
                     } else {
                         throw new Exception('Invalid or expired token');
                     }
@@ -119,9 +119,9 @@ try {
     }
 } catch (Exception $e) {
     http_response_code(400);
-    echo json_encode([
+    echo json_encode(array(
         'success' => false,
         'error' => $e->getMessage()
-    ]);
+    ));
 }
 ?>
