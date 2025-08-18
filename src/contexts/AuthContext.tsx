@@ -44,11 +44,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedSession = localStorage.getItem('user_session');
       if (storedSession) {
         const session = JSON.parse(storedSession);
-        // Verify the stored token is still valid
         try {
-          const response = await apiClient.verifyToken(session.token);
-          if (response.valid) {
-            setUser(response.user);
+          const resp = await apiClient.verifyToken(session.token);
+          if (resp && resp.success) {
+            if (session.user) {
+              setUser(session.user);
+            } else {
+              // Fallback minimal user shape from token payload
+              setUser({
+                id: resp.user_id,
+                username: session.user?.username || '',
+                first_name: '',
+                last_name: '',
+                full_name: session.user?.full_name || '',
+                role: resp.role || 'technician',
+                is_active: true,
+                cw_stamp: session.user?.cw_stamp,
+              });
+            }
           } else {
             localStorage.removeItem('user_session');
           }
@@ -78,19 +91,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Set the auth token for future requests
       apiClient.setToken(response.token);
 
-      // Get user profile from token verification
-      const userResponse = await apiClient.verifyToken(response.token);
-      
-      if (!userResponse.valid) {
-        throw new Error('Failed to load user profile');
-      }
+      // Use user object from login response directly
+      const loggedInUser: AppUser = {
+        id: response.user.id,
+        username: response.user.username,
+        first_name: response.user.first_name || '',
+        last_name: response.user.last_name || '',
+        full_name: response.user.full_name || '',
+        role: response.user.role,
+        is_active: response.user.is_active,
+        cw_stamp: response.user.cw_stamp,
+      };
 
-      setUser(userResponse.user);
+      setUser(loggedInUser);
 
       // Store session data
       localStorage.setItem('user_session', JSON.stringify({
         token: response.token,
-        user: userResponse.user
+        user: loggedInUser,
       }));
 
     } catch (error) {
