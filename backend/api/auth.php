@@ -10,6 +10,41 @@ header('Content-Type: application/json');
 @ini_set('html_errors', '0');
 @error_reporting(0);
 
+// Output buffering to prevent stray output
+if (!ob_get_level()) { ob_start(); }
+
+// JSON error helpers compatible with older PHP versions
+if (!function_exists('api_json_error')) {
+    function api_json_error($msg, $code = 500) {
+        while (ob_get_level() > 0) { @ob_end_clean(); }
+        header('Content-Type: application/json');
+        http_response_code($code);
+        echo json_encode(array('success' => false, 'error' => $msg));
+        exit;
+    }
+}
+
+if (!function_exists('api_error_handler')) {
+    function api_error_handler($errno, $errstr, $errfile, $errline) {
+        // Respect @ operator
+        if (error_reporting() === 0) { return false; }
+        api_json_error('PHP error ['.$errno.']: '.$errstr.' at '.$errfile.':'.$errline, 500);
+        return true;
+    }
+}
+
+if (!function_exists('api_shutdown_handler')) {
+    function api_shutdown_handler() {
+        $e = error_get_last();
+        if ($e && in_array($e['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR))) {
+            api_json_error('Fatal server error: '.$e['message'].' at '.$e['file'].':'.$e['line'], 500);
+        }
+    }
+}
+
+set_error_handler('api_error_handler');
+register_shutdown_function('api_shutdown_handler');
+
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -124,11 +159,7 @@ try {
         default:
             throw new Exception('Method not allowed');
     }
-} catch (Throwable $e) {
-    http_response_code(400);
-    echo json_encode(array(
-        'success' => false,
-        'error' => $e->getMessage()
-    ));
+} catch (Exception $e) {
+    api_json_error($e->getMessage(), 400);
 }
 ?>
