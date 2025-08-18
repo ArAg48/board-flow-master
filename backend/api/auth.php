@@ -19,12 +19,12 @@ $input = json_decode(file_get_contents('php://input'), true);
 try {
     switch ($_SERVER['REQUEST_METHOD']) {
         case 'POST':
-            $action = $input['action'] ?? '';
+            $action = isset($input['action']) ? $input['action'] : '';
 
             switch ($action) {
                 case 'login':
-                    $username = $input['username'] ?? '';
-                    $password = $input['password'] ?? '';
+                    $username = isset($input['username']) ? $input['username'] : '';
+                    $password = isset($input['password']) ? $input['password'] : '';
 
                     if (empty($username) || empty($password)) {
                         throw new Exception('Username and password are required');
@@ -44,12 +44,12 @@ try {
                     break;
 
                 case 'create_user':
-                    $username = $input['username'] ?? '';
-                    $password = $input['password'] ?? '';
-                    $firstName = $input['first_name'] ?? '';
-                    $lastName = $input['last_name'] ?? '';
-                    $role = $input['role'] ?? 'technician';
-                    $cwStamp = $input['cw_stamp'] ?? null;
+                    $username = isset($input['username']) ? $input['username'] : '';
+                    $password = isset($input['password']) ? $input['password'] : '';
+                    $firstName = isset($input['first_name']) ? $input['first_name'] : '';
+                    $lastName = isset($input['last_name']) ? $input['last_name'] : '';
+                    $role = isset($input['role']) ? $input['role'] : 'technician';
+                    $cwStamp = isset($input['cw_stamp']) ? $input['cw_stamp'] : null;
 
                     $userId = $auth->createUserAccount($username, $password, $firstName, $lastName, $role, $cwStamp);
                     echo json_encode([
@@ -68,7 +68,7 @@ try {
                     break;
 
                 case 'toggle_user_status':
-                    $userId = $input['user_id'] ?? '';
+                    $userId = isset($input['user_id']) ? $input['user_id'] : '';
                     $result = $auth->toggleUserStatus($userId);
                     echo json_encode([
                         'success' => $result,
@@ -77,8 +77,8 @@ try {
                     break;
 
                 case 'update_password':
-                    $userId = $input['user_id'] ?? '';
-                    $newPassword = $input['new_password'] ?? '';
+                    $userId = isset($input['user_id']) ? $input['user_id'] : '';
+                    $newPassword = isset($input['new_password']) ? $input['new_password'] : '';
                     $result = $auth->updateUserPassword($userId, $newPassword);
                     echo json_encode([
                         'success' => $result,
@@ -87,7 +87,7 @@ try {
                     break;
 
                 case 'delete_user':
-                    $userId = $input['user_id'] ?? '';
+                    $userId = isset($input['user_id']) ? $input['user_id'] : '';
                     $result = $auth->deleteUserAccount($userId);
                     echo json_encode([
                         'success' => $result,
@@ -96,7 +96,7 @@ try {
                     break;
 
                 case 'verify_token':
-                    $token = $input['token'] ?? '';
+                    $token = isset($input['token']) ? $input['token'] : '';
                     $payload = $auth->verifyJWT($token);
                     if ($payload) {
                         echo json_encode([
