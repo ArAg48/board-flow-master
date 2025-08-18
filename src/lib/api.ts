@@ -41,7 +41,12 @@ class ApiClient {
     let data: any = null;
 
     if (contentType.includes('application/json')) {
-      data = await response.json();
+      try {
+        data = await response.json();
+      } catch (e) {
+        rawText = await response.text();
+        try { data = JSON.parse(rawText); } catch {}
+      }
     } else {
       rawText = await response.text();
       try {
