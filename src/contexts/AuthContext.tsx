@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .from('profiles')
           .select('*')
           .eq('id', session.userId)
-          .single();
+          .maybeSingle();
 
         if (!error && profile) {
           const nameParts = profile.full_name?.split(' ') || [];
@@ -83,11 +83,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadUserProfile = async (authUser: User) => {
     try {
-      const { data: profile, error } = await supabase
+       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading user profile:', error);
@@ -132,48 +132,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userAuth = data[0];
       
-      // Load the full profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('username', username)
-        .single();
-
-      if (profileError || !profile) {
-        throw new Error('Failed to load user profile');
-      }
-
-      // Sign in with Supabase auth to establish proper session for RLS
-      // Create a dummy email from username for Supabase auth
+      // Establish Supabase auth session BEFORE fetching the profile (required for RLS)
       const dummyEmail = `${username}@internal.local`;
-      
       try {
-        // Try to sign in with existing auth user
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        const { error: authError } = await supabase.auth.signInWithPassword({
           email: dummyEmail,
-          password: password
+          password,
         });
 
-        // If user doesn't exist in auth, create them
+        // If user doesn't exist in auth, create them and try again
         if (authError && authError.message.includes('Invalid login credentials')) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          const { error: signUpError } = await supabase.auth.signUp({
             email: dummyEmail,
-            password: password,
+            password,
             options: {
-              data: {
-                user_id: profile.id
-              }
-            }
+              data: { user_id: userAuth.user_id },
+            },
           });
-
           if (signUpError) {
             console.error('Auth signup error:', signUpError);
-            // Continue without auth session if signup fails
+          } else {
+            // Try sign-in once after successful signup
+            await supabase.auth.signInWithPassword({ email: dummyEmail, password });
           }
         }
       } catch (authError) {
         console.error('Auth setup error:', authError);
-        // Continue without auth session if auth setup fails
+        // Continue even if auth setup fails; RLS may still block profile fetch
+      }
+
+      // Load the full profile (query by id and tolerate no row with maybeSingle)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userAuth.user_id)
+        .maybeSingle();
+
+      if (profileError || !profile) {
+        throw new Error('Failed to load user profile');
       }
 
       // Split full_name into first_name and last_name
