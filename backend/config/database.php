@@ -1,10 +1,10 @@
 <?php
 // Database configuration
 class Database {
-    private $host = 'localhost';
+    private $host = 'localhost:3306';
     private $dbname = 'axxessup_cpses_ax6szfw66e_work_inventory';
     private $username = 'axxessup_Arjun';
-    private $password = 'plop1128.';
+    private $password = 'U@ctHJLMTK?#Q&%!';
     private $pdo;
 
     public function connect() {

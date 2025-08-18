@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { apiClient } from '@/lib/api';
 
 // User interface for our app
 interface AppUser {
@@ -42,77 +41,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkUser = async () => {
     try {
-      const storedSession = localStorage.getItem('supabase_user_session');
+      const storedSession = localStorage.getItem('user_session');
       if (storedSession) {
         const session = JSON.parse(storedSession);
-        // Load the full profile using the stored session
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.userId)
-          .maybeSingle();
-
-        if (!error && profile) {
-          const nameParts = profile.full_name?.split(' ') || [];
-          const firstName = nameParts[0] || '';
-          const lastName = nameParts.slice(1).join(' ') || '';
-
-          setUser({
-            id: profile.id,
-            username: profile.username,
-            first_name: firstName,
-            last_name: lastName,
-            full_name: profile.full_name || '',
-            role: profile.role,
-            is_active: profile.is_active,
-            cw_stamp: profile.cw_stamp
-          });
-        } else {
-          // If profile fetch fails, clear invalid session
-          localStorage.removeItem('supabase_user_session');
+        // Verify the stored token is still valid
+        try {
+          const response = await apiClient.verifyToken(session.token);
+          if (response.valid) {
+            setUser(response.user);
+          } else {
+            localStorage.removeItem('user_session');
+          }
+        } catch (error) {
+          localStorage.removeItem('user_session');
         }
       }
     } catch (error) {
       console.error('Error checking user session:', error);
-      // Clear invalid session on error
-      localStorage.removeItem('supabase_user_session');
+      localStorage.removeItem('user_session');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadUserProfile = async (authUser: User) => {
-    try {
-       const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error loading user profile:', error);
-        return;
-      }
-
-      if (profile) {
-        // Split full_name into first_name and last_name
-        const nameParts = profile.full_name?.split(' ') || [];
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-
-        setUser({
-          id: profile.id,
-          username: profile.username,
-          first_name: firstName,
-          last_name: lastName,
-          full_name: profile.full_name || '',
-          role: profile.role,
-          is_active: profile.is_active,
-          cw_stamp: profile.cw_stamp
-        });
-      }
-    } catch (error) {
-      console.error('Error loading user profile:', error);
     }
   };
 
@@ -120,79 +68,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
 
-      // Use Supabase function to authenticate
-      const { data, error } = await supabase.rpc('authenticate_user', {
-        input_username: username,
-        input_password: password
-      });
-
-      if (error || !data || data.length === 0) {
+      // Use PHP API to authenticate
+      const response = await apiClient.login(username, password);
+      
+      if (!response.success) {
         throw new Error('Invalid credentials');
       }
 
-      const userAuth = data[0];
+      // Set the auth token for future requests
+      apiClient.setToken(response.token);
+
+      // Get user profile from token verification
+      const userResponse = await apiClient.verifyToken(response.token);
       
-      // Establish Supabase auth session BEFORE fetching the profile (required for RLS)
-      const dummyEmail = `${username}@internal.local`;
-      try {
-        const { error: authError } = await supabase.auth.signInWithPassword({
-          email: dummyEmail,
-          password,
-        });
-
-        // If user doesn't exist in auth, create them and try again
-        if (authError && authError.message.includes('Invalid login credentials')) {
-          const { error: signUpError } = await supabase.auth.signUp({
-            email: dummyEmail,
-            password,
-            options: {
-              data: { user_id: userAuth.user_id },
-            },
-          });
-          if (signUpError) {
-            console.error('Auth signup error:', signUpError);
-          } else {
-            // Try sign-in once after successful signup
-            await supabase.auth.signInWithPassword({ email: dummyEmail, password });
-          }
-        }
-      } catch (authError) {
-        console.error('Auth setup error:', authError);
-        // Continue even if auth setup fails; RLS may still block profile fetch
-      }
-
-      // Load the full profile (query by id and tolerate no row with maybeSingle)
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userAuth.user_id)
-        .maybeSingle();
-
-      if (profileError || !profile) {
+      if (!userResponse.valid) {
         throw new Error('Failed to load user profile');
       }
 
-      // Split full_name into first_name and last_name
-      const nameParts = profile.full_name?.split(' ') || [];
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
+      setUser(userResponse.user);
 
-      setUser({
-        id: profile.id,
-        username: profile.username,
-        first_name: firstName,
-        last_name: lastName,
-        full_name: profile.full_name || '',
-        role: profile.role,
-        is_active: profile.is_active,
-        cw_stamp: profile.cw_stamp
-      });
-
-      // Store a simple token for session persistence
-      localStorage.setItem('supabase_user_session', JSON.stringify({
-        userId: profile.id,
-        username: profile.username,
-        role: profile.role
+      // Store session data
+      localStorage.setItem('user_session', JSON.stringify({
+        token: response.token,
+        user: userResponse.user
       }));
 
     } catch (error) {
@@ -207,49 +105,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // End any active scan sessions for this technician before logging out
       if (user?.id) {
-        const { data: activeSessions, error: sessionsError } = await supabase
-          .from('scan_sessions')
-          .select('id, start_time')
-          .eq('technician_id', user.id)
-          .eq('is_active', true);
-
-        if (!sessionsError && activeSessions && activeSessions.length > 0) {
-          const now = new Date();
-          // Finalize each active session with accurate end time and duration
-          await Promise.all(
-            activeSessions.map(async (s) => {
-              const start = new Date(s.start_time);
-              const durationMinutes = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 60000));
-
-              // Mark session completed and inactive
-              await supabase
-                .from('scan_sessions')
-                .update({
-                  status: 'completed',
-                  is_active: false,
-                  end_time: now.toISOString(),
-                  duration_minutes: durationMinutes,
-                })
-                .eq('id', s.id);
-
-              // Ensure any remaining server-side flags are cleared
-              try {
-                await supabase.rpc('deactivate_session', { p_session_id: s.id });
-              } catch (e) {
-                // ignore
-              }
-            })
-          );
+        try {
+          const activeSession = await apiClient.getActiveSession(user.id);
+          if (activeSession) {
+            await apiClient.deactivateSession(activeSession.session_id);
+          }
+        } catch (error) {
+          console.error('Error ending scan session:', error);
         }
       }
 
-      await supabase.auth.signOut();
-      localStorage.removeItem('supabase_user_session');
+      // Clear auth token and user data
+      apiClient.removeToken();
+      localStorage.removeItem('user_session');
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
       // Still clear user state even if logout fails
-      localStorage.removeItem('supabase_user_session');
+      apiClient.removeToken();
+      localStorage.removeItem('user_session');
       setUser(null);
     }
   };
