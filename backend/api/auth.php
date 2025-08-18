@@ -18,10 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../includes/auth.php';
 
-$auth = new Auth();
-$input = json_decode(file_get_contents('php://input'), true);
-
 try {
+    $auth = new Auth();
+    $raw = file_get_contents('php://input');
+    $input = json_decode($raw, true);
+    if (!is_array($input)) { $input = array(); }
+
     switch ($_SERVER['REQUEST_METHOD']) {
         case 'POST':
             $action = isset($input['action']) ? $input['action'] : '';
@@ -122,7 +124,7 @@ try {
         default:
             throw new Exception('Method not allowed');
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(400);
     echo json_encode(array(
         'success' => false,
