@@ -132,11 +132,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userAuth = data[0];
       
-      // Load the full profile
+      // Load the full profile using the user ID from auth response
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('username', username)
+        .eq('id', userAuth.user_id)
         .single();
 
       if (profileError || !profile) {
