@@ -507,8 +507,12 @@ export type Database = {
       authenticate_user: {
         Args: { input_password: string; input_username: string }
         Returns: {
-          user_id: string
-          user_role: Database["public"]["Enums"]["user_role"]
+          cw_stamp: string
+          full_name: string
+          id: string
+          is_active: boolean
+          role: string
+          username: string
         }[]
       }
       count_scanned_boards: {
