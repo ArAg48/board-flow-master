@@ -5,6 +5,11 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Content-Type: application/json');
 
+// Ensure errors are not output as HTML (prevents breaking JSON responses)
+@ini_set('display_errors', '0');
+@ini_set('html_errors', '0');
+@error_reporting(0);
+
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
