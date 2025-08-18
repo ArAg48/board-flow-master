@@ -226,30 +226,19 @@ const ScanValidator: React.FC = () => {
         return;
       }
 
-      // Get all board scan data for this PTL order to restore accurate counts
-      const { data: existingBoardData } = await supabase
-        .from('board_data')
-        .select('qr_code, test_status, test_date, test_results, technician_id')
-        .eq('ptl_order_id', ptlOrder.id)
-        .order('test_date', { ascending: true });
+      // Reconstruct the session using only this session's stored data
+      const storedData = sessionData.session_data || {};
+      const storedEntries = Array.isArray(storedData.scannedEntries) ? storedData.scannedEntries : [];
+      const restoredScannedEntries: ScanEntry[] = storedEntries.map((e: any) => ({
+        id: e.id || crypto.randomUUID(),
+        boxIndex: e.boxIndex ?? 0,
+        qrCode: e.qrCode,
+        isValid: e.isValid ?? true,
+        timestamp: new Date(e.timestamp),
+        testResult: e.testResult,
+        failureReason: e.failureReason
+      }));
 
-      console.log('Resuming session with existing board data:', existingBoardData);
-
-      // Convert board data to scan entries to restore the session state
-      const restoredScannedEntries = existingBoardData?.map((board, index) => ({
-        id: crypto.randomUUID(),
-        boxIndex: index % (sessionData.session_data?.testerConfig?.scanBoxes || 1),
-        qrCode: board.qr_code,
-        isValid: true,
-        timestamp: new Date(board.test_date || Date.now()),
-        testResult: board.test_status === 'pass' ? 'pass' as const : 'fail' as const,
-        failureReason: typeof board.test_results === 'object' && board.test_results && 'failure_reason' in board.test_results ? (board.test_results as any).failure_reason : undefined
-      })) || [];
-
-      console.log('Restored scan entries:', restoredScannedEntries);
-
-      // Reconstruct the session from stored data
-      const storedData = sessionData.session_data;
       const reconstructedSession: ValidationSession = {
         id: sessionData.session_id,
         ptlOrder,
@@ -259,7 +248,7 @@ const ScanValidator: React.FC = () => {
         pausedTime: sessionData.paused_at ? new Date(sessionData.paused_at) : undefined,
         breakTime: sessionData.break_started_at ? new Date(sessionData.break_started_at) : undefined,
         status: 'pre-test', // Always require pre-test verification when resuming
-        scannedEntries: restoredScannedEntries, // Use restored board data instead of session data
+        scannedEntries: restoredScannedEntries, // Use only this session's entries
         totalDuration: storedData.totalDuration || 0
       };
 
