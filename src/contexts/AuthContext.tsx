@@ -45,14 +45,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedSession = localStorage.getItem('supabase_user_session');
       if (storedSession) {
         const session = JSON.parse(storedSession);
-        if (session.user) {
-          setUser(session.user);
-          setIsLoading(false);
-          return;
+        // Load the full profile using the stored session
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.userId)
+          .single();
+
+        if (!error && profile) {
+          const nameParts = profile.full_name?.split(' ') || [];
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+
+          setUser({
+            id: profile.id,
+            username: profile.username,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: profile.full_name || '',
+            role: profile.role,
+            is_active: profile.is_active,
+            cw_stamp: profile.cw_stamp
+          });
+        } else {
+          // If profile fetch fails, clear invalid session
+          localStorage.removeItem('supabase_user_session');
         }
       }
     } catch (error) {
       console.error('Error checking user session:', error);
+      // Clear invalid session on error
+      localStorage.removeItem('supabase_user_session');
     } finally {
       setIsLoading(false);
     }
@@ -109,45 +132,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userAuth = data[0];
       
-      // Establish Supabase auth session BEFORE fetching profile (required for RLS)
+      // Load the full profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error('Failed to load user profile');
+      }
+
+      // Sign in with Supabase auth to establish proper session for RLS
+      // Create a dummy email from username for Supabase auth
       const dummyEmail = `${username}@internal.local`;
+      
       try {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        // Try to sign in with existing auth user
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: dummyEmail,
-          password
+          password: password
         });
 
-        if (signInError) {
-          // If no auth user, create one, then try signing in again
-          const { error: signUpError } = await supabase.auth.signUp({
+        // If user doesn't exist in auth, create them
+        if (authError && authError.message.includes('Invalid login credentials')) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
             email: dummyEmail,
-            password,
+            password: password,
             options: {
-              emailRedirectTo: `${window.location.origin}/`,
-              data: { linked_profile_id: userAuth.user_id }
+              data: {
+                user_id: profile.id
+              }
             }
           });
 
           if (signUpError) {
             console.error('Auth signup error:', signUpError);
-          } else {
-            // Try to sign in again after signup
-            await supabase.auth.signInWithPassword({ email: dummyEmail, password });
+            // Continue without auth session if signup fails
           }
         }
       } catch (authError) {
         console.error('Auth setup error:', authError);
-      }
-
-      // Now fetch the full profile using the user ID from RPC (works with RLS once authed)
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userAuth.user_id)
-        .single();
-
-      if (profileError || !profile) {
-        throw new Error('Failed to load user profile');
+        // Continue without auth session if auth setup fails
       }
 
       // Split full_name into first_name and last_name
@@ -166,19 +192,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cw_stamp: profile.cw_stamp
       });
 
-      // Store session with full user profile for quick restoration
+      // Store a simple token for session persistence
       localStorage.setItem('supabase_user_session', JSON.stringify({
         userId: profile.id,
-        user: {
-          id: profile.id,
-          username: profile.username,
-          first_name: firstName,
-          last_name: lastName,
-          full_name: profile.full_name || '',
-          role: profile.role,
-          is_active: profile.is_active,
-          cw_stamp: profile.cw_stamp
-        }
+        username: profile.username,
+        role: profile.role
       }));
 
     } catch (error) {
