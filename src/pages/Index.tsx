@@ -53,6 +53,9 @@ const Index = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
+        <p className="text-center text-sm text-muted-foreground">
+          Need access? <a href="/auth" className="underline">Sign in or create an account</a>
+        </p>
         <Card>
           <CardHeader>
             <CardTitle className="text-center">Board Lookup</CardTitle>

@@ -1,22 +1,24 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { apiClient } from '@/lib/api';
 
-// User interface for our app
+// User interface for our app (derived from Supabase user + our profile)
 interface AppUser {
   id: string;
-  username: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  role: string;
-  is_active: boolean;
-  cw_stamp?: string;
+  email?: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  role?: string; // 'manager' | 'technician'
+  is_active?: boolean;
+  cw_stamp?: string | null;
 }
 
 interface AuthContextType {
   user: AppUser | null;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -34,86 +36,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is already logged in using localStorage
-    checkUser();
-  }, []);
-
-  const checkUser = async () => {
+  // Load the user's profile from Supabase public.profiles
+  const loadUserProfile = async (userId: string) => {
     try {
-      const storedSession = localStorage.getItem('user_session');
-      if (storedSession) {
-        const session = JSON.parse(storedSession);
-        try {
-          const resp = await apiClient.verifyToken(session.token);
-          if (resp && resp.success) {
-            if (session.user) {
-              setUser(session.user);
-            } else {
-              // Fallback minimal user shape from token payload
-              setUser({
-                id: resp.user_id,
-                username: session.user?.username || '',
-                first_name: '',
-                last_name: '',
-                full_name: session.user?.full_name || '',
-                role: resp.role || 'technician',
-                is_active: true,
-                cw_stamp: session.user?.cw_stamp,
-              });
-            }
-          } else {
-            localStorage.removeItem('user_session');
-          }
-        } catch (error) {
-          localStorage.removeItem('user_session');
-        }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, role, is_active, cw_stamp')
+        .eq('id', userId)
+        .single();
+
+      if (!error && data) {
+        setUser((prev) => ({
+          id: userId,
+          email: prev?.email,
+          username: data.username ?? undefined,
+          full_name: data.full_name ?? undefined,
+          role: (data.role as string) ?? 'technician',
+          is_active: data.is_active ?? true,
+          cw_stamp: data.cw_stamp ?? null,
+        }));
+      } else {
+        // Fallback minimal user if profile not found
+        setUser((prev) => ({ id: userId, email: prev?.email, role: 'technician', is_active: true }));
       }
-    } catch (error) {
-      console.error('Error checking user session:', error);
-      localStorage.removeItem('user_session');
-    } finally {
-      setIsLoading(false);
+    } catch (e) {
+      // Silent fail – keep minimal user
+      setUser((prev) => (prev ? prev : null));
     }
   };
 
-  const login = async (username: string, password: string) => {
-    try {
-      setIsLoading(true);
-
-      // Use PHP API to authenticate
-      const response = await apiClient.login(username, password);
-      
-      if (!response.success) {
-        throw new Error('Invalid credentials');
+  useEffect(() => {
+    // 1) Subscribe to auth state changes FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const sUser = session?.user ?? null;
+      if (sUser) {
+        // Set minimal user synchronously
+        setUser({ id: sUser.id, email: sUser.email ?? undefined });
+        // Fetch profile deferred to avoid deadlocks
+        setTimeout(() => loadUserProfile(sUser.id), 0);
+      } else {
+        setUser(null);
       }
+    });
 
-      // Set the auth token for future requests
-      apiClient.setToken(response.token);
+    // 2) Then check for an existing session
+    supabase.auth.getSession().then(({ data }) => {
+      const sUser = data.session?.user ?? null;
+      if (sUser) {
+        setUser({ id: sUser.id, email: sUser.email ?? undefined });
+        setTimeout(() => loadUserProfile(sUser.id), 0);
+      }
+      setIsLoading(false);
+    }).catch(() => setIsLoading(false));
 
-      // Use user object from login response directly
-      const loggedInUser: AppUser = {
-        id: response.user.id,
-        username: response.user.username,
-        first_name: response.user.first_name || '',
-        last_name: response.user.last_name || '',
-        full_name: response.user.full_name || '',
-        role: response.user.role,
-        is_active: response.user.is_active,
-        cw_stamp: response.user.cw_stamp,
-      };
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
-      setUser(loggedInUser);
-
-      // Store session data
-      localStorage.setItem('user_session', JSON.stringify({
-        token: response.token,
-        user: loggedInUser,
-      }));
-
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // The auth state listener will populate the user and profile
+    } catch (err) {
+      console.error('Login error:', err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -132,17 +121,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Error ending scan session:', error);
         }
       }
-
-      // Clear auth token and user data
-      apiClient.removeToken();
+    } finally {
+      // Sign out from Supabase regardless
+      await supabase.auth.signOut();
+      // Clean up any legacy storage
       localStorage.removeItem('user_session');
-      setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Still clear user state even if logout fails
-      apiClient.removeToken();
-      localStorage.removeItem('user_session');
-      setUser(null);
     }
   };
 
