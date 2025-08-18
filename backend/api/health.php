@@ -30,11 +30,12 @@ if (isset($_GET['db'])) { $checkDb = $_GET['db'] !== '0'; }
 if ($checkDb) {
   try {
     require_once '../config/database.php';
-    $db = (new Database())->getConnection();
+    $dbObj = new Database();
+    $db = $dbObj->getConnection();
     // lightweight query to ensure connectivity
     $stmt = $db->query('SELECT 1');
     $health['db_connected'] = (bool) $stmt->fetchColumn();
-  } catch (Throwable $e) {
+  } catch (Exception $e) {
     $health['ok'] = false;
     $health['db_connected'] = false;
     $health['error'] = 'db_connection_failed';

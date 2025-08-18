@@ -5,7 +5,8 @@ class Auth {
     private $db;
 
     public function __construct() {
-        $this->db = (new Database())->getConnection();
+        $dbObj = new Database();
+        $this->db = $dbObj->getConnection();
     }
 
     // Store password as plain text (no security required)
