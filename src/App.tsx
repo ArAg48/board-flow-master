@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/Layout/ProtectedRoute";
 import AppLayout from "@/components/Layout/AppLayout";
-// import Login from "@/pages/Login";
+import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import HardwareOrders from "@/pages/Manager/HardwareOrders";
 import PTLOrders from "@/pages/Manager/PTLOrders";
@@ -20,7 +20,6 @@ import ScanValidator from "@/pages/Technician/ScanValidator";
 import RepairLog from "@/pages/Technician/RepairLog";
 import ScanHistory from "@/pages/Technician/ScanHistory";
 import NotFound from "@/pages/NotFound";
-import Auth from "@/pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -32,8 +31,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/login" element={<Navigate to="/auth" replace />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/unauthorized" element={
               <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">

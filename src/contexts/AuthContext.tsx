@@ -1,24 +1,23 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { apiClient } from '@/lib/api';
+import { User } from '@supabase/supabase-js';
 
-// User interface for our app (derived from Supabase user + our profile)
+// User interface for our app
 interface AppUser {
   id: string;
-  email?: string;
-  username?: string;
-  first_name?: string;
-  last_name?: string;
-  full_name?: string;
-  role?: string; // 'manager' | 'technician'
-  is_active?: boolean;
-  cw_stamp?: string | null;
+  username: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  cw_stamp?: string;
 }
 
 interface AuthContextType {
   user: AppUser | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => void;
   isLoading: boolean;
 }
 
@@ -36,73 +35,173 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load the user's profile from Supabase public.profiles
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, role, is_active, cw_stamp')
-        .eq('id', userId)
-        .single();
+  useEffect(() => {
+    // Check if user is already logged in using localStorage
+    checkUser();
+  }, []);
 
-      if (!error && data) {
-        setUser((prev) => ({
-          id: userId,
-          email: prev?.email,
-          username: data.username ?? undefined,
-          full_name: data.full_name ?? undefined,
-          role: (data.role as string) ?? 'technician',
-          is_active: data.is_active ?? true,
-          cw_stamp: data.cw_stamp ?? null,
-        }));
-      } else {
-        // Fallback minimal user if profile not found
-        setUser((prev) => ({ id: userId, email: prev?.email, role: 'technician', is_active: true }));
+  const checkUser = async () => {
+    try {
+      const storedSession = localStorage.getItem('supabase_user_session');
+      if (storedSession) {
+        const session = JSON.parse(storedSession);
+        // Load the full profile using the stored session
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.userId)
+          .single();
+
+        if (!error && profile) {
+          const nameParts = profile.full_name?.split(' ') || [];
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+
+          setUser({
+            id: profile.id,
+            username: profile.username,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: profile.full_name || '',
+            role: profile.role,
+            is_active: profile.is_active,
+            cw_stamp: profile.cw_stamp
+          });
+        } else {
+          // If profile fetch fails, clear invalid session
+          localStorage.removeItem('supabase_user_session');
+        }
       }
-    } catch (e) {
-      // Silent fail – keep minimal user
-      setUser((prev) => (prev ? prev : null));
+    } catch (error) {
+      console.error('Error checking user session:', error);
+      // Clear invalid session on error
+      localStorage.removeItem('supabase_user_session');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    // 1) Subscribe to auth state changes FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      const sUser = session?.user ?? null;
-      if (sUser) {
-        // Set minimal user synchronously
-        setUser({ id: sUser.id, email: sUser.email ?? undefined });
-        // Fetch profile deferred to avoid deadlocks
-        setTimeout(() => loadUserProfile(sUser.id), 0);
-      } else {
-        setUser(null);
-      }
-    });
-
-    // 2) Then check for an existing session
-    supabase.auth.getSession().then(({ data }) => {
-      const sUser = data.session?.user ?? null;
-      if (sUser) {
-        setUser({ id: sUser.id, email: sUser.email ?? undefined });
-        setTimeout(() => loadUserProfile(sUser.id), 0);
-      }
-      setIsLoading(false);
-    }).catch(() => setIsLoading(false));
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
+  const loadUserProfile = async (authUser: User) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      // The auth state listener will populate the user and profile
-    } catch (err) {
-      console.error('Login error:', err);
-      throw err;
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error loading user profile:', error);
+        return;
+      }
+
+      if (profile) {
+        // Split full_name into first_name and last_name
+        const nameParts = profile.full_name?.split(' ') || [];
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        setUser({
+          id: profile.id,
+          username: profile.username,
+          first_name: firstName,
+          last_name: lastName,
+          full_name: profile.full_name || '',
+          role: profile.role,
+          is_active: profile.is_active,
+          cw_stamp: profile.cw_stamp
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
+
+  const login = async (username: string, password: string) => {
+    try {
+      setIsLoading(true);
+
+      // Use Supabase function to authenticate
+      const { data, error } = await supabase.rpc('authenticate_user', {
+        input_username: username,
+        input_password: password
+      });
+
+      if (error || !data || data.length === 0) {
+        throw new Error('Invalid credentials');
+      }
+
+      const userAuth = data[0];
+      
+      // Load the full profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error('Failed to load user profile');
+      }
+
+      // Sign in with Supabase auth to establish proper session for RLS
+      // Create a dummy email from username for Supabase auth
+      const dummyEmail = `${username}@internal.local`;
+      
+      try {
+        // Try to sign in with existing auth user
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: dummyEmail,
+          password: password
+        });
+
+        // If user doesn't exist in auth, create them
+        if (authError && authError.message.includes('Invalid login credentials')) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: dummyEmail,
+            password: password,
+            options: {
+              data: {
+                user_id: profile.id
+              }
+            }
+          });
+
+          if (signUpError) {
+            console.error('Auth signup error:', signUpError);
+            // Continue without auth session if signup fails
+          }
+        }
+      } catch (authError) {
+        console.error('Auth setup error:', authError);
+        // Continue without auth session if auth setup fails
+      }
+
+      // Split full_name into first_name and last_name
+      const nameParts = profile.full_name?.split(' ') || [];
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      setUser({
+        id: profile.id,
+        username: profile.username,
+        first_name: firstName,
+        last_name: lastName,
+        full_name: profile.full_name || '',
+        role: profile.role,
+        is_active: profile.is_active,
+        cw_stamp: profile.cw_stamp
+      });
+
+      // Store a simple token for session persistence
+      localStorage.setItem('supabase_user_session', JSON.stringify({
+        userId: profile.id,
+        username: profile.username,
+        role: profile.role
+      }));
+
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -112,20 +211,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // End any active scan sessions for this technician before logging out
       if (user?.id) {
-        try {
-          const activeSession = await apiClient.getActiveSession(user.id);
-          if (activeSession) {
-            await apiClient.deactivateSession(activeSession.session_id);
-          }
-        } catch (error) {
-          console.error('Error ending scan session:', error);
+        const { data: activeSessions, error: sessionsError } = await supabase
+          .from('scan_sessions')
+          .select('id, start_time')
+          .eq('technician_id', user.id)
+          .eq('is_active', true);
+
+        if (!sessionsError && activeSessions && activeSessions.length > 0) {
+          const now = new Date();
+          // Finalize each active session with accurate end time and duration
+          await Promise.all(
+            activeSessions.map(async (s) => {
+              const start = new Date(s.start_time);
+              const durationMinutes = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 60000));
+
+              // Mark session completed and inactive
+              await supabase
+                .from('scan_sessions')
+                .update({
+                  status: 'completed',
+                  is_active: false,
+                  end_time: now.toISOString(),
+                  duration_minutes: durationMinutes,
+                })
+                .eq('id', s.id);
+
+              // Ensure any remaining server-side flags are cleared
+              try {
+                await supabase.rpc('deactivate_session', { p_session_id: s.id });
+              } catch (e) {
+                // ignore
+              }
+            })
+          );
         }
       }
-    } finally {
-      // Sign out from Supabase regardless
+
       await supabase.auth.signOut();
-      // Clean up any legacy storage
-      localStorage.removeItem('user_session');
+      localStorage.removeItem('supabase_user_session');
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear user state even if logout fails
+      localStorage.removeItem('supabase_user_session');
+      setUser(null);
     }
   };
 

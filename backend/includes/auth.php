@@ -1,12 +1,11 @@
 <?php
-require_once dirname(__FILE__) . '/../config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 class Auth {
     private $db;
 
     public function __construct() {
-        $dbObj = new Database();
-        $this->db = $dbObj->getConnection();
+        $this->db = (new Database())->getConnection();
     }
 
     // Store password as plain text (no security required)
@@ -23,7 +22,7 @@ class Auth {
     public function authenticateUser($username, $password) {
         try {
             $stmt = $this->db->prepare("SELECT id, username, password, role, full_name, is_active FROM profiles WHERE username = ? AND is_active = 1");
-            $stmt->execute(array($username));
+            $stmt->execute([$username]);
             $user = $stmt->fetch();
 
             if ($user && $this->verifyPassword($password, $user['password'])) {
@@ -48,7 +47,7 @@ class Auth {
 
             // Check if username exists
             $stmt = $this->db->prepare("SELECT id FROM profiles WHERE username = ?");
-            $stmt->execute(array($username));
+            $stmt->execute([$username]);
             if ($stmt->fetch()) {
                 throw new Exception('Username already exists');
             }
@@ -63,7 +62,7 @@ class Auth {
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
             
-            $stmt->execute(array($userId, $username, $plainPassword, $fullName, $role, $cwStamp));
+            $stmt->execute([$userId, $username, $plainPassword, $fullName, $role, $cwStamp]);
             return $userId;
         } catch (Exception $e) {
             throw $e;
@@ -82,7 +81,7 @@ class Auth {
             return $stmt->fetchAll();
         } catch (PDOException $e) {
             error_log("Get user profiles error: " . $e->getMessage());
-            return array();
+            return [];
         }
     }
 
@@ -90,7 +89,7 @@ class Auth {
     public function toggleUserStatus($userId) {
         try {
             $stmt = $this->db->prepare("UPDATE profiles SET is_active = NOT is_active WHERE id = ?");
-            $stmt->execute(array($userId));
+            $stmt->execute([$userId]);
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
             error_log("Toggle user status error: " . $e->getMessage());
@@ -107,7 +106,7 @@ class Auth {
 
             $plainPassword = $this->hashPassword($newPassword);
             $stmt = $this->db->prepare("UPDATE profiles SET password = ? WHERE id = ?");
-            $stmt->execute(array($plainPassword, $userId));
+            $stmt->execute([$plainPassword, $userId]);
             return $stmt->rowCount() > 0;
         } catch (Exception $e) {
             throw $e;
@@ -120,13 +119,13 @@ class Auth {
             $this->db->beginTransaction();
 
             // Update references to NULL to maintain history
-            $this->db->prepare("UPDATE scan_sessions SET technician_id = NULL WHERE technician_id = ?")->execute(array($userId));
-            $this->db->prepare("UPDATE board_data SET technician_id = NULL WHERE technician_id = ?")->execute(array($userId));
-            $this->db->prepare("UPDATE repair_entries SET assigned_technician_id = NULL WHERE assigned_technician_id = ?")->execute(array($userId));
+            $this->db->prepare("UPDATE scan_sessions SET technician_id = NULL WHERE technician_id = ?")->execute([$userId]);
+            $this->db->prepare("UPDATE board_data SET technician_id = NULL WHERE technician_id = ?")->execute([$userId]);
+            $this->db->prepare("UPDATE repair_entries SET assigned_technician_id = NULL WHERE assigned_technician_id = ?")->execute([$userId]);
 
             // Delete the profile
             $stmt = $this->db->prepare("DELETE FROM profiles WHERE id = ?");
-            $stmt->execute(array($userId));
+            $stmt->execute([$userId]);
             
             $this->db->commit();
             return $stmt->rowCount() > 0;
@@ -149,18 +148,18 @@ class Auth {
 
     // Generate JWT token
     public function generateJWT($userId, $role) {
-        $header = json_encode(array('typ' => 'JWT', 'alg' => 'HS256'));
-        $payload = json_encode(array(
+        $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
+        $payload = json_encode([
             'user_id' => $userId,
             'role' => $role,
             'exp' => time() + (24 * 60 * 60) // 24 hours
-        ));
+        ]);
 
-        $headerEncoded = str_replace(array('+', '/', '='), array('-', '_', ''), base64_encode($header));
-        $payloadEncoded = str_replace(array('+', '/', '='), array('-', '_', ''), base64_encode($payload));
+        $headerEncoded = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+        $payloadEncoded = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
 
         $signature = hash_hmac('sha256', $headerEncoded . "." . $payloadEncoded, 'your-secret-key', true);
-        $signatureEncoded = str_replace(array('+', '/', '='), array('-', '_', ''), base64_encode($signature));
+        $signatureEncoded = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
 
         return $headerEncoded . "." . $payloadEncoded . "." . $signatureEncoded;
     }
@@ -172,11 +171,11 @@ class Auth {
             return false;
         }
 
-        $header = base64_decode(str_replace(array('-', '_'), array('+', '/'), $parts[0]));
-        $payload = base64_decode(str_replace(array('-', '_'), array('+', '/'), $parts[1]));
+        $header = base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[0]));
+        $payload = base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[1]));
         $signature = $parts[2];
 
-        $expectedSignature = str_replace(array('+', '/', '='), array('-', '_', ''), 
+        $expectedSignature = str_replace(['+', '/', '='], ['-', '_', ''], 
             base64_encode(hash_hmac('sha256', $parts[0] . "." . $parts[1], 'your-secret-key', true))
         );
 

@@ -1,18 +1,15 @@
-# Safe CORS headers (only if mod_headers is available)
-<IfModule mod_headers.c>
-  Header always set Access-Control-Allow-Origin "*"
-  Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-  Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
-  Header always set Access-Control-Max-Age "86400"
-</IfModule>
+# Enable CORS for all requests
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+Header always set Access-Control-Max-Age "86400"
 
-# Gracefully handle CORS preflight without invoking PHP
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteCond %{REQUEST_METHOD} =OPTIONS
-  # Return 204 No Content for preflight requests (no redirect to avoid proxies caching 200)
-  RewriteRule ^ - [R=204,L]
-</IfModule>
+# Handle preflight OPTIONS requests
+RewriteEngine On
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
 
-# Do NOT force SetHandler here (can 500 on some hosts)
-# PHP execution should already be configured by the server.
+# Ensure PHP files are processed
+<Files "*.php">
+    SetHandler application/x-httpd-php
+</Files>
