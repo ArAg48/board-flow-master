@@ -36,34 +36,24 @@ class ApiClient {
       headers,
     });
 
-    const contentType = response.headers.get('content-type') || '';
-    let rawText: string | null = null;
-    let data: any = null;
-
-    if (contentType.includes('application/json')) {
-      try {
-        data = await response.json();
-      } catch (e) {
-        rawText = await response.text();
-        try { data = JSON.parse(rawText); } catch {}
-      }
-    } else {
+    // Robust response handling: always read text first, then attempt JSON parse
+    let rawText = '';
+    try {
       rawText = await response.text();
-      try {
-        data = JSON.parse(rawText);
-      } catch {
-        // Not JSON – likely HTML error page or server misconfiguration
-      }
+    } catch {}
+
+    let data: any = null;
+    if (rawText && rawText.trim().length) {
+      try { data = JSON.parse(rawText); } catch {}
     }
 
     if (!response.ok) {
-      const snippet = rawText?.slice(0, 200) || (data ? JSON.stringify(data).slice(0, 200) : '');
-      throw new Error(data?.error || `Request failed (${response.status}). ${snippet}`);
+      const snippet = rawText ? rawText.slice(0, 200) : (data ? JSON.stringify(data).slice(0, 200) : '');
+      throw new Error((data && (data.error || data.message)) || `Request failed (${response.status}). ${snippet}`);
     }
 
-    if (!data) {
-      const snippet = (rawText || '').slice(0, 200);
-      throw new Error(`Server returned non-JSON response. ${snippet || 'No content'}`);
+    if (data == null) {
+      throw new Error('Server returned empty or non-JSON response.');
     }
 
     return data;
