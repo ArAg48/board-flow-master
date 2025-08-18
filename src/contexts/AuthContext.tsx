@@ -209,6 +209,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      // End any active scan sessions for this technician before logging out
+      if (user?.id) {
+        const { data: activeSessions, error: sessionsError } = await supabase
+          .from('scan_sessions')
+          .select('id, start_time')
+          .eq('technician_id', user.id)
+          .eq('is_active', true);
+
+        if (!sessionsError && activeSessions && activeSessions.length > 0) {
+          const now = new Date();
+          // Finalize each active session with accurate end time and duration
+          await Promise.all(
+            activeSessions.map(async (s) => {
+              const start = new Date(s.start_time);
+              const durationMinutes = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 60000));
+
+              // Mark session completed and inactive
+              await supabase
+                .from('scan_sessions')
+                .update({
+                  status: 'completed',
+                  is_active: false,
+                  end_time: now.toISOString(),
+                  duration_minutes: durationMinutes,
+                })
+                .eq('id', s.id);
+
+              // Ensure any remaining server-side flags are cleared
+              try {
+                await supabase.rpc('deactivate_session', { p_session_id: s.id });
+              } catch (e) {
+                // ignore
+              }
+            })
+          );
+        }
+      }
+
       await supabase.auth.signOut();
       localStorage.removeItem('supabase_user_session');
       setUser(null);
