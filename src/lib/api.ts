@@ -22,9 +22,9 @@ class ApiClient {
 
   private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
-    const headers = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (this.token) {
@@ -36,18 +36,29 @@ class ApiClient {
       headers,
     });
 
-    // Handle HTML error responses (404, 500, etc.)
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error('API Error - Expected JSON but got:', text.substring(0, 200));
-      throw new Error(`Server returned HTML instead of JSON. This likely means the PHP backend endpoint doesn't exist at: ${url}`);
+    const contentType = response.headers.get('content-type') || '';
+    let rawText: string | null = null;
+    let data: any = null;
+
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      rawText = await response.text();
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        // Not JSON – likely HTML error page or server misconfiguration
+      }
     }
 
-    const data = await response.json();
-
     if (!response.ok) {
-      throw new Error(data.error || 'Request failed');
+      const snippet = rawText?.slice(0, 200) || (data ? JSON.stringify(data).slice(0, 200) : '');
+      throw new Error(data?.error || `Request failed (${response.status}). ${snippet}`);
+    }
+
+    if (!data) {
+      const snippet = (rawText || '').slice(0, 200);
+      throw new Error(`Server returned non-JSON response. ${snippet || 'No content'}`);
     }
 
     return data;
