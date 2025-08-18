@@ -11,13 +11,19 @@ class Database {
     public function connect() {
         if ($this->pdo === null) {
             try {
+                if (!class_exists('PDO')) {
+                    throw new Exception('PDO extension is not available');
+                }
+                if (!in_array('mysql', PDO::getAvailableDrivers())) {
+                    throw new Exception('pdo_mysql driver is not enabled');
+                }
                 $dsn = "mysql:host={$this->host};port={$this->port};dbname={$this->dbname};charset=utf8mb4";
                 $this->pdo = new PDO($dsn, $this->username, $this->password, array(
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES => false,
                 ));
-            } catch (PDOException $e) {
+            } catch (Exception $e) {
                 throw new Exception("Database connection failed: " . $e->getMessage());
             }
         }

@@ -34,6 +34,8 @@ class ApiClient {
     const response = await fetch(url, {
       ...options,
       headers,
+      redirect: 'follow',
+      cache: 'no-store',
     });
 
     // Robust response handling: always read text first, then attempt JSON parse
