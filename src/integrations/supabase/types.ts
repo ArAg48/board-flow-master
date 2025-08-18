@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -505,7 +505,7 @@ export type Database = {
     }
     Functions: {
       authenticate_user: {
-        Args: { input_username: string; input_password: string }
+        Args: { input_password: string; input_username: string }
         Returns: {
           user_id: string
           user_role: Database["public"]["Enums"]["user_role"]
@@ -514,28 +514,28 @@ export type Database = {
       count_scanned_boards: {
         Args: { p_ptl_order_id: string }
         Returns: {
-          total_count: number
-          pass_count: number
           fail_count: number
+          pass_count: number
           pending_count: number
+          total_count: number
         }[]
       }
       create_user_account: {
         Args:
           | {
-              p_username: string
-              p_password: string
+              p_cw_stamp?: string
               p_first_name: string
               p_last_name: string
+              p_password: string
               p_role: Database["public"]["Enums"]["user_role"]
+              p_username: string
             }
           | {
-              p_username: string
-              p_password: string
               p_first_name: string
               p_last_name: string
+              p_password: string
               p_role: Database["public"]["Enums"]["user_role"]
-              p_cw_stamp?: string
+              p_username: string
             }
         Returns: string
       }
@@ -550,26 +550,26 @@ export type Database = {
       get_active_session_for_user: {
         Args: { user_id: string }
         Returns: {
-          session_id: string
+          break_started_at: string
+          paused_at: string
           ptl_order_id: string
           session_data: Json
+          session_id: string
           start_time: string
-          paused_at: string
-          break_started_at: string
         }[]
       }
       get_board_progress: {
         Args: { p_ptl_order_id?: string }
         Returns: {
+          completion_percentage: number
+          failed_boards: number
+          pass_rate: number
+          passed_boards: number
+          pending_boards: number
           ptl_order_id: string
           ptl_order_number: string
-          total_boards: number
           scanned_boards: number
-          passed_boards: number
-          failed_boards: number
-          pending_boards: number
-          completion_percentage: number
-          pass_rate: number
+          total_boards: number
         }[]
       }
       get_current_user_role: {
@@ -579,44 +579,44 @@ export type Database = {
       get_ptl_order_progress: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          ptl_order_number: string
-          board_type: string
-          quantity: number
-          status: Database["public"]["Enums"]["order_status"]
-          scanned_count: number
-          passed_count: number
-          failed_count: number
-          completion_percentage: number
-          total_time_minutes: number
           active_time_minutes: number
+          board_type: string
+          completion_percentage: number
+          failed_count: number
+          id: string
+          passed_count: number
+          ptl_order_number: string
+          quantity: number
+          scanned_count: number
+          status: Database["public"]["Enums"]["order_status"]
+          total_time_minutes: number
         }[]
       }
       get_user_credentials: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          username: string
-          password: string
-          full_name: string
-          role: Database["public"]["Enums"]["user_role"]
-          is_active: boolean
-          cw_stamp: string
           created_at: string
+          cw_stamp: string
+          full_name: string
+          id: string
+          is_active: boolean
+          password: string
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string
+          username: string
         }[]
       }
       get_user_profiles: {
         Args: Record<PropertyKey, never>
         Returns: {
-          id: string
-          username: string
-          full_name: string
-          role: Database["public"]["Enums"]["user_role"]
           created_at: string
-          updated_at: string
-          is_active: boolean
           cw_stamp: string
+          full_name: string
+          id: string
+          is_active: boolean
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          username: string
         }[]
       }
       get_user_role: {
@@ -630,17 +630,17 @@ export type Database = {
       lookup_board_details: {
         Args: { p_qr_code: string }
         Returns: {
-          qr_code: string
-          sequence_number: string
           assembly_number: string
           board_type: string
-          test_status: string
-          test_date: string
-          ptl_order_number: string
-          firmware_revision: string
           date_code: string
+          firmware_revision: string
+          ptl_order_number: string
+          qr_code: string
           sale_code: string
+          sequence_number: string
           technician_name: string
+          test_date: string
+          test_status: string
         }[]
       }
       refresh_ptl_progress: {
@@ -649,18 +649,18 @@ export type Database = {
       }
       save_session: {
         Args: {
-          p_session_id: string
-          p_technician_id: string
+          p_break_started_at?: string
+          p_paused_at?: string
           p_ptl_order_id: string
           p_session_data: Json
+          p_session_id: string
           p_status?: string
-          p_paused_at?: string
-          p_break_started_at?: string
+          p_technician_id: string
         }
         Returns: string
       }
       set_viewable_password: {
-        Args: { p_user_id: string; p_password: string }
+        Args: { p_password: string; p_user_id: string }
         Returns: boolean
       }
       toggle_user_status: {
@@ -673,24 +673,24 @@ export type Database = {
       }
       update_session_counts: {
         Args: {
-          p_session_id: string
-          p_scanned_count: number
-          p_pass_count: number
-          p_fail_count: number
           p_duration_minutes: number
+          p_fail_count: number
+          p_pass_count: number
+          p_scanned_count: number
+          p_session_id: string
         }
         Returns: boolean
       }
       update_user_cw_stamp: {
-        Args: { p_user_id: string; p_cw_stamp: string }
+        Args: { p_cw_stamp: string; p_user_id: string }
         Returns: boolean
       }
       update_user_password: {
-        Args: { p_user_id: string; p_new_password: string }
+        Args: { p_new_password: string; p_user_id: string }
         Returns: boolean
       }
       verify_password: {
-        Args: { password_text: string; password_hash: string }
+        Args: { password_hash: string; password_text: string }
         Returns: boolean
       }
     }
