@@ -21,8 +21,8 @@ import type { Database } from '@/integrations/supabase/types';
 const createAccountSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   role: z.enum(['manager', 'technician', 'customer'], { required_error: 'Please select a role' }),
   cwStamp: z.string().optional(),
 });
@@ -152,8 +152,8 @@ const AccountManagement: React.FC = () => {
         .rpc('create_user_account', {
           p_username: data.username.trim(),
           p_password: data.password,
-          p_first_name: data.firstName.trim(),
-          p_last_name: data.lastName.trim(),
+          p_first_name: data.role === 'customer' ? 'Customer' : data.firstName.trim(),
+          p_last_name: data.role === 'customer' ? 'User' : data.lastName.trim(),
           p_role: data.role,
           p_cw_stamp: data.role === 'technician' ? data.cwStamp?.trim() || null : null
         });
@@ -427,30 +427,32 @@ const AccountManagement: React.FC = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    {...form.register('firstName')}
-                    className={form.formState.errors.firstName ? 'border-destructive' : ''}
-                  />
-                  {form.formState.errors.firstName && (
-                    <p className="text-sm text-destructive">{form.formState.errors.firstName.message}</p>
-                  )}
+              {selectedRole !== 'customer' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      {...form.register('firstName')}
+                      className={form.formState.errors.firstName ? 'border-destructive' : ''}
+                    />
+                    {form.formState.errors.firstName && (
+                      <p className="text-sm text-destructive">{form.formState.errors.firstName.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      {...form.register('lastName')}
+                      className={form.formState.errors.lastName ? 'border-destructive' : ''}
+                    />
+                    {form.formState.errors.lastName && (
+                      <p className="text-sm text-destructive">{form.formState.errors.lastName.message}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    {...form.register('lastName')}
-                    className={form.formState.errors.lastName ? 'border-destructive' : ''}
-                  />
-                  {form.formState.errors.lastName && (
-                    <p className="text-sm text-destructive">{form.formState.errors.lastName.message}</p>
-                  )}
-                </div>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>

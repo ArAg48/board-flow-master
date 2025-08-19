@@ -18,10 +18,6 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [boardId, setBoardId] = useState('');
-  const [boardDetails, setBoardDetails] = useState<any>(null);
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupError, setLookupError] = useState('');
   const { login, user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
@@ -96,10 +92,10 @@ const Login: React.FC = () => {
 
     try {
       await login(username.trim(), password);
-      toast({
-        title: 'Login Successful',
-        description: 'Welcome to PTL Order System',
-      });
+        toast({
+          title: 'Login Successful',
+          description: 'Welcome to CKT WORKS Inventory',
+        });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       setError(errorMessage);
@@ -109,62 +105,13 @@ const Login: React.FC = () => {
   };
 
 
-  const handleBoardLookup = async () => {
-    if (!boardId.trim()) return;
-    
-    // Validate board ID input
-    if (!validateInput(boardId)) {
-      setLookupError('Invalid characters in board ID');
-      return;
-    }
-    
-    setLookupLoading(true);
-    setLookupError('');
-    setBoardDetails(null);
-
-    try {
-      const { data, error } = await supabase.rpc('lookup_board_details', {
-        p_qr_code: boardId.trim()
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (data && data.length > 0) {
-        const board = data[0];
-        console.log('Board data found:', board);
-        
-        // Extract serial number as last 7 digits
-        const serialNumber = board.sequence_number ? board.sequence_number.slice(-7) : 'N/A';
-        
-        setBoardDetails({
-          boardId: board.qr_code,
-          serialNumber: serialNumber,
-          assemblyNumber: board.assembly_number,
-          hardwareRevision: board.board_type,
-          saleCode: board.sale_code || board.ptl_order_number || 'N/A',
-          firmwareVersion: board.firmware_revision || 'N/A',
-          dateCode: board.date_code || 'N/A',
-        });
-      } else {
-        console.log('No board data found for:', boardId);
-        setBoardDetails(null);
-        setLookupError(`No board found with ID: ${boardId}`);
-      }
-    } catch (err) {
-      setLookupError('Error looking up board details');
-    } finally {
-      setLookupLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
-      <div className="flex gap-6 w-full max-w-4xl">
-        <Card className="w-[400px]">
+      <div className="w-full max-w-md">
+        <Card>
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">PTL Order System</CardTitle>
+          <CardTitle className="text-2xl text-center">CKT WORKS Inventory</CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access the system
           </CardDescription>
@@ -210,83 +157,6 @@ const Login: React.FC = () => {
             
           </form>
           
-        </CardContent>
-      </Card>
-
-      {/* Customer Board Lookup */}
-      <Card className="w-[400px]">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
-            <Search className="h-6 w-6" />
-            Board Lookup
-          </CardTitle>
-          <CardDescription className="text-center">
-            Enter or scan a board ID to view details
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="boardId">Board ID</Label>
-            <Input
-              id="boardId"
-              type="text"
-              value={boardId}
-              onChange={(e) => setBoardId(e.target.value)}
-              placeholder="Enter or scan board ID"
-              onKeyDown={(e) => e.key === 'Enter' && handleBoardLookup()}
-            />
-          </div>
-
-          <Button 
-            onClick={handleBoardLookup} 
-            className="w-full" 
-            disabled={lookupLoading || !boardId.trim()}
-          >
-            {lookupLoading ? 'Looking up...' : 'Lookup Board'}
-          </Button>
-
-          {lookupError && (
-            <Alert variant="destructive">
-              <AlertDescription>{lookupError}</AlertDescription>
-            </Alert>
-          )}
-
-           {boardDetails && (
-            <div className="mt-4">
-              <h4 className="font-semibold text-sm mb-3">Board Details:</h4>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Field</TableHead>
-                    <TableHead>Value</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="font-medium">Board ID</TableCell>
-                    <TableCell className="font-mono">{boardDetails.boardId}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Serial Number</TableCell>
-                    <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Sale Code</TableCell>
-                    <TableCell className="font-mono">{boardDetails.saleCode}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Firmware Version</TableCell>
-                    <TableCell className="font-mono">{boardDetails.firmwareVersion}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Date Code</TableCell>
-                    <TableCell className="font-mono">{boardDetails.dateCode}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-           )}
-
         </CardContent>
       </Card>
       </div>
