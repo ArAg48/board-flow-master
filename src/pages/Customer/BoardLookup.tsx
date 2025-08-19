@@ -214,61 +214,55 @@ const BoardLookup = () => {
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">Firmware Version</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono flex-1">
-                          {boardDetails.firmwareVersion}
-                        </span>
-                        <Dialog open={firmwareDialogOpen} onOpenChange={setFirmwareDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button 
-                              onClick={openFirmwareDialog}
-                              variant="outline"
-                              size="sm"
-                            >
-                              Update Firmware Version
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Update Firmware Version</DialogTitle>
-                              <DialogDescription>
-                                Enter the new firmware version for this board.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="firmwareInput">Firmware Version</Label>
-                                <Input
-                                  id="firmwareInput"
-                                  value={firmwareValue}
-                                  onChange={(e) => setFirmwareValue(e.target.value)}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleUpdateFirmware()}
-                                  className="font-mono"
-                                />
-                              </div>
-                              <div className="flex justify-end gap-2">
-                                <Button 
-                                  variant="outline" 
-                                  onClick={() => setFirmwareDialogOpen(false)}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button 
-                                  onClick={handleUpdateFirmware} 
-                                  disabled={updating || !firmwareValue.trim()}
-                                >
-                                  {updating ? 'Updating...' : 'Update'}
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </TableCell>
+                    <TableCell className="font-mono">{boardDetails.firmwareVersion}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
+              
+              <Dialog open={firmwareDialogOpen} onOpenChange={setFirmwareDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    onClick={openFirmwareDialog}
+                    className="w-full mt-4"
+                  >
+                    Update Firmware Version
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Update Firmware Version</DialogTitle>
+                    <DialogDescription>
+                      Enter the new firmware version for this board.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firmwareInput">Firmware Version</Label>
+                      <Input
+                        id="firmwareInput"
+                        value={firmwareValue}
+                        onChange={(e) => setFirmwareValue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateFirmware()}
+                        className="font-mono"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setFirmwareDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleUpdateFirmware} 
+                        disabled={updating || !firmwareValue.trim()}
+                      >
+                        {updating ? 'Updating...' : 'Update'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         )}
