@@ -96,7 +96,7 @@ const Index = () => {
       <div className="w-full p-4">
         <div className="flex justify-end">
           <Link to="/login">
-            <Button variant="outline">
+            <Button variant="default">
               <LogIn className="h-4 w-4 mr-2" />
               Sign In
             </Button>
@@ -134,6 +134,7 @@ const Index = () => {
                 onClick={handleBoardLookup} 
                 disabled={lookupLoading || !boardId.trim()} 
                 className="w-full"
+                variant="default"
               >
                 {lookupLoading ? 'Looking up...' : 'Lookup Board'}
               </Button>

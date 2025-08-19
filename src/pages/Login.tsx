@@ -106,7 +106,7 @@ const Login: React.FC = () => {
       <div className="w-full p-4">
         <div className="flex justify-end">
           <Link to="/">
-            <Button variant="outline">
+            <Button variant="default">
               <Search className="h-4 w-4 mr-2" />
               Board Lookup
             </Button>
@@ -119,7 +119,7 @@ const Login: React.FC = () => {
         <div className="w-full max-w-md space-y-6">
         <Card>
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">CKT WORKS Inventory</CardTitle>
+            <CardTitle className="text-2xl text-center">Sign In</CardTitle>
             <CardDescription className="text-center">
               Enter your credentials to access the system
             </CardDescription>
