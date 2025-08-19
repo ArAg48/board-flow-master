@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Search, Edit, Save, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -13,7 +14,7 @@ const BoardLookup = () => {
   const [boardId, setBoardId] = useState('');
   const [boardDetails, setBoardDetails] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [editingFirmware, setEditingFirmware] = useState(false);
+  const [firmwareDialogOpen, setFirmwareDialogOpen] = useState(false);
   const [firmwareValue, setFirmwareValue] = useState('');
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
@@ -120,7 +121,8 @@ const BoardLookup = () => {
         firmwareVersion: firmwareValue.trim()
       });
 
-      setEditingFirmware(false);
+      setFirmwareDialogOpen(false);
+      setFirmwareValue('');
       toast({
         title: "Success",
         description: "Firmware version updated successfully",
@@ -137,9 +139,9 @@ const BoardLookup = () => {
     }
   };
 
-  const cancelEdit = () => {
-    setEditingFirmware(false);
+  const openFirmwareDialog = () => {
     setFirmwareValue(boardDetails?.firmwareVersion || '');
+    setFirmwareDialogOpen(true);
   };
 
   return (
@@ -213,45 +215,56 @@ const BoardLookup = () => {
                   <TableRow>
                     <TableCell className="font-medium">Firmware Version</TableCell>
                     <TableCell>
-                      {editingFirmware ? (
-                        <div className="flex gap-2">
-                          <Input
-                            value={firmwareValue}
-                            onChange={(e) => setFirmwareValue(e.target.value)}
-                            placeholder="Enter firmware version"
-                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateFirmware()}
-                            className="font-mono"
-                          />
-                          <Button 
-                            onClick={handleUpdateFirmware} 
-                            disabled={updating}
-                            size="sm"
-                          >
-                            <Save className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            onClick={cancelEdit} 
-                            variant="outline"
-                            size="sm"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono flex-1">
-                            {boardDetails.firmwareVersion}
-                          </span>
-                          <Button 
-                            onClick={() => setEditingFirmware(true)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono flex-1">
+                          {boardDetails.firmwareVersion}
+                        </span>
+                        <Dialog open={firmwareDialogOpen} onOpenChange={setFirmwareDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              onClick={openFirmwareDialog}
+                              variant="outline"
+                              size="sm"
+                            >
+                              Update Firmware Version
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Update Firmware Version</DialogTitle>
+                              <DialogDescription>
+                                Enter the new firmware version for this board.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="firmwareInput">Firmware Version</Label>
+                                <Input
+                                  id="firmwareInput"
+                                  value={firmwareValue}
+                                  onChange={(e) => setFirmwareValue(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && handleUpdateFirmware()}
+                                  className="font-mono"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  onClick={() => setFirmwareDialogOpen(false)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  onClick={handleUpdateFirmware} 
+                                  disabled={updating || !firmwareValue.trim()}
+                                >
+                                  {updating ? 'Updating...' : 'Update'}
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 </TableBody>
