@@ -207,28 +207,8 @@ const BoardLookup = () => {
                     <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Assembly Number</TableCell>
-                    <TableCell className="font-mono">{boardDetails.assemblyNumber || 'N/A'}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Board Type</TableCell>
-                    <TableCell className="font-mono">{boardDetails.boardType || 'N/A'}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Test Status</TableCell>
-                    <TableCell className="font-mono">{boardDetails.testStatus || 'N/A'}</TableCell>
-                  </TableRow>
-                  <TableRow>
                     <TableCell className="font-medium">Date Code</TableCell>
                     <TableCell className="font-mono">{boardDetails.dateCode}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">PTL Order</TableCell>
-                    <TableCell className="font-mono">{boardDetails.ptlOrderNumber}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Technician</TableCell>
-                    <TableCell className="font-mono">{boardDetails.technicianName}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell className="font-medium">Firmware Version</TableCell>
