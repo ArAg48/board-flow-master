@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const Login: React.FC = () => {
@@ -100,8 +101,22 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen bg-background">
+      {/* Header with Board Lookup button */}
+      <div className="w-full p-4">
+        <div className="flex justify-end">
+          <Link to="/">
+            <Button variant="outline">
+              <Search className="h-4 w-4 mr-2" />
+              Board Lookup
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex items-center justify-center px-4 pb-8">
+        <div className="w-full max-w-md space-y-6">
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">CKT WORKS Inventory</CardTitle>
@@ -151,6 +166,7 @@ const Login: React.FC = () => {
             </form>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
