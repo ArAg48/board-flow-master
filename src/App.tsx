@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/Layout/ProtectedRoute";
 import AppLayout from "@/components/Layout/AppLayout";
+import Index from "@/pages/Index";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import HardwareOrders from "@/pages/Manager/HardwareOrders";
@@ -19,6 +20,7 @@ import BarcodeGenerator from "@/pages/Manager/BarcodeGenerator";
 import ScanValidator from "@/pages/Technician/ScanValidator";
 import RepairLog from "@/pages/Technician/RepairLog";
 import ScanHistory from "@/pages/Technician/ScanHistory";
+import BoardLookup from "@/pages/Customer/BoardLookup";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/unauthorized" element={
               <div className="min-h-screen flex items-center justify-center">
@@ -41,12 +44,12 @@ const App = () => (
               </div>
             } />
             
-            <Route path="/" element={
+            <Route path="/app" element={
               <ProtectedRoute>
                 <AppLayout />
               </ProtectedRoute>
             }>
-              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route index element={<Navigate to="/app/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               
               {/* Manager Routes */}
@@ -105,6 +108,13 @@ const App = () => (
               <Route path="scan-history" element={
                 <ProtectedRoute requiredRole="technician">
                   <ScanHistory />
+                </ProtectedRoute>
+              } />
+              
+              {/* Customer Routes */}
+              <Route path="board-lookup" element={
+                <ProtectedRoute requiredRole="customer">
+                  <BoardLookup />
                 </ProtectedRoute>
               } />
             </Route>

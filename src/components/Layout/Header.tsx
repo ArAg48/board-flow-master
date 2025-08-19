@@ -13,7 +13,7 @@ export const Header: React.FC = () => {
     <header className="h-16 border-b bg-card flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
-        <h1 className="text-xl font-semibold">PTL Order System</h1>
+        <h1 className="text-xl font-semibold">CKT WORKS Inventory</h1>
       </div>
       
       <div className="flex items-center gap-4">

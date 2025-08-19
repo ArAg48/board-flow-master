@@ -131,6 +131,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const profile = data[0];
+      
+      // Redirect to appropriate dashboard based on role
+      const redirectPath = profile.role === 'customer' ? '/app/board-lookup' : '/app/dashboard';
 
       // Split full_name into first_name and last_name
       const nameParts = profile.full_name?.split(' ') || [];
@@ -154,6 +157,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username: profile.username,
         role: profile.role
       }));
+
+      // Redirect based on role
+      if (profile.role === 'customer') {
+        window.location.href = '/app/board-lookup';
+      } else {
+        window.location.href = '/app/dashboard';
+      }
 
     } catch (error) {
       console.error('Login error:', error);

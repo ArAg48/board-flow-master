@@ -23,7 +23,7 @@ const createAccountSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
-  role: z.enum(['manager', 'technician'], { required_error: 'Please select a role' }),
+  role: z.enum(['manager', 'technician', 'customer'], { required_error: 'Please select a role' }),
   cwStamp: z.string().optional(),
 });
 
@@ -44,7 +44,7 @@ type Profile = Database['public']['Tables']['profiles']['Row'];
 interface Account {
   id: string;
   username: string;
-  role: 'manager' | 'technician';
+  role: 'manager' | 'technician' | 'customer';
   firstName: string;
   lastName: string;
   isActive: boolean;
@@ -91,7 +91,7 @@ const AccountManagement: React.FC = () => {
       const formattedAccounts: Account[] = (data || []).map((profile: any) => ({
         id: profile.id,
         username: profile.username,
-        role: profile.role as 'manager' | 'technician',
+        role: profile.role as 'manager' | 'technician' | 'customer',
         firstName: profile.full_name?.split(' ')[0] || '',
         lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
         isActive: profile.is_active,
@@ -422,7 +422,7 @@ const AccountManagement: React.FC = () => {
               Create New Account
             </CardTitle>
             <CardDescription>
-              Add a new manager or technician account to the system
+              Add a new manager, technician, or customer account to the system
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -480,13 +480,14 @@ const AccountManagement: React.FC = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
-                <Select onValueChange={(value) => form.setValue('role', value as 'manager' | 'technician')}>
+                <Select onValueChange={(value) => form.setValue('role', value as 'manager' | 'technician' | 'customer')}>
                   <SelectTrigger className={form.formState.errors.role ? 'border-destructive' : ''}>
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="technician">Technician</SelectItem>
+                    <SelectItem value="customer">Customer</SelectItem>
                   </SelectContent>
                 </Select>
                 {form.formState.errors.role && (
@@ -563,10 +564,13 @@ const AccountManagement: React.FC = () => {
                           <code className="bg-muted px-2 py-1 rounded text-sm">{account.password}</code>
                         </TableCell>
                        <TableCell>
-                         <Badge variant={account.role === 'manager' ? 'default' : 'secondary'}>
-                           {account.role}
-                         </Badge>
-                       </TableCell>
+                          <Badge variant={
+                            account.role === 'manager' ? 'default' : 
+                            account.role === 'customer' ? 'outline' : 'secondary'
+                          }>
+                            {account.role}
+                          </Badge>
+                        </TableCell>
                        <TableCell>
                          {account.role === 'technician' && account.cwStamp ? (
                            <div className="flex items-center gap-2">

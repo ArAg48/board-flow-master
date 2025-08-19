@@ -671,6 +671,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      update_board_firmware: {
+        Args: { p_firmware_revision: string; p_qr_code: string }
+        Returns: boolean
+      }
       update_ptl_progress: {
         Args: { p_ptl_order_id: string }
         Returns: boolean
@@ -703,7 +707,7 @@ export type Database = {
       repair_status: "pending" | "in_progress" | "completed" | "scrapped"
       retest_result: "pass" | "fail"
       session_status: "completed" | "paused" | "abandoned" | "active"
-      user_role: "manager" | "technician"
+      user_role: "manager" | "technician" | "customer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -835,7 +839,7 @@ export const Constants = {
       repair_status: ["pending", "in_progress", "completed", "scrapped"],
       retest_result: ["pass", "fail"],
       session_status: ["completed", "paused", "abandoned", "active"],
-      user_role: ["manager", "technician"],
+      user_role: ["manager", "technician", "customer"],
     },
   },
 } as const

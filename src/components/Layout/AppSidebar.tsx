@@ -25,19 +25,23 @@ import {
 } from 'lucide-react';
 
 const managerItems = [
-  { title: 'Dashboard', url: '/dashboard', icon: BarChart3 },
-  { title: 'Hardware Orders', url: '/hardware-orders', icon: Package },
-  { title: 'PTL Orders', url: '/ptl-orders', icon: ClipboardList },
-  { title: 'Order Overview', url: '/order-overview', icon: Search },
-  { title: 'Account Management', url: '/account-management', icon: Users },
-  { title: 'Log History', url: '/log-history', icon: History },
-  { title: 'Barcode Generator', url: '/barcode-generator', icon: QrCode },
+  { title: 'Dashboard', url: '/app/dashboard', icon: BarChart3 },
+  { title: 'Hardware Orders', url: '/app/hardware-orders', icon: Package },
+  { title: 'PTL Orders', url: '/app/ptl-orders', icon: ClipboardList },
+  { title: 'Order Overview', url: '/app/order-overview', icon: Search },
+  { title: 'Account Management', url: '/app/account-management', icon: Users },
+  { title: 'Log History', url: '/app/log-history', icon: History },
+  { title: 'Barcode Generator', url: '/app/barcode-generator', icon: QrCode },
 ];
 
 const technicianItems = [
-  { title: 'Scan Validator', url: '/scan-validator', icon: Search },
-  { title: 'Repair Log', url: '/repair-log', icon: Wrench },
-  { title: 'Scan History', url: '/scan-history', icon: History },
+  { title: 'Scan Validator', url: '/app/scan-validator', icon: Search },
+  { title: 'Repair Log', url: '/app/repair-log', icon: Wrench },
+  { title: 'Scan History', url: '/app/scan-history', icon: History },
+];
+
+const customerItems = [
+  { title: 'Board Lookup', url: '/app/board-lookup', icon: Search },
 ];
 
 export const AppSidebar: React.FC = () => {
@@ -45,7 +49,8 @@ export const AppSidebar: React.FC = () => {
   const { state } = useSidebar();
   const location = useLocation();
 
-  const items = user?.role === 'manager' ? managerItems : technicianItems;
+  const items = user?.role === 'manager' ? managerItems : 
+               user?.role === 'customer' ? customerItems : technicianItems;
   const isCollapsed = state === 'collapsed';
 
   return (
@@ -53,7 +58,8 @@ export const AppSidebar: React.FC = () => {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            {user?.role === 'manager' ? 'Manager Tools' : 'Technician Tools'}
+            {user?.role === 'manager' ? 'Manager Tools' : 
+             user?.role === 'customer' ? 'Customer Portal' : 'Technician Tools'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
