@@ -104,7 +104,8 @@ const Login: React.FC = () => {
     <div className="min-h-screen bg-background">
       {/* Header with Board Lookup button */}
       <div className="w-full p-4">
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <img src="/lovable-uploads/658b20e8-4d41-4661-b8c2-a5977e8fa73f.png" alt="CW Logo" className="h-8 w-auto" />
           <Link to="/">
             <Button variant="default">
               <Search className="h-4 w-4 mr-2" />

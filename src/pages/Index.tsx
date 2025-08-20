@@ -94,7 +94,8 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header with Sign In button */}
       <div className="w-full p-4">
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <img src="/lovable-uploads/658b20e8-4d41-4661-b8c2-a5977e8fa73f.png" alt="CW Logo" className="h-8 w-auto" />
           <Link to="/login">
             <Button variant="default">
               <LogIn className="h-4 w-4 mr-2" />
