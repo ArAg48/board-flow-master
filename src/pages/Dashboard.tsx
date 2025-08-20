@@ -353,7 +353,7 @@ const Dashboard: React.FC = () => {
                 <div className="grid gap-4">
                   <Card 
                     className="cursor-pointer hover:bg-accent transition-colors"
-                    onClick={() => navigate('/scan-validator')}
+                    onClick={() => navigate('/app/scan-validator')}
                   >
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -370,7 +370,7 @@ const Dashboard: React.FC = () => {
                   
                   <Card 
                     className="cursor-pointer hover:bg-accent transition-colors"
-                    onClick={() => navigate('/repair-log')}
+                    onClick={() => navigate('/app/repair-log')}
                   >
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -387,7 +387,7 @@ const Dashboard: React.FC = () => {
                   
                   <Card 
                     className="cursor-pointer hover:bg-accent transition-colors"
-                    onClick={() => navigate('/scan-history')}
+                    onClick={() => navigate('/app/scan-history')}
                   >
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -405,7 +405,7 @@ const Dashboard: React.FC = () => {
                 <div className="mt-4 pt-4 border-t">
                   <Button 
                     variant="outline"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate('/app/dashboard')}
                     className="w-full"
                   >
                     Return to Dashboard

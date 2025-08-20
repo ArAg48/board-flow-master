@@ -17,7 +17,7 @@ const Unauthorized: React.FC = () => {
           You don't have permission to access this page. Please contact your administrator if you believe this is an error.
         </p>
         <div className="flex gap-4 justify-center">
-          <Button onClick={() => navigate('/dashboard')}>
+          <Button onClick={() => navigate('/app/dashboard')}>
             Go to Dashboard
           </Button>
           <Button variant="outline" onClick={() => navigate(-1)}>

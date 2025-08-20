@@ -161,7 +161,7 @@ const RepairLog: React.FC = () => {
           <h1 className="text-3xl font-bold">Repair Log</h1>
           <p className="text-muted-foreground">Track and manage failed board repairs</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/dashboard')}>
+        <Button variant="outline" onClick={() => navigate('/app/dashboard')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>

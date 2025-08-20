@@ -137,7 +137,7 @@ const ScanHistory: React.FC = () => {
           <h1 className="text-3xl font-bold">Scan History</h1>
           <p className="text-muted-foreground">View and analyze past validation sessions</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/dashboard')}>
+        <Button variant="outline" onClick={() => navigate('/app/dashboard')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>

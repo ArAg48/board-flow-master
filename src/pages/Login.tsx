@@ -29,7 +29,7 @@ const Login: React.FC = () => {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   const validateInput = (value: string): boolean => {
