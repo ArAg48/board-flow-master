@@ -192,7 +192,18 @@ const PTLOrders: React.FC = () => {
           .from('ptl_orders')
           .insert([orderData]);
 
-        if (error) throw error;
+        if (error) {
+          // Handle specific duplicate error
+          if (error.code === '23505' && error.message.includes('ptl_orders_ptl_order_number_key')) {
+            toast({
+              title: 'Duplicate PTL Order Number',
+              description: `PTL order number "${orderData.ptl_order_number}" already exists. Please use a different number.`,
+              variant: 'destructive',
+            });
+            return;
+          }
+          throw error;
+        }
 
         toast({
           title: 'PTL Order Created',
@@ -205,10 +216,24 @@ const PTLOrders: React.FC = () => {
       form.reset();
       await fetchPTLOrders(); // Refresh the list
       await fetchOrderCounts(); // Refresh counts
-    } catch (error) {
+    } catch (error: any) {
+      console.error('PTL Order submission error:', error);
+      let errorMessage = editingOrder ? 'Failed to update PTL order.' : 'Failed to create PTL order.';
+      
+      // Handle other potential database errors
+      if (error?.message) {
+        if (error.message.includes('duplicate key')) {
+          errorMessage = 'This PTL order number already exists. Please choose a different number.';
+        } else if (error.message.includes('violates check constraint')) {
+          errorMessage = 'Invalid data provided. Please check your inputs.';
+        } else if (error.message.includes('not-null constraint')) {
+          errorMessage = 'Please fill in all required fields.';
+        }
+      }
+      
       toast({
         title: 'Error',
-        description: editingOrder ? 'Failed to update PTL order.' : 'Failed to create PTL order.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
