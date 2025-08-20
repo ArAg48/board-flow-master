@@ -329,28 +329,23 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
   const saveBoardData = async (qrCode: string, testResult: 'pass' | 'fail', failureReason?: string) => {
     try {
-      // Use the current authenticated user as technician_id
-      const { error } = await supabase
-        .from('board_data')
-        .upsert({
-          qr_code: qrCode,
-          board_type: ptlOrder.boardType,
-          assembly_number: ptlOrder.boardType,
-          sequence_number: qrCode,
-          test_status: testResult,
-          test_date: new Date().toISOString(),
-          ptl_order_id: ptlOrder.id,
-          technician_id: user?.id || null,
-          test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
-        }, {
-          onConflict: 'qr_code,ptl_order_id',
-          ignoreDuplicates: false
-        });
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
+
+      // Use the secure RPC function to save board data
+      const { data, error } = await supabase.rpc('save_board_scan', {
+        p_qr_code: qrCode,
+        p_ptl_order_id: ptlOrder.id,
+        p_board_type: ptlOrder.boardType,
+        p_assembly_number: ptlOrder.boardType,
+        p_sequence_number: qrCode,
+        p_test_status: testResult,
+        p_technician_id: user.id,
+        p_test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
+      });
 
       if (error) throw error;
-      
-      // Refresh PTL progress after saving using the updated counting function
-      await supabase.rpc('update_ptl_progress', { p_ptl_order_id: ptlOrder.id });
       
       // Trigger a refresh of PTL order data in the parent component
       window.dispatchEvent(new CustomEvent('ptlProgressUpdated', { detail: { orderId: ptlOrder.id } }));
@@ -381,17 +376,19 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       await saveBoardData(failureDialog.qrCode, 'fail', failureReason);
 
       try {
-        const { error } = await supabase
-          .from('repair_entries')
-          .insert({
-            qr_code: failureDialog.qrCode,
-            board_type: ptlOrder.boardType,
-            failure_reason: failureReason,
-            failure_date: new Date().toISOString().split('T')[0],
-            repair_status: 'pending',
-            ptl_order_id: ptlOrder.id,
-            original_session_id: sessionId
-          });
+        if (!user?.id) {
+          throw new Error('User not authenticated');
+        }
+
+        const { data, error } = await supabase.rpc('create_repair_entry', {
+          p_qr_code: failureDialog.qrCode,
+          p_board_type: ptlOrder.boardType,
+          p_failure_reason: failureReason,
+          p_failure_date: new Date().toISOString().split('T')[0],
+          p_ptl_order_id: ptlOrder.id,
+          p_original_session_id: sessionId,
+          p_assigned_technician_id: user.id
+        });
 
         if (error) throw error;
       } catch (error) {

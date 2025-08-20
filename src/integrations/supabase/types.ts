@@ -524,6 +524,18 @@ export type Database = {
           total_count: number
         }[]
       }
+      create_repair_entry: {
+        Args: {
+          p_assigned_technician_id: string
+          p_board_type: string
+          p_failure_date: string
+          p_failure_reason: string
+          p_original_session_id: string
+          p_ptl_order_id: string
+          p_qr_code: string
+        }
+        Returns: string
+      }
       create_user_account: {
         Args:
           | {
@@ -650,6 +662,19 @@ export type Database = {
       refresh_ptl_progress: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      save_board_scan: {
+        Args: {
+          p_assembly_number: string
+          p_board_type: string
+          p_ptl_order_id: string
+          p_qr_code: string
+          p_sequence_number: string
+          p_technician_id: string
+          p_test_results?: Json
+          p_test_status: string
+        }
+        Returns: string
       }
       save_session: {
         Args: {
