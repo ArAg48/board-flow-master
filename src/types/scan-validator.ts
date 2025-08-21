@@ -10,6 +10,7 @@ export interface PTLOrder {
   passedCount?: number;
   failedCount?: number;
   status?: string;
+  firmwareRevision?: string;
 }
 
 export interface TesterConfig {

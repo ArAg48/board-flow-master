@@ -118,6 +118,7 @@ const ScanValidator: React.FC = () => {
           passedCount: progress?.passed_count || 0,
           failedCount: progress?.failed_count || 0,
           status: order.status,
+          firmwareRevision: order.firmware_revision,
         };
       });
 
