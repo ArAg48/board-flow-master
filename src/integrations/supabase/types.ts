@@ -559,6 +559,14 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: boolean
       }
+      delete_hardware_order: {
+        Args: { p_hardware_order_id: string }
+        Returns: boolean
+      }
+      delete_ptl_order: {
+        Args: { p_ptl_order_id: string }
+        Returns: boolean
+      }
       delete_user_account: {
         Args: { p_user_id: string }
         Returns: boolean

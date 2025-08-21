@@ -260,16 +260,15 @@ const PTLOrders: React.FC = () => {
     setViewOrderDetails(true);
   };
 
-  const handleDelete = async (order: PTLOrder) => {
+  const handleDelete = async (order: any) => {
     if (!confirm(`Are you sure you want to delete PTL order ${order.ptl_order_number}?`)) {
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('ptl_orders')
-        .delete()
-        .eq('id', order.id);
+      const { error } = await supabase.rpc('delete_ptl_order', {
+        p_ptl_order_id: order.id
+      });
 
       if (error) throw error;
 
@@ -278,8 +277,7 @@ const PTLOrders: React.FC = () => {
         description: `Order ${order.ptl_order_number} has been deleted successfully.`,
       });
 
-      await fetchPTLOrders();
-      await fetchOrderCounts();
+      fetchPTLOrders();
     } catch (error) {
       toast({
         title: 'Error',
@@ -571,10 +569,10 @@ const PTLOrders: React.FC = () => {
                         <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleEdit(order); }}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleDelete(order)}>
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleDelete(order); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

@@ -187,10 +187,9 @@ const HardwareOrders: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('hardware_orders')
-        .delete()
-        .eq('id', order.id);
+      const { error } = await supabase.rpc('delete_hardware_order', {
+        p_hardware_order_id: order.id
+      });
 
       if (error) throw error;
 
@@ -418,10 +417,10 @@ const HardwareOrders: React.FC = () => {
                       <Button size="sm" variant="outline" onClick={() => handleViewPTLOrders(order)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleEdit(order); }}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleDelete(order)}>
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleDelete(order); }}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
