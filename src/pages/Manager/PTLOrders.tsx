@@ -537,7 +537,7 @@ const PTLOrders: React.FC = () => {
                   <TableRow 
                     key={order.id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/manager/ptl-orders/${order.id}`)}
+                    onClick={() => navigate(`/app/ptl-orders/${order.id}`)}
                   >
                     <TableCell className="font-medium">{order.ptl_order_number}</TableCell>
                     <TableCell>{order.sale_code || '-'}</TableCell>
@@ -573,6 +573,9 @@ const PTLOrders: React.FC = () => {
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleDelete(order)}>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

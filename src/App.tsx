@@ -63,12 +63,12 @@ const App = () => (
                   <PTLOrders />
                 </ProtectedRoute>
               } />
-              <Route path="manager/ptl-orders/:id" element={
+              <Route path="ptl-orders/:id" element={
                 <ProtectedRoute requiredRole="manager">
                   <PTLOrderDetails />
                 </ProtectedRoute>
               } />
-              <Route path="manager/hardware-orders/:id" element={
+              <Route path="hardware-orders/:id" element={
                 <ProtectedRoute requiredRole="manager">
                   <HardwareOrderDetails />
                 </ProtectedRoute>
