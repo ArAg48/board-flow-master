@@ -8,14 +8,13 @@ import { useTheme } from 'next-themes';
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const logoUrl = '/lovable-uploads/658b20e8-4d41-4661-b8c2-a5977e8fa73f.png';
+  const logoUrl = '/lovable-uploads/792a7450-aa55-4890-b4ce-2d6c68e8f6e3.png';
 
   return (
     <header className="h-16 border-b bg-card flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
-        <img src={logoUrl} alt="CKT Works logo" className="h-8 w-auto" />
-        <h1 className="text-xl font-semibold">CKT WORKS Inventory</h1>
+        <img src={logoUrl} alt="Circuit Works Inc. logo" className="h-10 w-auto" />
       </div>
       
       <div className="flex items-center gap-4">
