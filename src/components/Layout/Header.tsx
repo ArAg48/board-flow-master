@@ -8,7 +8,7 @@ import { useTheme } from 'next-themes';
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const logoUrl = new URL('lovable-uploads/658b20e8-4d41-4661-b8c2-a5977e8fa73f.png', document.baseURI).toString();
+  const logoUrl = '/lovable-uploads/658b20e8-4d41-4661-b8c2-a5977e8fa73f.png';
 
   return (
     <header className="h-16 border-b bg-card flex items-center justify-between px-6">
