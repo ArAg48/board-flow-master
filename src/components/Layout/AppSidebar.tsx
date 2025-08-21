@@ -35,7 +35,7 @@ const managerItems = [
 ];
 
 const technicianItems = [
-  { title: 'Scan Validator', url: '/app/scan-validator', icon: Search },
+  { title: 'CW PTL', url: '/app/scan-validator', icon: Search },
   { title: 'Repair Log', url: '/app/repair-log', icon: Wrench },
   { title: 'Scan History', url: '/app/scan-history', icon: History },
 ];

@@ -358,7 +358,7 @@ const Dashboard: React.FC = () => {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Scan className="h-5 w-5" />
-                        Scan Validator
+                        CW PTL
                       </CardTitle>
                     </CardHeader>
                     <CardContent>

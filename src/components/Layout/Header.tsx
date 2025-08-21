@@ -8,13 +8,18 @@ import { useTheme } from 'next-themes';
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const logoUrl = '/lovable-uploads/792a7450-aa55-4890-b4ce-2d6c68e8f6e3.png';
+  const lightLogoUrl = '/lovable-uploads/792a7450-aa55-4890-b4ce-2d6c68e8f6e3.png';
+  const darkLogoUrl = '/lovable-uploads/78a2dd80-d93a-4575-952e-f397ab2b7d3c.png';
 
   return (
     <header className="h-16 border-b bg-card flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
-        <img src={logoUrl} alt="Circuit Works Inc. logo" className="h-10 w-auto" />
+        <img 
+          src={theme === 'dark' ? darkLogoUrl : lightLogoUrl} 
+          alt="Circuit Works Inc. logo" 
+          className="h-10 w-auto" 
+        />
       </div>
       
       <div className="flex items-center gap-4">

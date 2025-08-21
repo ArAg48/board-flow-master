@@ -90,14 +90,14 @@ const Index = () => {
     }
   };
 
-  const logoUrl = new URL('lovable-uploads/658b20e8-4d41-4661-b8c2-a5977e8fa73f.png', document.baseURI).toString();
+  const logoUrl = '/lovable-uploads/792a7450-aa55-4890-b4ce-2d6c68e8f6e3.png';
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header with Sign In button */}
       <div className="w-full p-4">
         <div className="flex justify-between items-center">
-          <img src={logoUrl} alt="CKT Works logo" className="h-8 w-auto" />
+          <img src={logoUrl} alt="Circuit Works Inc. logo" className="h-12 w-auto" />
           <Link to="/login">
             <Button variant="default">
               <LogIn className="h-4 w-4 mr-2" />

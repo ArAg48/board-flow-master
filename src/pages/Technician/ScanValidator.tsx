@@ -539,7 +539,7 @@ const ScanValidator: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Scan Validator</h1>
+          <h1 className="text-3xl font-bold">CW PTL</h1>
           <p className="text-muted-foreground">Complete PCB validation workflow with PTL order management</p>
         </div>
         {currentSession?.status === 'completed' && (
