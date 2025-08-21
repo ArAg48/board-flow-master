@@ -519,6 +519,7 @@ const PTLOrders: React.FC = () => {
                 <TableHead>PTL Order</TableHead>
                 <TableHead>Sale Code</TableHead>
                 <TableHead>Firmware Rev</TableHead>
+                <TableHead>Date Code</TableHead>
                 <TableHead>Board Type</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Progress</TableHead>
@@ -540,6 +541,7 @@ const PTLOrders: React.FC = () => {
                     <TableCell className="font-medium">{order.ptl_order_number}</TableCell>
                     <TableCell>{order.sale_code || '-'}</TableCell>
                     <TableCell>{order.firmware_revision || '-'}</TableCell>
+                    <TableCell>{order.date_code || '-'}</TableCell>
                     <TableCell>{order.board_type}</TableCell>
                     <TableCell>{order.quantity}</TableCell>
                     <TableCell>
