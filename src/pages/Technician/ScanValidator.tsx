@@ -607,6 +607,7 @@ const ScanValidator: React.FC = () => {
             setCurrentSession({ ...currentSession, preTestVerification: verification })
           }
           onComplete={handlePreTestComplete}
+          ptlOrder={currentSession.ptlOrder}
         />
       )}
 

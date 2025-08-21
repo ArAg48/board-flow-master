@@ -11,12 +11,19 @@ interface PreTestVerificationProps {
   verification: PreTestVerificationType;
   onVerificationChange: (verification: PreTestVerificationType) => void;
   onComplete: () => void;
+  ptlOrder?: {
+    orderNumber: string;
+    boardType: string;
+    expectedCount: number;
+    firmwareRevision?: string;
+  };
 }
 
 const PreTestVerification: React.FC<PreTestVerificationProps> = ({
   verification,
   onVerificationChange,
-  onComplete
+  onComplete,
+  ptlOrder
 }) => {
   const [localVerification, setLocalVerification] = useState(verification);
 
@@ -40,6 +47,32 @@ const PreTestVerification: React.FC<PreTestVerificationProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {ptlOrder && (
+          <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+            <h4 className="font-medium text-sm">PTL Order Requirements</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Order:</span>
+                <span className="ml-2 font-medium">{ptlOrder.orderNumber}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Board Type:</span>
+                <span className="ml-2 font-medium">{ptlOrder.boardType}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Expected Count:</span>
+                <span className="ml-2 font-medium">{ptlOrder.expectedCount}</span>
+              </div>
+              {ptlOrder.firmwareRevision && (
+                <div>
+                  <span className="text-muted-foreground">Firmware Version:</span>
+                  <span className="ml-2 font-medium">{ptlOrder.firmwareRevision}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <Checkbox
