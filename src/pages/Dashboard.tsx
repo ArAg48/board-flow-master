@@ -64,8 +64,8 @@ const Dashboard: React.FC = () => {
       const users = (usersRes && (usersRes.users || [])) as any[];
 
       // Counts per user request
-      const totalOrders = hardwareOrders.length; // hardware orders
-      const activeOrders = ptlOrders.filter(o => (o.status === 'pending' || o.status === 'in_progress')).length; // PTL orders active
+      const totalHardwareOrders = hardwareOrders.length; // hardware orders count
+      const totalPTLOrders = ptlOrders.length; // total PTL orders count
       const completedOrders = ptlOrders.filter(o => o.status === 'completed').length;
       const technicians = users.filter(u => (u.role === 'technician' && (u.is_active ?? true))).length;
 
@@ -90,8 +90,8 @@ const Dashboard: React.FC = () => {
       const successRate = boardsTested > 0 ? ((boardsPassed / boardsTested) * 100).toFixed(1) : '0';
 
       setStats({
-        totalOrders,
-        activeOrders,
+        totalOrders: totalHardwareOrders,
+        activeOrders: totalPTLOrders,
         completedOrders,
         technicians,
         boardsTested,
@@ -184,26 +184,26 @@ const Dashboard: React.FC = () => {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                <CardTitle className="text-sm font-medium">Hardware Orders</CardTitle>
                 <ClipboardList className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalOrders}</div>
                 <p className="text-xs text-muted-foreground">
-                  +12% from last month
+                  Total hardware orders
                 </p>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
+                <CardTitle className="text-sm font-medium">PTL Orders</CardTitle>
                 <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.activeOrders}</div>
                 <p className="text-xs text-muted-foreground">
-                  Currently in progress
+                  Total PTL orders
                 </p>
               </CardContent>
             </Card>
