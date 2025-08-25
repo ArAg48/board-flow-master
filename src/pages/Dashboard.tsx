@@ -83,7 +83,17 @@ const Dashboard: React.FC = () => {
         .eq('repair_status', 'completed');
 
       const totalOrders = orders?.length || 0;
-      const activeOrders = orders?.filter(o => o.status === 'in_progress').length || 0;
+      // Active orders are those with pending status that have started scanning (have progress data)
+      const activeOrders = orders?.filter(o => {
+        if (o.status === 'pending') {
+          // Check if this order has any progress/activity
+          const hasProgress = progress?.some(p => p.scanned_count > 0) || 
+                             sessions?.some(s => s.total_scanned > 0) ||
+                             boardRows?.length > 0;
+          return hasProgress;
+        }
+        return o.status === 'in_progress';
+      }).length || 0;
       const completedOrders = orders?.filter(o => o.status === 'completed').length || 0;
       
       // Prefer progress data, then sessions, then raw board rows
@@ -103,11 +113,23 @@ const Dashboard: React.FC = () => {
       const boardsPassed = boardsPassedFromProgress || boardsPassedFromSessions || boardsPassedFromBoardData;
       const boardsFailed = boardsFailedFromProgress || boardsFailedFromSessions || boardsFailedFromBoardData;
       
-      // Calculate average test time and total active time
+      // Calculate average test time and total active time with proper formatting
       const totalDuration = sessions?.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0) || 0;
       const totalActiveTime = sessions?.reduce((sum, s) => sum + (Number(s.actual_duration_minutes) || Number(s.duration_minutes) || 0), 0) || 0;
-      const avgTestTime = boardsTested > 0 ? `${(totalDuration / boardsTested).toFixed(1)} min` : '0 min';
-      const avgActiveTime = boardsTested > 0 ? `${(totalActiveTime / boardsTested).toFixed(1)} min` : '0 min';
+      
+      // Format time as hours and minutes
+      const formatTime = (minutes: number) => {
+        if (minutes === 0) return '0 min';
+        const hours = Math.floor(minutes / 60);
+        const mins = Math.round(minutes % 60);
+        if (hours > 0) {
+          return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+        }
+        return `${mins}m`;
+      };
+      
+      const avgTestTime = boardsTested > 0 ? formatTime(totalDuration / boardsTested) : '0 min';
+      const avgActiveTime = boardsTested > 0 ? formatTime(totalActiveTime / boardsTested) : '0 min';
       
       // Calculate success rate
       const successRate = boardsTested > 0 ? ((boardsPassed / boardsTested) * 100).toFixed(1) : '0';
@@ -177,9 +199,20 @@ const Dashboard: React.FC = () => {
       // Count completed PTL orders
       const completedPTLOrders = sessions?.filter(s => s.ptl_orders?.status === 'completed').length || 0;
       
-      // Average test time
+      // Average test time for technicians with proper formatting
       const totalDuration = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
-      const avgTime = totalScanned > 0 ? `${(totalDuration / totalScanned).toFixed(1)} min` : '0 min';
+      
+      const formatTime = (minutes: number) => {
+        if (minutes === 0) return '0 min';
+        const hours = Math.floor(minutes / 60);
+        const mins = Math.round(minutes % 60);
+        if (hours > 0) {
+          return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+        }
+        return `${mins}m`;
+      };
+      
+      const avgTime = totalScanned > 0 ? formatTime(totalDuration / totalScanned) : '0 min';
 
       setStats(prev => ({
         ...prev,
