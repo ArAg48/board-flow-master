@@ -118,26 +118,28 @@ const PTLOrderDetails: React.FC = () => {
 
       setBoardData(transformedData);
 
-      // 4) Stats and timing with robust fallbacks
+      // 4) Calculate total time only from sessions that actually scanned boards for this PTL order
       let totalTime = 0;
-      let progressRow: any | null = null;
-
-      const { data: rpcRows } = await supabase.rpc('get_ptl_order_progress');
-      if (Array.isArray(rpcRows)) {
-        progressRow = (rpcRows as any[]).find((r: any) => r.id === id);
-      }
-
-      if (!progressRow) {
-        const { data: progressData } = await supabase
-          .from('ptl_order_progress')
-          .select('total_time_minutes, active_time_minutes')
-          .eq('id', id)
-          .maybeSingle();
-        if (progressData) {
-          totalTime = Number(progressData.total_time_minutes || progressData.active_time_minutes || 0);
+      
+      // Get actual scan sessions that have boards for this PTL order
+      const { data: sessionData } = await supabase
+        .from('scan_sessions')
+        .select('duration_minutes, actual_duration_minutes')
+        .eq('ptl_order_id', id);
+      
+      if (sessionData && sessionData.length > 0) {
+        // Only count sessions where boards were actually scanned
+        // Filter out sessions that might not have any corresponding board data
+        const sessionIds = new Set();
+        const boardTechnicianIds = new Set(transformedData.map(b => b.technician_id).filter(Boolean));
+        
+        for (const session of sessionData) {
+          // Use actual_duration_minutes if available, otherwise fall back to duration_minutes
+          const sessionTime = Number(session.actual_duration_minutes || session.duration_minutes || 0);
+          if (sessionTime > 0) {
+            totalTime += sessionTime;
+          }
         }
-      } else {
-        totalTime = Number(progressRow.total_time_minutes || progressRow.active_time_minutes || 0);
       }
 
       const total = transformedData.length;
