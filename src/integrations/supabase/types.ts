@@ -234,6 +234,9 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           test_parameters: Json | null
           updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+          verifier_initials: string | null
         }
         Insert: {
           board_type: string
@@ -250,6 +253,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           test_parameters?: Json | null
           updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          verifier_initials?: string | null
         }
         Update: {
           board_type?: string
@@ -266,6 +272,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           test_parameters?: Json | null
           updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          verifier_initials?: string | null
         }
         Relationships: [
           {
@@ -280,6 +289,13 @@ export type Database = {
             columns: ["hardware_order_id"]
             isOneToOne: false
             referencedRelation: "hardware_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ptl_orders_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
