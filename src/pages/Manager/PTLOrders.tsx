@@ -546,9 +546,16 @@ const PTLOrders: React.FC = () => {
                     <TableCell>{order.quantity}</TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>{counts.scanned}/{order.quantity} scanned</div>
-                        <div className="text-xs text-muted-foreground">
-                          ✓{counts.passed} ✗{counts.failed}
+                        <div className="font-medium">{counts.scanned}/{order.quantity} scanned</div>
+                        <div className="text-xs text-muted-foreground flex gap-2">
+                          <span className="text-green-600">✓ {counts.passed} passed</span>
+                          <span className="text-red-600">✗ {counts.failed} failed</span>
+                        </div>
+                        <div className="w-full bg-secondary rounded-full h-1.5 mt-1">
+                          <div 
+                            className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+                            style={{ width: `${Math.min(100, (counts.scanned / order.quantity) * 100)}%` }}
+                          ></div>
                         </div>
                       </div>
                     </TableCell>
@@ -643,11 +650,11 @@ const PTLOrders: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Testing Progress</Label>
+                <Label className="text-sm font-medium">Testing Progress & Boards Scanned</Label>
                 <div className="grid grid-cols-4 gap-4">
                   <div className="text-center p-3 bg-muted rounded-lg">
                     <p className="text-2xl font-bold text-blue-600">{orderCounts[selectedOrder.id]?.scanned || 0}</p>
-                    <p className="text-sm text-muted-foreground">Tested</p>
+                    <p className="text-sm text-muted-foreground">Boards Tested</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
                     <p className="text-2xl font-bold text-green-600">{orderCounts[selectedOrder.id]?.passed || 0}</p>
@@ -659,8 +666,22 @@ const PTLOrders: React.FC = () => {
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
                     <p className="text-2xl font-bold text-purple-600">{orderCounts[selectedOrder.id]?.totalTime || 0}</p>
-                    <p className="text-sm text-muted-foreground">Minutes</p>
+                    <p className="text-sm text-muted-foreground">Total Minutes</p>
                   </div>
+                </div>
+                
+                {/* Progress bar */}
+                <div className="w-full bg-secondary rounded-full h-3">
+                  <div 
+                    className="bg-primary h-3 rounded-full transition-all duration-500 flex items-center justify-center text-xs text-white font-medium" 
+                    style={{ width: `${Math.min(100, ((orderCounts[selectedOrder.id]?.scanned || 0) / selectedOrder.quantity) * 100)}%` }}
+                  >
+                    {Math.round(((orderCounts[selectedOrder.id]?.scanned || 0) / selectedOrder.quantity) * 100)}%
+                  </div>
+                </div>
+                
+                <div className="text-sm text-muted-foreground text-center">
+                  {orderCounts[selectedOrder.id]?.scanned || 0} of {selectedOrder.quantity} boards have been scanned and tested
                 </div>
               </div>
             </div>

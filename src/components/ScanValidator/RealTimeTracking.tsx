@@ -20,11 +20,14 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    // Only update timer if session is not paused
+    if (session.status !== 'paused') {
+      const timer = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [session.status]);
 
   useEffect(() => {
     // Keep track of last 5 scans for trend analysis
@@ -62,6 +65,27 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
 
   const getDuration = () => {
     const start = session.startTime;
+    
+    // If session is paused, calculate duration up to pause time
+    if (session.status === 'paused' && session.pausedTime) {
+      const diff = session.pausedTime.getTime() - start.getTime();
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      return { hours, minutes, seconds, total: diff };
+    }
+    
+    // If session is on break, calculate duration excluding break time
+    if (session.status === 'break' && session.breakTime) {
+      const breakDuration = currentTime.getTime() - session.breakTime.getTime();
+      const totalDuration = currentTime.getTime() - start.getTime() - breakDuration;
+      const hours = Math.floor(totalDuration / 3600000);
+      const minutes = Math.floor((totalDuration % 3600000) / 60000);
+      const seconds = Math.floor((totalDuration % 60000) / 1000);
+      return { hours, minutes, seconds, total: totalDuration };
+    }
+    
+    // Regular running session
     const end = session.endTime || currentTime;
     const diff = end.getTime() - start.getTime();
     const hours = Math.floor(diff / 3600000);
