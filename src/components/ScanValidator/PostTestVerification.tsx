@@ -133,21 +133,35 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
             </Label>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="product-count">Product Count Verified</Label>
+              <Input
+                id="product-count"
+                placeholder="Enter verified count"
+                value={verifierInitials}
+                onChange={(e) => handleVerifierInitialsChange(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="axxess-updater">Axxess Updater</Label>
+              <Input
+                id="axxess-updater"
+                placeholder="Enter updater info"
+                value={verifierInitials}
+                onChange={(e) => handleVerifierInitialsChange(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="verifier-initials">Verifier Initials (required)</Label>
+            <Label htmlFor="expected-info">Expected Information</Label>
             <Input
-              id="verifier-initials"
-              placeholder="Enter your first and last name initials (e.g., JD)"
-              value={verifierInitials}
-              onChange={(e) => handleVerifierInitialsChange(e.target.value.toUpperCase())}
-              maxLength={4}
+              id="expected-info"
+              value={`${expectedCount} SR and 1.3 SR`}
+              readOnly
+              className="bg-muted"
             />
-            {verifierInitials.length > 0 && verifierInitials.length < 2 && (
-              <p className="text-sm text-red-600">Please enter at least your first and last name initials.</p>
-            )}
-            {isInitialsValid && (
-              <p className="text-sm text-green-600">Initials verified.</p>
-            )}
           </div>
         </div>
 
