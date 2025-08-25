@@ -83,15 +83,43 @@ const HardwareOrderDetails: React.FC = () => {
 
       if (error) throw error;
 
-      // Get progress data from the ptl_order_progress table instead
+      // Gather progress for just these orders with resilient fallbacks
       const orderIds = (data || []).map(order => order.id);
-      const { data: progressData } = await supabase
-        .from('ptl_order_progress')
-        .select('*')
-        .in('id', orderIds);
 
-      const progressMap = (progressData || []).reduce((acc, progress) => {
-        acc[progress.id] = progress;
+      let progressRows: any[] = [];
+      // 1) Prefer live RPC that derives from sessions + board_data
+      const { data: rpcRows, error: rpcError } = await supabase.rpc('get_ptl_order_progress');
+      if (!rpcError && Array.isArray(rpcRows)) {
+        progressRows = rpcRows.filter((r: any) => orderIds.includes(r.id));
+      }
+
+      // 2) Fallback to materialized progress table
+      if (progressRows.length === 0) {
+        const { data: progTableRows, error: progError } = await supabase
+          .from('ptl_order_progress')
+          .select('*')
+          .in('id', orderIds);
+        if (!progError) progressRows = progTableRows || [];
+      }
+
+      // 3) Last-resort: compute via board progress RPC
+      if (progressRows.length === 0) {
+        const { data: boardProgRows, error: boardProgErr } = await supabase.rpc('get_board_progress');
+        if (!boardProgErr && Array.isArray(boardProgRows)) {
+          progressRows = boardProgRows
+            .filter((r: any) => orderIds.includes(r.ptl_order_id))
+            .map((r: any) => ({
+              id: r.ptl_order_id,
+              scanned_count: Number(r.scanned_boards) || 0,
+              passed_count: Number(r.passed_boards) || 0,
+              failed_count: Number(r.failed_boards) || 0,
+              total_time_minutes: 0,
+            }));
+        }
+      }
+
+      const progressMap = (progressRows || []).reduce((acc: Record<string, any>, p: any) => {
+        acc[p.id] = p;
         return acc;
       }, {} as Record<string, any>);
 
