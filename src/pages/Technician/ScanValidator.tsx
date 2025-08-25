@@ -642,6 +642,7 @@ const ScanValidator: React.FC = () => {
           }}
           expectedCount={currentSession.ptlOrder.expectedCount}
           actualCount={stats.total}
+          firmwareRevision={currentSession.ptlOrder.firmwareRevision}
           onVerificationChange={(verification) => 
             setCurrentSession({ ...currentSession, postTestVerification: verification })
           }

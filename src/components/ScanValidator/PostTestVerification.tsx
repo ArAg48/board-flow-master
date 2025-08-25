@@ -13,6 +13,7 @@ interface PostTestVerificationProps {
   verification: PostTestVerificationType;
   expectedCount: number;
   actualCount: number;
+  firmwareRevision?: string;
   onVerificationChange: (verification: PostTestVerificationType) => void;
   onComplete: () => void;
 }
@@ -21,6 +22,7 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
   verification,
   expectedCount,
   actualCount,
+  firmwareRevision,
   onVerificationChange,
   onComplete
 }) => {
@@ -167,7 +169,7 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
             <Label htmlFor="expected-info">Expected Information</Label>
             <Input
               id="expected-info"
-              value={`${expectedCount} SR and 1.3 SR`}
+              value={`${expectedCount} SR and ${firmwareRevision || '1.3'} SR`}
               readOnly
               className="bg-muted"
             />
