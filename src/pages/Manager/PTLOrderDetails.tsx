@@ -277,9 +277,9 @@ const PTLOrderDetails: React.FC = () => {
         <Card>
           <CardContent className="p-6">
             <div className="text-2xl font-bold text-purple-600">
-              {stats.totalTime > 0 ? `${Math.round(stats.totalTime)}` : '0'}
+              {stats.totalTime > 0 ? `${Math.floor(stats.totalTime / 60)}h ${stats.totalTime % 60}m` : '0m'}
             </div>
-            <div className="text-sm text-muted-foreground">Minutes</div>
+            <div className="text-sm text-muted-foreground">Total Time</div>
           </CardContent>
         </Card>
       </div>
