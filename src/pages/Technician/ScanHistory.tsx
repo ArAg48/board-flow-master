@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Progress } from '@/components/ui/progress';
 import { History, Search, Filter, TrendingUp, Users, Target, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/lib/api';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
 interface SessionHistory {
@@ -59,27 +59,28 @@ const ScanHistory: React.FC = () => {
 
   const fetchSessions = async () => {
     try {
-      const res = await apiClient.getScanHistory();
-      const data = (res && (res.data || res.sessions || res)) || [];
+      const { data, error } = await supabase
+        .from('scan_sessions')
+        .select(`
+          *,
+          ptl_orders(ptl_order_number, board_type),
+          profiles(full_name)
+        `)
+        .order('start_time', { ascending: false });
 
-      const sessionsWithPassRate = (data || []).map((session: any) => ({
-        id: session.id,
-        ptl_order_id: session.ptl_order_id,
-        technician_id: session.technician_id,
-        start_time: session.start_time,
-        end_time: session.end_time,
-        duration_minutes: session.duration_minutes ?? (session.start_time && session.end_time ? Math.max(0, Math.round((new Date(session.end_time).getTime() - new Date(session.start_time).getTime())/60000)) : undefined),
-        total_scanned: session.total_scanned || 0,
-        pass_count: session.pass_count || 0,
-        fail_count: session.fail_count || 0,
-        pass_rate: (session.total_scanned || 0) > 0 ? Math.round(((session.pass_count || 0) / session.total_scanned) * 100) : 0,
-        tester_config: typeof session.tester_config === 'string' ? JSON.parse(session.tester_config) : (session.tester_config || { type: 1, scanBoxes: 1 }),
-        status: session.status,
-        notes: session.notes,
-        ptl_orders: { ptl_order_number: session.ptl_order_number, board_type: session.board_type },
-        profiles: { full_name: session.technician_name }
+      if (error) throw error;
+      
+      // Calculate pass rate for sessions that don't have it and ensure proper types
+      const sessionsWithPassRate = (data || []).map(session => ({
+        ...session,
+        pass_rate: session.total_scanned > 0 
+          ? Math.round((session.pass_count / session.total_scanned) * 100)
+          : 0,
+        tester_config: typeof session.tester_config === 'string' 
+          ? JSON.parse(session.tester_config)
+          : session.tester_config || { type: 1, scanBoxes: 1 }
       })) as SessionHistory[];
-
+      
       setSessions(sessionsWithPassRate);
     } catch (error) {
       toast({
