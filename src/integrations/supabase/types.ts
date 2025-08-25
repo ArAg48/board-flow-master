@@ -531,6 +531,10 @@ export type Database = {
           username: string
         }[]
       }
+      auto_complete_ptl_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       count_scanned_boards: {
         Args: { p_ptl_order_id: string }
         Returns: {
