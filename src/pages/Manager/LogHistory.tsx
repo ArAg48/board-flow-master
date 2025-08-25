@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Search, Download, Calendar as CalendarIcon, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 
 interface LogEntry {
   id: string;
@@ -44,108 +44,67 @@ const LogHistory: React.FC = () => {
 
   const fetchLogs = async () => {
     try {
-      // Fetch scan sessions for test logs with timing data
-      const { data: sessions } = await supabase
-        .from('scan_sessions')
-        .select(`
-          id, created_at, status, pass_count, fail_count, total_scanned, duration_minutes, actual_duration_minutes,
-          profiles(full_name),
-          ptl_orders(ptl_order_number, hardware_orders(po_number))
-        `)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // Use PHP backend to bypass Supabase RLS
+      const sessionsRes = await apiClient.getScanHistory();
+      const ordersRes = await apiClient.getPTLOrders();
 
-      // Fetch repair entries for repair logs
-      const { data: repairs } = await supabase
-        .from('repair_entries')
-        .select(`
-          id, created_at, updated_at, failure_reason, repair_status, qr_code,
-          profiles(full_name),
-          ptl_orders(ptl_order_number, hardware_orders(po_number))
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      // Fetch PTL orders for order logs
-      const { data: orders } = await supabase
-        .from('ptl_orders')
-        .select(`
-          id, created_at, ptl_order_number, status,
-          profiles(full_name),
-          hardware_orders(po_number)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const sessions = (sessionsRes && (sessionsRes.data || sessionsRes.sessions || sessionsRes)) || [];
+      const orders = (ordersRes && (ordersRes.data || ordersRes.orders || ordersRes)) || [];
 
       const logEntries: LogEntry[] = [];
 
       // Add session logs with timing information
-      sessions?.forEach(session => {
-        const level = session.status === 'completed' ? 'success' : 'info';
-        const duration = session.duration_minutes || 0;
-        const durationText = duration > 60 ? `${Math.floor(duration/60)}h ${duration%60}m` : `${duration}m`;
-        
+      sessions.forEach((session: any) => {
+        const level: LogEntry['level'] = session.status === 'completed' ? 'success' : 'info';
+        const start = session.start_time || session.startTime;
+        const end = session.end_time || session.endTime;
+        const durationMin = Number(session.duration_minutes ?? 0) || (start && end ? Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000)) : 0);
+        const durationText = durationMin > 60 ? `${Math.floor(durationMin/60)}h ${durationMin%60}m` : `${durationMin}m`;
+        const techName = session.technician_name || session.profiles?.full_name || 'Unknown';
+        const ptlOrderNumber = session.ptl_order_number || session.ptl_orders?.ptl_order_number;
+        const poNumber = session.hardware_po_number || session.ptl_orders?.hardware_orders?.po_number;
+
         logEntries.push({
           id: `session-${session.id}`,
-          timestamp: session.created_at,
+          timestamp: session.created_at || session.start_time,
           type: 'test',
           level,
-          message: `Scan session ${session.status}${duration ? ` (${durationText})` : ''}`,
-          technician: session.profiles?.full_name || 'Unknown',
-          poNumber: session.ptl_orders?.hardware_orders?.po_number,
-          boardId: session.ptl_orders?.ptl_order_number,
-          details: `Total scanned: ${session.total_scanned}, Passed: ${session.pass_count}, Failed: ${session.fail_count}${duration ? `, Duration: ${durationText}` : ''}`
+          message: `Scan session ${session.status}${durationMin ? ` (${durationText})` : ''}`,
+          technician: techName,
+          poNumber: poNumber,
+          boardId: ptlOrderNumber,
+          details: `Total scanned: ${session.total_scanned || 0}, Passed: ${session.pass_count || 0}, Failed: ${session.fail_count || 0}${durationMin ? `, Duration: ${durationText}` : ''}`
         });
 
-        // Add fail logs if any
-        if (session.fail_count > 0) {
+        if ((session.fail_count || 0) > 0) {
           logEntries.push({
             id: `session-fail-${session.id}`,
-            timestamp: session.created_at,
+            timestamp: session.created_at || session.start_time,
             type: 'test',
             level: 'error',
             message: `${session.fail_count} board(s) failed testing`,
-            technician: session.profiles?.full_name || 'Unknown',
-            poNumber: session.ptl_orders?.hardware_orders?.po_number,
-            boardId: session.ptl_orders?.ptl_order_number,
-            details: `Failed boards require repair`
+            technician: techName,
+            poNumber: poNumber,
+            boardId: ptlOrderNumber,
           });
         }
       });
 
-      // Add repair logs
-      repairs?.forEach(repair => {
-        const level = repair.repair_status === 'completed' ? 'success' : 'warning';
-        logEntries.push({
-          id: `repair-${repair.id}`,
-          timestamp: repair.repair_status === 'completed' ? repair.updated_at : repair.created_at,
-          type: 'repair',
-          level,
-          message: repair.repair_status === 'completed' ? 'Board repair completed' : 'Board repair initiated',
-          technician: repair.profiles?.full_name || 'Unknown',
-          poNumber: repair.ptl_orders?.hardware_orders?.po_number,
-          boardId: repair.qr_code,
-          details: repair.failure_reason
-        });
-      });
-
-      // Add order logs
-      orders?.forEach(order => {
+      // Add order creation logs
+      orders.forEach((order: any) => {
         logEntries.push({
           id: `order-${order.id}`,
           timestamp: order.created_at,
           type: 'order',
           level: 'info',
           message: 'New PTL order created',
-          technician: order.profiles?.full_name || 'Unknown',
-          poNumber: order.hardware_orders?.po_number,
+          technician: order.created_by_name || 'System',
+          poNumber: order.hardware_po_number,
           details: `PTL Order: ${order.ptl_order_number}`
         });
       });
 
-      // Sort by timestamp descending
       logEntries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      
       setLogs(logEntries);
     } catch (error) {
       console.error('Error fetching logs:', error);

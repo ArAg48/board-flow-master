@@ -17,7 +17,7 @@ import {
   History,
   Target
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
@@ -50,125 +50,67 @@ const Dashboard: React.FC = () => {
 
   const fetchManagerStats = async () => {
     try {
-      // Fetch PTL orders
-      const { data: orders } = await supabase
-        .from('ptl_orders')
-        .select('id, status, created_at');
+      // Fetch via PHP backend to avoid Supabase RLS issues
+      const [hardwareRes, ptlRes, sessionsRes, usersRes] = await Promise.all([
+        apiClient.getHardwareOrders(),
+        apiClient.getPTLOrders(),
+        apiClient.getScanHistory(),
+        apiClient.getUsers(),
+      ]);
 
-      // Fetch board test progress from ptl_order_progress
-      const { data: progress } = await supabase
-        .from('ptl_order_progress')
-        .select('scanned_count, passed_count, failed_count');
+      const hardwareOrders = (hardwareRes && (hardwareRes.data || [])) as any[];
+      const ptlOrders = (ptlRes && (ptlRes.data || [])) as any[];
+      const sessions = (sessionsRes && (sessionsRes.data || [])) as any[];
+      const users = (usersRes && (usersRes.users || [])) as any[];
 
-      // Fetch scan sessions for board stats and timing (fallback)
-      const { data: sessions } = await supabase
-        .from('scan_sessions')
-        .select('pass_count, fail_count, total_scanned, duration_minutes, actual_duration_minutes, created_at');
+      // Counts per user request
+      const totalOrders = hardwareOrders.length; // hardware orders
+      const activeOrders = ptlOrders.filter(o => (o.status === 'pending' || o.status === 'in_progress')).length; // PTL orders active
+      const completedOrders = ptlOrders.filter(o => o.status === 'completed').length;
+      const technicians = users.filter(u => (u.role === 'technician' && (u.is_active ?? true))).length;
 
-      // Fallback: pull raw board data counts when progress table is empty
-      const { data: boardRows } = await supabase
-        .from('board_data')
-        .select('test_status');
+      // Board stats from sessions only
+      const boardsTested = sessions.reduce((sum, s) => sum + (Number(s.total_scanned) || 0), 0);
+      const boardsPassed = sessions.reduce((sum, s) => sum + (Number(s.pass_count) || 0), 0);
+      const boardsFailed = sessions.reduce((sum, s) => sum + (Number(s.fail_count) || 0), 0);
 
-      // Fetch technician count
-      const { data: techs } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('role', 'technician');
+      // Time from sessions
+      const totalDuration = sessions.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0);
 
-      // Fetch repair entries
-      const { data: repairs } = await supabase
-        .from('repair_entries')
-        .select('id, repair_status')
-        .eq('repair_status', 'completed');
-
-      const totalOrders = orders?.length || 0;
-      // Active orders are those with pending status that have started scanning (have progress data)
-      const activeOrders = orders?.filter(o => {
-        if (o.status === 'pending') {
-          // Check if this order has any progress/activity
-          const hasProgress = progress?.some(p => p.scanned_count > 0) || 
-                             sessions?.some(s => s.total_scanned > 0) ||
-                             boardRows?.length > 0;
-          return hasProgress;
-        }
-        return o.status === 'in_progress';
-      }).length || 0;
-      const completedOrders = orders?.filter(o => o.status === 'completed').length || 0;
-      
-      // Prefer progress data, then sessions, then raw board rows
-      const boardsTestedFromProgress = progress?.reduce((sum, p) => sum + (Number(p.scanned_count) || 0), 0) || 0;
-      const boardsPassedFromProgress = progress?.reduce((sum, p) => sum + (Number(p.passed_count) || 0), 0) || 0;
-      const boardsFailedFromProgress = progress?.reduce((sum, p) => sum + (Number(p.failed_count) || 0), 0) || 0;
-
-      const boardsTestedFromSessions = sessions?.reduce((sum, s) => sum + (Number(s.total_scanned) || 0), 0) || 0;
-      const boardsPassedFromSessions = sessions?.reduce((sum, s) => sum + (Number(s.pass_count) || 0), 0) || 0;
-      const boardsFailedFromSessions = sessions?.reduce((sum, s) => sum + (Number(s.fail_count) || 0), 0) || 0;
-
-      const boardsTestedFromBoardData = (boardRows || []).length;
-      const boardsPassedFromBoardData = (boardRows || []).filter(r => r.test_status === 'pass').length;
-      const boardsFailedFromBoardData = (boardRows || []).filter(r => r.test_status === 'fail').length;
-
-      const boardsTested = boardsTestedFromProgress || boardsTestedFromSessions || boardsTestedFromBoardData;
-      const boardsPassed = boardsPassedFromProgress || boardsPassedFromSessions || boardsPassedFromBoardData;
-      const boardsFailed = boardsFailedFromProgress || boardsFailedFromSessions || boardsFailedFromBoardData;
-      
-      // Calculate average test time and total active time with proper formatting
-      const totalDuration = sessions?.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0) || 0;
-      const totalActiveTime = sessions?.reduce((sum, s) => sum + (Number(s.actual_duration_minutes) || Number(s.duration_minutes) || 0), 0) || 0;
-      
-      // Format time as hours and minutes
       const formatTime = (minutes: number) => {
-        if (minutes === 0) return '0 min';
+        if (!minutes) return '0 min';
         const hours = Math.floor(minutes / 60);
         const mins = Math.round(minutes % 60);
-        if (hours > 0) {
-          return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-        }
-        return `${mins}m`;
+        return hours > 0 ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}h`) : `${mins}m`;
       };
-      
+
       const avgTestTime = boardsTested > 0 ? formatTime(totalDuration / boardsTested) : '0 min';
-      const avgActiveTime = boardsTested > 0 ? formatTime(totalActiveTime / boardsTested) : '0 min';
-      
-      // Calculate success rate
+
+      // Success rate
       const successRate = boardsTested > 0 ? ((boardsPassed / boardsTested) * 100).toFixed(1) : '0';
 
       setStats({
         totalOrders,
         activeOrders,
         completedOrders,
-        technicians: techs?.length || 0,
+        technicians,
         boardsTested,
         boardsPassed,
         boardsFailed,
-        boardsRepaired: repairs?.length || 0,
+        boardsRepaired: 0,
         avgTestTime,
         todayTests: 0,
         techSuccessRate: parseFloat(successRate),
-        techAvgTime: avgActiveTime
+        techAvgTime: avgTestTime,
       });
 
-      // Fetch recent activity (recent scan sessions)
-      const { data: recentSessions } = await supabase
-        .from('scan_sessions')
-        .select(`
-          id, created_at, status, pass_count, fail_count,
-          profiles(full_name),
-          ptl_orders(ptl_order_number)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(4);
-
-      const activity = recentSessions?.map(session => ({
-        time: new Date(session.created_at).toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }),
-        action: `${session.profiles?.full_name} ${session.status === 'completed' ? 'completed' : 'started'} PTL ${session.ptl_orders?.ptl_order_number} - ${session.pass_count || 0} passed, ${session.fail_count || 0} failed`,
-        type: session.status === 'completed' ? 'success' : 'info'
-      })) || [];
-
+      // Recent activity from sessions
+      const recentSessions = sessions.slice(0, 4);
+      const activity = recentSessions.map((session: any) => ({
+        time: new Date(session.created_at || session.start_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        action: `${session.technician_name || 'Technician'} ${session.status === 'completed' ? 'completed' : 'started'} PTL ${session.ptl_order_number || ''} - ${(session.pass_count || 0)} passed, ${(session.fail_count || 0)} failed`,
+        type: session.status === 'completed' ? 'success' : 'info',
+      }));
       setRecentActivity(activity);
     } catch (error) {
       console.error('Error fetching manager stats:', error);
@@ -179,47 +121,37 @@ const Dashboard: React.FC = () => {
 
   const fetchTechnicianStats = async () => {
     try {
-      // Fetch technician's scan sessions
-      const { data: sessions } = await supabase
-        .from('scan_sessions')
-        .select('pass_count, fail_count, total_scanned, duration_minutes, created_at, status, ptl_orders(status, quantity)')
-        .eq('technician_id', user?.id);
+      const sessionsRes = await apiClient.getScanHistory(user?.id);
+      const sessions = (sessionsRes && (sessionsRes.data || [])) as any[];
 
       // Today's tests
       const today = new Date().toISOString().split('T')[0];
-      const todaySessions = sessions?.filter(s => 
-        s.created_at.startsWith(today)
-      ) || [];
-      
-      const todayTests = todaySessions.reduce((sum, s) => sum + s.total_scanned, 0);
-      const totalPassed = sessions?.reduce((sum, s) => sum + s.pass_count, 0) || 0;
-      const totalScanned = sessions?.reduce((sum, s) => sum + s.total_scanned, 0) || 0;
-      const successRate = totalScanned > 0 ? ((totalPassed / totalScanned) * 100).toFixed(1) : 0;
-      
-      // Count completed PTL orders
-      const completedPTLOrders = sessions?.filter(s => s.ptl_orders?.status === 'completed').length || 0;
-      
-      // Average test time for technicians with proper formatting
-      const totalDuration = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
-      
+      const todaySessions = sessions.filter(s => (s.created_at || s.start_time || '').toString().startsWith(today));
+      const todayTests = todaySessions.reduce((sum, s) => sum + (s.total_scanned || 0), 0);
+
+      const totalPassed = sessions.reduce((sum, s) => sum + (s.pass_count || 0), 0);
+      const totalScanned = sessions.reduce((sum, s) => sum + (s.total_scanned || 0), 0);
+      const successRate = totalScanned > 0 ? ((totalPassed / totalScanned) * 100).toFixed(1) : '0';
+
+      // Completed PTL orders from sessions
+      const completedPTLOrders = sessions.filter(s => s.status === 'completed').length;
+
+      // Time from sessions
+      const totalDuration = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
       const formatTime = (minutes: number) => {
-        if (minutes === 0) return '0 min';
+        if (!minutes) return '0 min';
         const hours = Math.floor(minutes / 60);
         const mins = Math.round(minutes % 60);
-        if (hours > 0) {
-          return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-        }
-        return `${mins}m`;
+        return hours > 0 ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}h`) : `${mins}m`;
       };
-      
       const avgTime = totalScanned > 0 ? formatTime(totalDuration / totalScanned) : '0 min';
 
       setStats(prev => ({
         ...prev,
         todayTests,
-        techSuccessRate: parseFloat(successRate.toString()),
+        techSuccessRate: parseFloat(successRate),
         techAvgTime: avgTime,
-        completedOrders: completedPTLOrders
+        completedOrders: completedPTLOrders,
       }));
     } catch (error) {
       console.error('Error fetching technician stats:', error);
