@@ -202,12 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 })
                 .eq('id', s.id);
 
-              // Ensure any remaining server-side flags are cleared
-              try {
-                await supabase.rpc('deactivate_session', { p_session_id: s.id });
-              } catch (e) {
-                // ignore
-              }
+              // Session marked inactive via is_active flag above
             })
           );
         }

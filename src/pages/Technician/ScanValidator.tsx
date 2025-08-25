@@ -294,25 +294,8 @@ const ScanValidator: React.FC = () => {
     }
   };
 
-  const handleTesterConfigComplete = async () => {
-    if (currentSession && user?.id) {
-      // Ensure scan session exists in DB before scanning
-      await supabase
-        .from('scan_sessions')
-        .upsert({
-          id: currentSession.id,
-          technician_id: user.id,
-          ptl_order_id: currentSession.ptlOrder.id,
-          tester_config: currentSession.testerConfig,
-          status: 'active',
-          is_active: true,
-          start_time: currentSession.startTime.toISOString(),
-          session_data: {
-            startTime: currentSession.startTime.toISOString(),
-            testerConfig: currentSession.testerConfig,
-          },
-        }, { onConflict: 'id' });
-
+  const handleTesterConfigComplete = () => {
+    if (currentSession) {
       setCurrentSession({ ...currentSession, status: 'scanning' });
     }
   };
@@ -438,7 +421,7 @@ const ScanValidator: React.FC = () => {
         // Check if PTL order should be marked as completed
         const { data: progressData } = await supabase
           .from('ptl_order_progress')
-          .select('scanned_count, passed_count, failed_count')
+          .select('scanned_count, passed_count, failed_count, total_time_minutes, active_time_minutes')
           .eq('id', currentSession.ptlOrder.id)
           .single();
 
@@ -450,19 +433,15 @@ const ScanValidator: React.FC = () => {
         // Update PTL order progress with time aggregates
         await supabase
           .from('ptl_order_progress')
-          .upsert({
-            id: currentSession.ptlOrder.id,
-            ptl_order_number: currentSession.ptlOrder.orderNumber,
-            board_type: currentSession.ptlOrder.boardType,
-            quantity: currentSession.ptlOrder.expectedCount,
-            status: currentSession.ptlOrder.status,
+          .update({
             total_time_minutes: prevTotalTime + duration,
             active_time_minutes: prevActiveTime + duration,
             updated_at: endTime.toISOString(),
             completion_percentage: currentSession.ptlOrder.expectedCount > 0
               ? Math.min(100, Math.round(((totalPassed) / currentSession.ptlOrder.expectedCount) * 100))
               : 0,
-          }, { onConflict: 'id' });
+          })
+          .eq('id', currentSession.ptlOrder.id);
 
         const isComplete = totalPassed >= currentSession.ptlOrder.expectedCount;
 
