@@ -118,31 +118,28 @@ const PTLOrderDetails: React.FC = () => {
 
       setBoardData(transformedData);
 
-      // 4) Calculate total time from scan sessions for this PTL order
+      // 4) Get total time from RPC function or fallback
       let totalTime = 0;
-      let progressRow: any | null = null;
 
       // First try to get progress data from RPC function
       const { data: rpcRows } = await supabase.rpc('get_ptl_order_progress');
       if (Array.isArray(rpcRows)) {
-        progressRow = (rpcRows as any[]).find((r: any) => r.id === id);
+        const progressRow = rpcRows.find((r: any) => r.id === id);
+        if (progressRow) {
+          // Use the time from the RPC function which properly aggregates session times
+          totalTime = Number(progressRow.total_time_minutes || progressRow.active_time_minutes || 0);
+        }
       }
-
-      if (progressRow) {
-        // Use the time from the RPC function which properly aggregates session times
-        totalTime = Number(progressRow.total_time_minutes || progressRow.active_time_minutes || 0);
-      } else {
-        // Fallback: calculate from scan_sessions directly
-        const { data: sessionData } = await supabase
-          .from('scan_sessions')
-          .select('duration_minutes, actual_duration_minutes')
-          .eq('ptl_order_id', id);
-        
-        if (sessionData && sessionData.length > 0) {
-          totalTime = sessionData.reduce((sum, session) => {
-            const sessionTime = Number(session.duration_minutes || session.actual_duration_minutes || 0);
-            return sum + sessionTime;
-          }, 0);
+      
+      // If no data from RPC, try ptl_order_progress table as fallback
+      if (totalTime === 0) {
+        const { data: progressData } = await supabase
+          .from('ptl_order_progress')
+          .select('total_time_minutes, active_time_minutes')
+          .eq('id', id)
+          .maybeSingle();
+        if (progressData) {
+          totalTime = Number(progressData.total_time_minutes || progressData.active_time_minutes || 0);
         }
       }
 
