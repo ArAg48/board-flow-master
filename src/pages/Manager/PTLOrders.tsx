@@ -109,12 +109,22 @@ const PTLOrders: React.FC = () => {
 
   const fetchOrderCounts = async () => {
     try {
-      // Use DB function to derive progress directly from sessions + board_data
-      const { data, error } = await supabase.rpc('get_ptl_order_progress');
-      if (error) throw error;
+      // Prefer RPC for live derived progress; fallback to ptl_order_progress table
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_ptl_order_progress');
+      if (rpcError) console.warn('RPC get_ptl_order_progress error:', rpcError);
+
+      let rows: any[] = Array.isArray(rpcData) && rpcData.length > 0 ? rpcData : [];
+
+      if (rows.length === 0) {
+        const { data: progRows, error: progError } = await supabase
+          .from('ptl_order_progress')
+          .select('id, scanned_count, passed_count, failed_count, total_time_minutes');
+        if (progError) throw progError;
+        rows = progRows || [];
+      }
 
       const counts: {[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}} = {};
-      (data || []).forEach((row: any) => {
+      rows.forEach((row: any) => {
         counts[row.id] = {
           scanned: Number(row.scanned_count) || 0,
           passed: Number(row.passed_count) || 0,
