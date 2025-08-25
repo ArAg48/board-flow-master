@@ -44,16 +44,8 @@ const LogHistory: React.FC = () => {
 
   const fetchLogs = async () => {
     try {
-      // Fetch scan sessions for test logs with timing data
-      const { data: sessions } = await supabase
-        .from('scan_sessions')
-        .select(`
-          id, created_at, status, pass_count, fail_count, total_scanned, duration_minutes, actual_duration_minutes,
-          profiles(full_name),
-          ptl_orders(ptl_order_number, hardware_orders(po_number))
-        `)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // Fetch scan sessions via SECURITY DEFINER function to bypass RLS
+      const { data: sessions } = await supabase.rpc('get_scan_history', { p_technician_id: null });
 
       // Fetch repair entries for repair logs
       const { data: repairs } = await supabase
@@ -80,8 +72,9 @@ const LogHistory: React.FC = () => {
       const logEntries: LogEntry[] = [];
 
       // Add session logs with timing information
-      sessions?.forEach(session => {
-        const level = session.status === 'completed' ? 'success' : 'info';
+      (sessions as any[] | null)?.forEach((session: any) => {
+        const isCompleted = session.session_status === 'completed';
+        const level = isCompleted ? 'success' : 'info';
         const duration = session.duration_minutes || 0;
         const durationText = duration > 60 ? `${Math.floor(duration/60)}h ${duration%60}m` : `${duration}m`;
         
@@ -90,23 +83,21 @@ const LogHistory: React.FC = () => {
           timestamp: session.created_at,
           type: 'test',
           level,
-          message: `Scan session ${session.status}${duration ? ` (${durationText})` : ''}`,
-          technician: session.profiles?.full_name || 'Unknown',
-          poNumber: session.ptl_orders?.hardware_orders?.po_number,
-          boardId: session.ptl_orders?.ptl_order_number,
+          message: `Scan session ${session.session_status}${duration ? ` (${durationText})` : ''}`,
+          technician: session.technician_name || 'Unknown',
+          boardId: session.ptl_order_number,
           details: `Total scanned: ${session.total_scanned}, Passed: ${session.pass_count}, Failed: ${session.fail_count}${duration ? `, Duration: ${durationText}` : ''}`
         });
 
-        if (session.fail_count > 0) {
+        if ((session.fail_count || 0) > 0) {
           logEntries.push({
             id: `session-fail-${session.id}`,
             timestamp: session.created_at,
             type: 'test',
             level: 'error',
             message: `${session.fail_count} board(s) failed testing`,
-            technician: session.profiles?.full_name || 'Unknown',
-            poNumber: session.ptl_orders?.hardware_orders?.po_number,
-            boardId: session.ptl_orders?.ptl_order_number,
+            technician: session.technician_name || 'Unknown',
+            boardId: session.ptl_order_number,
             details: `Failed boards require repair`
           });
         }

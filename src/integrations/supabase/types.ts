@@ -616,6 +616,27 @@ export type Database = {
           total_time_minutes: number
         }[]
       }
+      get_scan_history: {
+        Args: { p_technician_id?: string }
+        Returns: {
+          actual_duration_minutes: number
+          board_type: string
+          created_at: string
+          duration_minutes: number
+          end_time: string
+          fail_count: number
+          id: string
+          pass_count: number
+          ptl_order_id: string
+          ptl_order_number: string
+          ptl_order_status: Database["public"]["Enums"]["order_status"]
+          session_status: Database["public"]["Enums"]["session_status"]
+          start_time: string
+          technician_id: string
+          technician_name: string
+          total_scanned: number
+        }[]
+      }
       get_user_credentials: {
         Args: Record<PropertyKey, never>
         Returns: {

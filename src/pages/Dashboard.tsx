@@ -155,45 +155,39 @@ const Dashboard: React.FC = () => {
 
   const fetchTechnicianStats = async () => {
     try {
-      // Fetch technician's scan sessions
-      const { data: sessions } = await supabase
-        .from('scan_sessions')
-        .select('pass_count, fail_count, total_scanned, duration_minutes, created_at, status, ptl_orders(status, quantity)')
-        .eq('technician_id', user?.id);
+      // Fetch technician's scan sessions via SECURITY DEFINER function
+      const { data: sessions }: { data: any[] | null } = await supabase.rpc('get_scan_history', {
+        p_technician_id: user?.id || null,
+      });
+
+      const list = sessions || [];
 
       // Today's tests
       const today = new Date().toISOString().split('T')[0];
-      const todaySessions = sessions?.filter(s => 
-        s.created_at.startsWith(today)
-      ) || [];
-      
-      const todayTests = todaySessions.reduce((sum, s) => sum + s.total_scanned, 0);
-      const totalPassed = sessions?.reduce((sum, s) => sum + s.pass_count, 0) || 0;
-      const totalScanned = sessions?.reduce((sum, s) => sum + s.total_scanned, 0) || 0;
+      const todaySessions = list.filter((s: any) => (s.created_at || '').startsWith(today));
+
+      const todayTests = todaySessions.reduce((sum: number, s: any) => sum + (s.total_scanned || 0), 0);
+      const totalPassed = list.reduce((sum: number, s: any) => sum + (s.pass_count || 0), 0);
+      const totalScanned = list.reduce((sum: number, s: any) => sum + (s.total_scanned || 0), 0);
       const successRate = totalScanned > 0 ? ((totalPassed / totalScanned) * 100).toFixed(1) : 0;
-      
+
       // Count completed PTL orders
-      const completedPTLOrders = sessions?.filter(s => s.ptl_orders?.status === 'completed').length || 0;
-      
-      // Average test time for technicians with proper formatting
-      const totalDuration = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
-      
+      const completedPTLOrders = list.filter((s: any) => s.ptl_order_status === 'completed').length;
+
+      // Average test time per board: total time / boards scanned
+      const totalDuration = list.reduce((sum: number, s: any) => sum + (s.duration_minutes || 0), 0);
       const formatTime = (minutes: number) => {
-        if (minutes === 0) return '0 min';
+        if (!minutes) return '0 min';
         const hours = Math.floor(minutes / 60);
         const mins = Math.round(minutes % 60);
-        if (hours > 0) {
-          return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-        }
-        return `${mins}m`;
+        return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
       };
-      
       const avgTime = totalScanned > 0 ? formatTime(totalDuration / totalScanned) : '0 min';
 
       setStats(prev => ({
         ...prev,
         todayTests,
-        techSuccessRate: parseFloat(successRate.toString()),
+        techSuccessRate: parseFloat(String(successRate)),
         techAvgTime: avgTime,
         completedOrders: completedPTLOrders
       }));
