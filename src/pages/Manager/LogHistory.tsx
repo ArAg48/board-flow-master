@@ -44,11 +44,11 @@ const LogHistory: React.FC = () => {
 
   const fetchLogs = async () => {
     try {
-      // Fetch scan sessions for test logs
+      // Fetch scan sessions for test logs with timing data
       const { data: sessions } = await supabase
         .from('scan_sessions')
         .select(`
-          id, created_at, status, pass_count, fail_count, total_scanned,
+          id, created_at, status, pass_count, fail_count, total_scanned, duration_minutes, actual_duration_minutes,
           profiles(full_name),
           ptl_orders(ptl_order_number, hardware_orders(po_number))
         `)
@@ -79,19 +79,22 @@ const LogHistory: React.FC = () => {
 
       const logEntries: LogEntry[] = [];
 
-      // Add session logs
+      // Add session logs with timing information
       sessions?.forEach(session => {
         const level = session.status === 'completed' ? 'success' : 'info';
+        const duration = session.duration_minutes || 0;
+        const durationText = duration > 60 ? `${Math.floor(duration/60)}h ${duration%60}m` : `${duration}m`;
+        
         logEntries.push({
           id: `session-${session.id}`,
           timestamp: session.created_at,
           type: 'test',
           level,
-          message: `Scan session ${session.status}`,
+          message: `Scan session ${session.status}${duration ? ` (${durationText})` : ''}`,
           technician: session.profiles?.full_name || 'Unknown',
           poNumber: session.ptl_orders?.hardware_orders?.po_number,
           boardId: session.ptl_orders?.ptl_order_number,
-          details: `Total scanned: ${session.total_scanned}, Passed: ${session.pass_count}, Failed: ${session.fail_count}`
+          details: `Total scanned: ${session.total_scanned}, Passed: ${session.pass_count}, Failed: ${session.fail_count}${duration ? `, Duration: ${durationText}` : ''}`
         });
 
         // Add fail logs if any

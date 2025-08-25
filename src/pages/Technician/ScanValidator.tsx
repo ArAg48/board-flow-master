@@ -137,22 +137,9 @@ const ScanValidator: React.FC = () => {
   };
 
   const checkForActiveSession = async () => {
-    if (!user?.id) return;
-
-    try {
-      const { data, error } = await supabase.rpc('get_active_session_for_user', {
-        user_id: user.id
-      });
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        const activeSession = data[0];
-        setResumeDialog({ open: true, session: activeSession });
-      }
-    } catch (error) {
-      console.error('Error checking for active session:', error);
-    }
+    // Skip session resume for simplified workflow
+    // Sessions end when users log out or finish PTL orders
+    return;
   };
 
   const saveSession = async () => {
@@ -288,43 +275,6 @@ const ScanValidator: React.FC = () => {
 
   const handleOrderSelect = async (order: PTLOrder) => {
     if (!currentSession && user?.id) {
-      // First check if there's an existing active session for this PTL order
-      try {
-        const { data: existingSessions, error } = await supabase
-          .from('scan_sessions')
-          .select('*')
-          .eq('ptl_order_id', order.id)
-          .eq('technician_id', user.id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (error) throw error;
-
-        if (existingSessions && existingSessions.length > 0) {
-          // Found an existing active session, set up resume dialog
-          const existingSession = existingSessions[0];
-          setResumeDialog({ 
-            open: true, 
-            session: {
-              session_id: existingSession.id,
-              ptl_order_id: existingSession.ptl_order_id,
-              session_data: existingSession.session_data,
-              start_time: existingSession.start_time,
-              paused_at: existingSession.paused_at,
-              break_started_at: existingSession.break_started_at
-            }
-          });
-          return;
-        }
-
-        // No active session found, start a fresh session
-        // Don't load existing board data into the session - session should only track what THIS session scans
-      } catch (error) {
-        console.error('Error checking for existing session:', error);
-      }
-
-      // No existing session found, create a new one
       // Refresh the order data to get the latest progress before starting
       await loadPTLOrders();
       
@@ -497,7 +447,7 @@ const ScanValidator: React.FC = () => {
           toast({
             title: '🎉 PTL Order Complete!',
             description: `You have successfully tested and passed all ${currentSession.ptlOrder.expectedCount} boards for this PTL order.`,
-            duration: 5000,
+            duration: 8000,
           });
 
           // Update PTL order status to completed
@@ -701,40 +651,6 @@ const ScanValidator: React.FC = () => {
         </div>
       )}
 
-      {/* Resume Session Dialog */}
-      <Dialog open={resumeDialog.open} onOpenChange={(open) => {
-        if (!open) {
-          setResumeDialog({ open: false, session: null });
-        }
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Resume Previous Session?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-muted-foreground">
-              You have an active session from a previous login. Would you like to resume it or start fresh?
-            </p>
-            {resumeDialog.session && (
-              <div className="p-4 bg-muted rounded-lg text-sm">
-                <div><strong>Session:</strong> {resumeDialog.session.session_id}</div>
-                <div><strong>Started:</strong> {new Date(resumeDialog.session.start_time).toLocaleString()}</div>
-                {resumeDialog.session.paused_at && (
-                  <div><strong>Paused:</strong> {new Date(resumeDialog.session.paused_at).toLocaleString()}</div>
-                )}
-              </div>
-            )}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={startNewSessionFromDialog}>
-                Start New Session
-              </Button>
-              <Button onClick={resumeActiveSession}>
-                Resume Session
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {loading && (
         <div className="flex items-center justify-center p-8">

@@ -123,28 +123,27 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       // Add to scan entries
       onScanEntry(entry);
 
-      // Check if we've reached the expected count (check overall order progress)
-      // Need to refresh PTL order data first to get accurate counts
-      try {
-        const { data: progressData } = await supabase
-          .from('ptl_order_progress')
-          .select('passed_count')
-          .eq('id', ptlOrder.id)
-          .single();
+        // Check if we've reached the expected count by querying board_data directly
+        try {
+          const { data: boardData } = await supabase
+            .from('board_data')
+            .select('test_status')
+            .eq('ptl_order_id', ptlOrder.id)
+            .eq('test_status', 'pass');
 
-        const currentPassed = progressData?.passed_count || 0;
-        const newPassedCount = currentPassed + 1;
-        
-        if (newPassedCount >= ptlOrder.expectedCount) {
-          toast({
-            title: "Target Reached!",
-            description: `You have successfully passed ${ptlOrder.expectedCount} boards for this PTL order.`,
-            duration: 5000
-          });
+          const currentPassed = boardData?.length || 0;
+          const newPassedCount = currentPassed + 1;
+          
+          if (newPassedCount >= ptlOrder.expectedCount) {
+            toast({
+              title: "🎉 Target Reached!",
+              description: `You have successfully passed ${ptlOrder.expectedCount} boards for this PTL order. Ready to finish PTL!`,
+              duration: 8000
+            });
+          }
+        } catch (error) {
+          console.error('Error checking progress:', error);
         }
-      } catch (error) {
-        console.error('Error checking progress:', error);
-      }
 
       // Clear the validated board and input
       const newValidatedBoards = { ...validatedBoards };
@@ -219,20 +218,20 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
       // Check if we've reached the expected count after passing all boards
       try {
-        const { data: progressData } = await supabase
-          .from('ptl_order_progress')
-          .select('passed_count')
-          .eq('id', ptlOrder.id)
-          .single();
+        const { data: boardData } = await supabase
+          .from('board_data')
+          .select('test_status')
+          .eq('ptl_order_id', ptlOrder.id)
+          .eq('test_status', 'pass');
 
-        const currentPassed = progressData?.passed_count || 0;
+        const currentPassed = boardData?.length || 0;
         const newPassedCount = currentPassed + newEntries.length;
         
         if (newPassedCount >= ptlOrder.expectedCount) {
           toast({
-            title: "Target Reached!",
-            description: `You have successfully passed ${ptlOrder.expectedCount} boards for this PTL order.`,
-            duration: 5000
+            title: "🎉 Target Reached!",
+            description: `You have successfully passed ${ptlOrder.expectedCount} boards for this PTL order. Ready to finish PTL!`,
+            duration: 8000
           });
         }
       } catch (error) {

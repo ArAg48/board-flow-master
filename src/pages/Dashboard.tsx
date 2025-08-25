@@ -60,10 +60,10 @@ const Dashboard: React.FC = () => {
         .from('ptl_order_progress')
         .select('scanned_count, passed_count, failed_count');
 
-      // Fetch scan sessions for board stats (fallback)
+      // Fetch scan sessions for board stats and timing (fallback)
       const { data: sessions } = await supabase
         .from('scan_sessions')
-        .select('pass_count, fail_count, total_scanned, duration_minutes, created_at');
+        .select('pass_count, fail_count, total_scanned, duration_minutes, actual_duration_minutes, created_at');
 
       // Fallback: pull raw board data counts when progress table is empty
       const { data: boardRows } = await supabase
@@ -103,9 +103,11 @@ const Dashboard: React.FC = () => {
       const boardsPassed = boardsPassedFromProgress || boardsPassedFromSessions || boardsPassedFromBoardData;
       const boardsFailed = boardsFailedFromProgress || boardsFailedFromSessions || boardsFailedFromBoardData;
       
-      // Calculate average test time
+      // Calculate average test time and total active time
       const totalDuration = sessions?.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0) || 0;
+      const totalActiveTime = sessions?.reduce((sum, s) => sum + (Number(s.actual_duration_minutes) || Number(s.duration_minutes) || 0), 0) || 0;
       const avgTestTime = boardsTested > 0 ? `${(totalDuration / boardsTested).toFixed(1)} min` : '0 min';
+      const avgActiveTime = boardsTested > 0 ? `${(totalActiveTime / boardsTested).toFixed(1)} min` : '0 min';
       
       // Calculate success rate
       const successRate = boardsTested > 0 ? ((boardsPassed / boardsTested) * 100).toFixed(1) : '0';
@@ -122,7 +124,7 @@ const Dashboard: React.FC = () => {
         avgTestTime,
         todayTests: 0,
         techSuccessRate: parseFloat(successRate),
-        techAvgTime: '0 min'
+        techAvgTime: avgActiveTime
       });
 
       // Fetch recent activity (recent scan sessions)
@@ -296,13 +298,20 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="font-semibold">{stats.boardsRepaired}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm">Avg. Test Time</span>
-                  </div>
-                  <span className="font-semibold">{stats.avgTestTime}</span>
-                </div>
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <Clock className="h-4 w-4 text-blue-500" />
+                     <span className="text-sm">Avg. Test Time</span>
+                   </div>
+                   <span className="font-semibold">{stats.avgTestTime}</span>
+                 </div>
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <Target className="h-4 w-4 text-purple-500" />
+                     <span className="text-sm">Total Tested</span>
+                   </div>
+                   <span className="font-semibold">{stats.boardsTested}</span>
+                 </div>
               </CardContent>
             </Card>
 
