@@ -541,7 +541,7 @@ const PTLOrders: React.FC = () => {
                     <TableCell>
                       <div className="text-sm">
                         {counts.totalTime > 0 ? (
-                          <span>{Math.round(counts.totalTime)} min</span>
+                          <span>{Math.floor(counts.totalTime / 60)}h {counts.totalTime % 60}m</span>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
@@ -651,8 +651,13 @@ const PTLOrders: React.FC = () => {
                     <p className="text-sm text-muted-foreground">Failed</p>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold text-purple-600">{orderCounts[selectedOrder.id]?.totalTime || 0}</p>
-                    <p className="text-sm text-muted-foreground">Total Minutes</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {orderCounts[selectedOrder.id]?.totalTime > 0 ? 
+                        `${Math.floor(orderCounts[selectedOrder.id].totalTime / 60)}h ${orderCounts[selectedOrder.id].totalTime % 60}m` : 
+                        '0m'
+                      }
+                    </p>
+                    <p className="text-sm text-muted-foreground">Total Time</p>
                   </div>
                 </div>
                 
