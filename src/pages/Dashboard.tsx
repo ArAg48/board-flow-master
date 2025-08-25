@@ -60,12 +60,10 @@ const Dashboard: React.FC = () => {
         .from('ptl_orders')
         .select('id, status, created_at');
 
-      // Fetch scan sessions for board stats and timing
-      const { data: sessions } = await supabase
-        .from('scan_sessions')
-        .select('pass_count, fail_count, total_scanned, duration_minutes, actual_duration_minutes, created_at');
+      // Refresh progress snapshot from existing data (sessions + boards) via DB function
+      try { await supabase.rpc('refresh_ptl_progress'); } catch (e) { /* ignore */ }
 
-      // Fetch technician count
+      // Fetch technician count separately
       const { data: techs } = await supabase
         .from('profiles')
         .select('id')
@@ -83,14 +81,18 @@ const Dashboard: React.FC = () => {
       const completedOrders = ptlOrders?.filter(o => o.status === 'completed').length || 0;
       const technicians = techs?.length || 0;
 
-      // Board stats from sessions
-      const boardsTested = sessions?.reduce((sum, s) => sum + (Number(s.total_scanned) || 0), 0) || 0;
-      const boardsPassed = sessions?.reduce((sum, s) => sum + (Number(s.pass_count) || 0), 0) || 0;
-      const boardsFailed = sessions?.reduce((sum, s) => sum + (Number(s.fail_count) || 0), 0) || 0;
+      // Aggregate board stats from PTL progress
+      const { data: progress } = await supabase
+        .from('ptl_order_progress')
+        .select('scanned_count, passed_count, failed_count, total_time_minutes, active_time_minutes');
+
+      const boardsTested = progress?.reduce((sum, p: any) => sum + (Number(p.scanned_count) || 0), 0) || 0;
+      const boardsPassed = progress?.reduce((sum, p: any) => sum + (Number(p.passed_count) || 0), 0) || 0;
+      const boardsFailed = progress?.reduce((sum, p: any) => sum + (Number(p.failed_count) || 0), 0) || 0;
 
       // Time calculations with proper formatting
-      const totalDuration = sessions?.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0) || 0;
-      const totalActiveTime = sessions?.reduce((sum, s) => sum + (Number(s.actual_duration_minutes) || Number(s.duration_minutes) || 0), 0) || 0;
+      const totalDuration = progress?.reduce((sum, p: any) => sum + (Number(p.total_time_minutes) || 0), 0) || 0;
+      const totalActiveTime = progress?.reduce((sum, p: any) => sum + (Number(p.active_time_minutes) || 0), 0) || 0;
 
       const formatTime = (minutes: number) => {
         if (minutes === 0) return '0 min';
@@ -123,25 +125,25 @@ const Dashboard: React.FC = () => {
         techAvgTime: avgActiveTime
       });
 
-      // Fetch recent activity (recent scan sessions)
-      const { data: recentSessions } = await supabase
-        .from('scan_sessions')
+      // Fetch recent activity from board_data
+      const { data: recentBoards } = await supabase
+        .from('board_data')
         .select(`
-          id, created_at, status, pass_count, fail_count,
+          created_at, test_status,
           profiles(full_name),
           ptl_orders(ptl_order_number)
         `)
         .order('created_at', { ascending: false })
         .limit(4);
 
-      const activity = recentSessions?.map(session => ({
-        time: new Date(session.created_at).toLocaleTimeString('en-US', { 
+      const activity = (recentBoards || []).map((b: any) => ({
+        time: new Date(b.created_at).toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit' 
         }),
-        action: `${session.profiles?.full_name} ${session.status === 'completed' ? 'completed' : 'started'} PTL ${session.ptl_orders?.ptl_order_number} - ${session.pass_count || 0} passed, ${session.fail_count || 0} failed`,
-        type: session.status === 'completed' ? 'success' : 'info'
-      })) || [];
+        action: `${b.profiles?.full_name || 'Technician'} ${b.test_status === 'pass' ? 'passed' : b.test_status === 'fail' ? 'failed' : 'scanned'} a board in PTL ${b.ptl_orders?.ptl_order_number || ''}`,
+        type: b.test_status === 'fail' ? 'error' : 'info'
+      }));
 
       setRecentActivity(activity);
     } catch (error) {
