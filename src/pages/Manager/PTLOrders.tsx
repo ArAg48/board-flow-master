@@ -109,54 +109,23 @@ const PTLOrders: React.FC = () => {
 
   const fetchOrderCounts = async () => {
     try {
-      // Use the updated counting function to get accurate board counts
-      const { data, error } = await supabase
-        .from('ptl_order_progress')
-        .select('*');
-
+      // Use DB function to derive progress directly from sessions + board_data
+      const { data, error } = await supabase.rpc('get_ptl_order_progress');
       if (error) throw error;
 
       const counts: {[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}} = {};
-      
-      (data || []).forEach(order => {
-        counts[order.id] = { 
-          scanned: Number(order.scanned_count), 
-          passed: Number(order.passed_count), 
-          failed: Number(order.failed_count),
-          totalTime: Number(order.total_time_minutes)
+      (data || []).forEach((row: any) => {
+        counts[row.id] = {
+          scanned: Number(row.scanned_count) || 0,
+          passed: Number(row.passed_count) || 0,
+          failed: Number(row.failed_count) || 0,
+          totalTime: Number(row.total_time_minutes) || 0,
         };
       });
 
       setOrderCounts(counts);
     } catch (error) {
       console.error('Error fetching order counts:', error);
-      // Fallback to using the updated counting function directly
-      try {
-        const { data: ptlOrders } = await supabase
-          .from('ptl_orders')
-          .select('id');
-
-        const counts: {[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}} = {};
-        
-        for (const order of ptlOrders || []) {
-          const { data: countData } = await supabase
-            .rpc('count_scanned_boards', { p_ptl_order_id: order.id });
-          
-          if (countData && countData.length > 0) {
-            const boardCount = countData[0];
-            counts[order.id] = {
-              scanned: Number(boardCount.total_count),
-              passed: Number(boardCount.pass_count),
-              failed: Number(boardCount.fail_count),
-              totalTime: 0 // Will be filled by timing data
-            };
-          }
-        }
-
-        setOrderCounts(counts);
-      } catch (fallbackError) {
-        console.error('Fallback counting also failed:', fallbackError);
-      }
     }
   };
 

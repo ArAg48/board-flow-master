@@ -81,23 +81,22 @@ const Dashboard: React.FC = () => {
       const completedOrders = ptlOrders?.filter(o => o.status === 'completed').length || 0;
       const technicians = techs?.length || 0;
 
-      // Aggregate board stats from PTL progress
-      const { data: progress } = await supabase
-        .from('ptl_order_progress')
-        .select('scanned_count, passed_count, failed_count, total_time_minutes, active_time_minutes');
+      // Aggregate board and time stats using DB function that derives from sessions + boards
+      const { data: progress } = await supabase.rpc('get_ptl_order_progress');
 
-      const boardsTested = progress?.reduce((sum, p: any) => sum + (Number(p.scanned_count) || 0), 0) || 0;
-      const boardsPassed = progress?.reduce((sum, p: any) => sum + (Number(p.passed_count) || 0), 0) || 0;
-      const boardsFailed = progress?.reduce((sum, p: any) => sum + (Number(p.failed_count) || 0), 0) || 0;
+      const boardsTested = progress?.reduce((sum: number, p: any) => sum + (Number(p.scanned_count) || 0), 0) || 0;
+      const boardsPassed = progress?.reduce((sum: number, p: any) => sum + (Number(p.passed_count) || 0), 0) || 0;
+      const boardsFailed = progress?.reduce((sum: number, p: any) => sum + (Number(p.failed_count) || 0), 0) || 0;
 
       // Time calculations with proper formatting
-      const totalDuration = progress?.reduce((sum, p: any) => sum + (Number(p.total_time_minutes) || 0), 0) || 0;
-      const totalActiveTime = progress?.reduce((sum, p: any) => sum + (Number(p.active_time_minutes) || 0), 0) || 0;
+      const totalDuration = progress?.reduce((sum: number, p: any) => sum + (Number(p.total_time_minutes) || 0), 0) || 0;
+      const totalActiveTime = progress?.reduce((sum: number, p: any) => sum + (Number(p.active_time_minutes) || 0), 0) || 0;
 
       const formatTime = (minutes: number) => {
-        if (minutes === 0) return '0 min';
-        const hours = Math.floor(minutes / 60);
-        const mins = Math.round(minutes % 60);
+        const rounded = Math.round(minutes);
+        if (rounded === 0) return '0 min';
+        const hours = Math.floor(rounded / 60);
+        const mins = rounded % 60;
         if (hours > 0) {
           return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
         }
