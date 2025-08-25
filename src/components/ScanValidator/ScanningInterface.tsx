@@ -332,19 +332,58 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
         throw new Error('User not authenticated');
       }
 
-      // Use the secure RPC function to save board data
-      const { data, error } = await supabase.rpc('save_board_scan', {
-        p_qr_code: qrCode,
-        p_ptl_order_id: ptlOrder.id,
-        p_board_type: ptlOrder.boardType,
-        p_assembly_number: ptlOrder.boardType,
-        p_sequence_number: qrCode,
-        p_test_status: testResult,
-        p_technician_id: user.id,
-        p_test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' }
-      });
+      // Insert board scan into board_data
+      const { error: boardError } = await supabase.from('board_data').insert([
+        {
+          qr_code: qrCode,
+          ptl_order_id: ptlOrder.id,
+          board_type: ptlOrder.boardType,
+          assembly_number: ptlOrder.boardType,
+          sequence_number: qrCode,
+          test_status: testResult,
+          technician_id: user.id,
+          test_results: failureReason ? { failure_reason: failureReason } : { result: 'passed' },
+          test_date: new Date().toISOString(),
+        }
+      ]);
 
-      if (error) throw error;
+      if (boardError) throw boardError;
+
+      // Ensure progress row exists and update counts
+      const { data: existingProgress } = await supabase
+        .from('ptl_order_progress')
+        .select('scanned_count, passed_count, failed_count, active_time_minutes, total_time_minutes, quantity')
+        .eq('id', ptlOrder.id)
+        .maybeSingle();
+
+      const currentScanned = existingProgress?.scanned_count || 0;
+      const currentPassed = existingProgress?.passed_count || 0;
+      const currentFailed = existingProgress?.failed_count || 0;
+
+      const newScanned = currentScanned + 1;
+      const newPassed = currentPassed + (testResult === 'pass' ? 1 : 0);
+      const newFailed = currentFailed + (testResult === 'fail' ? 1 : 0);
+      const quantity = ptlOrder.expectedCount;
+      const completion = quantity > 0 ? Math.min(100, Math.round((newPassed / quantity) * 100)) : 0;
+
+      const upsertPayload = {
+        id: ptlOrder.id,
+        ptl_order_number: ptlOrder.orderNumber,
+        board_type: ptlOrder.boardType,
+        quantity,
+        status: ptlOrder.status,
+        scanned_count: newScanned,
+        passed_count: newPassed,
+        failed_count: newFailed,
+        completion_percentage: completion,
+        updated_at: new Date().toISOString(),
+      } as any;
+
+      const { error: progressError } = await supabase
+        .from('ptl_order_progress')
+        .upsert(upsertPayload, { onConflict: 'id' });
+
+      if (progressError) throw progressError;
       
       // Trigger a refresh of PTL order data in the parent component
       window.dispatchEvent(new CustomEvent('ptlProgressUpdated', { detail: { orderId: ptlOrder.id } }));

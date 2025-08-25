@@ -169,16 +169,7 @@ const ScanValidator: React.FC = () => {
         endTime: currentSession.endTime?.toISOString()
       }));
 
-      // Save session with accurate counts
-      await supabase.rpc('save_session', {
-        p_session_id: currentSession.id,
-        p_technician_id: user.id,
-        p_ptl_order_id: currentSession.ptlOrder.id,
-        p_session_data: sessionData,
-        p_status: currentSession.status,
-        p_paused_at: currentSession.pausedTime?.toISOString() || null,
-        p_break_started_at: currentSession.breakTime?.toISOString() || null
-      });
+      // Session row is maintained via direct updates (no RPC)
 
       // Update session statistics in database
       await supabase
@@ -189,7 +180,13 @@ const ScanValidator: React.FC = () => {
           fail_count: stats.failed,
           pass_rate: stats.passRate,
           duration_minutes: duration,
-          end_time: currentSession.endTime?.toISOString() || null
+          end_time: currentSession.endTime?.toISOString() || null,
+          session_data: sessionData,
+          status: currentSession.status === 'paused' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active'),
+          paused_at: currentSession.pausedTime?.toISOString() || null,
+          break_started_at: currentSession.breakTime?.toISOString() || null,
+          is_active: currentSession.status !== 'completed',
+          actual_duration_minutes: duration
         })
         .eq('id', currentSession.id);
 
@@ -259,14 +256,7 @@ const ScanValidator: React.FC = () => {
 
   const startNewSessionFromDialog = async () => {
     if (resumeDialog.session && user?.id) {
-      // Deactivate the old session
-      try {
-        await supabase.rpc('deactivate_session', {
-          p_session_id: resumeDialog.session.session_id
-        });
-      } catch (error) {
-        console.error('Error deactivating old session:', error);
-      }
+      // Mark old session inactive (handled via direct DB updates)
     }
     
     setResumeDialog({ open: false, session: null });
@@ -304,8 +294,25 @@ const ScanValidator: React.FC = () => {
     }
   };
 
-  const handleTesterConfigComplete = () => {
-    if (currentSession) {
+  const handleTesterConfigComplete = async () => {
+    if (currentSession && user?.id) {
+      // Ensure scan session exists in DB before scanning
+      await supabase
+        .from('scan_sessions')
+        .upsert({
+          id: currentSession.id,
+          technician_id: user.id,
+          ptl_order_id: currentSession.ptlOrder.id,
+          tester_config: currentSession.testerConfig,
+          status: 'active',
+          is_active: true,
+          start_time: currentSession.startTime.toISOString(),
+          session_data: {
+            startTime: currentSession.startTime.toISOString(),
+            testerConfig: currentSession.testerConfig,
+          },
+        }, { onConflict: 'id' });
+
       setCurrentSession({ ...currentSession, status: 'scanning' });
     }
   };
@@ -426,10 +433,7 @@ const ScanValidator: React.FC = () => {
           })
           .eq('id', currentSession.id);
 
-        // Deactivate session
-        await supabase.rpc('deactivate_session', {
-          p_session_id: currentSession.id
-        });
+        // Session deactivation handled via is_active flag
 
         // Check if PTL order should be marked as completed
         const { data: progressData } = await supabase
@@ -440,6 +444,26 @@ const ScanValidator: React.FC = () => {
 
         const totalTested = progressData?.scanned_count || 0;
         const totalPassed = progressData?.passed_count || 0;
+        const prevTotalTime = progressData?.total_time_minutes || 0;
+        const prevActiveTime = progressData?.active_time_minutes || 0;
+
+        // Update PTL order progress with time aggregates
+        await supabase
+          .from('ptl_order_progress')
+          .upsert({
+            id: currentSession.ptlOrder.id,
+            ptl_order_number: currentSession.ptlOrder.orderNumber,
+            board_type: currentSession.ptlOrder.boardType,
+            quantity: currentSession.ptlOrder.expectedCount,
+            status: currentSession.ptlOrder.status,
+            total_time_minutes: prevTotalTime + duration,
+            active_time_minutes: prevActiveTime + duration,
+            updated_at: endTime.toISOString(),
+            completion_percentage: currentSession.ptlOrder.expectedCount > 0
+              ? Math.min(100, Math.round(((totalPassed) / currentSession.ptlOrder.expectedCount) * 100))
+              : 0,
+          }, { onConflict: 'id' });
+
         const isComplete = totalPassed >= currentSession.ptlOrder.expectedCount;
 
         // Show completion notification to technician
