@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PostTestVerification as PostTestVerificationType } from '@/types/scan-validator';
 import { CheckSquare, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PostTestVerificationProps {
   verification: PostTestVerificationType;
@@ -22,8 +24,13 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
   onVerificationChange,
   onComplete
 }) => {
+  const { user } = useAuth();
   const [localVerification, setLocalVerification] = useState(verification);
   const [finalCountInput, setFinalCountInput] = useState(verification.finalCount.toString());
+  const [cwStamp, setCwStamp] = useState('');
+  const [cwValid, setCwValid] = useState<boolean | null>(null);
+  const [validatingCW, setValidatingCW] = useState(false);
+  const [firmwareConfirmed, setFirmwareConfirmed] = useState(false);
 
   const handleFinalCountChange = (value: string) => {
     setFinalCountInput(value);
@@ -39,8 +46,34 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
     onVerificationChange(updated);
   };
 
+  const validateCwStamp = async (value: string) => {
+    setCwStamp(value);
+    if (!value || value.trim().length === 0) {
+      setCwValid(null);
+      return;
+    }
+    try {
+      setValidatingCW(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, role, cw_stamp')
+        .eq('role', 'technician')
+        .eq('cw_stamp', value.trim())
+        .limit(1);
+
+      if (error) throw error;
+      const match = Array.isArray(data) && data.length > 0 ? data[0] : null;
+      const isDifferentTech = match && match.id !== user?.id;
+      setCwValid(Boolean(match && isDifferentTech));
+    } catch (e) {
+      setCwValid(false);
+    } finally {
+      setValidatingCW(false);
+    }
+  };
+
   const isCountMatching = localVerification.finalCount === actualCount;
-  const isComplete = isCountMatching && localVerification.accessUpdaterSync;
+  const isComplete = isCountMatching && localVerification.accessUpdaterSync && firmwareConfirmed && cwValid === true;
   const countDifference = actualCount - expectedCount;
 
   return (
@@ -107,6 +140,36 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
             <Label htmlFor="access-updater" className="text-sm font-normal">
               Access updater synchronized and database updated successfully
             </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="firmware-confirm"
+              checked={firmwareConfirmed}
+              onCheckedChange={(checked) => setFirmwareConfirmed(Boolean(checked))}
+            />
+            <Label htmlFor="firmware-confirm" className="text-sm font-normal">
+              Firmware revision verified against PTL order requirements
+            </Label>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cw-stamp">Secondary Technician CW Stamp (required)</Label>
+            <Input
+              id="cw-stamp"
+              placeholder="Enter other technician's CW stamp"
+              value={cwStamp}
+              onChange={(e) => validateCwStamp(e.target.value)}
+            />
+            {validatingCW && (
+              <p className="text-xs text-muted-foreground">Validating CW stamp...</p>
+            )}
+            {cwValid === false && !validatingCW && (
+              <p className="text-sm text-red-600">Invalid CW stamp or cannot be your own. Please enter another technician's CW stamp.</p>
+            )}
+            {cwValid === true && !validatingCW && (
+              <p className="text-sm text-green-600">CW stamp verified.</p>
+            )}
           </div>
         </div>
 

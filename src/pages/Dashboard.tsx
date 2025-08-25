@@ -65,6 +65,11 @@ const Dashboard: React.FC = () => {
         .from('scan_sessions')
         .select('pass_count, fail_count, total_scanned, duration_minutes, created_at');
 
+      // Fallback: pull raw board data counts when progress table is empty
+      const { data: boardRows } = await supabase
+        .from('board_data')
+        .select('test_status');
+
       // Fetch technician count
       const { data: techs } = await supabase
         .from('profiles')
@@ -81,16 +86,25 @@ const Dashboard: React.FC = () => {
       const activeOrders = orders?.filter(o => o.status === 'in_progress').length || 0;
       const completedOrders = orders?.filter(o => o.status === 'completed').length || 0;
       
-      // Use progress data if available, otherwise fall back to sessions
-      const boardsTested = progress?.reduce((sum, p) => sum + (p.scanned_count || 0), 0) || 
-                          sessions?.reduce((sum, s) => sum + s.total_scanned, 0) || 0;
-      const boardsPassed = progress?.reduce((sum, p) => sum + (p.passed_count || 0), 0) || 
-                          sessions?.reduce((sum, s) => sum + s.pass_count, 0) || 0;
-      const boardsFailed = progress?.reduce((sum, p) => sum + (p.failed_count || 0), 0) || 
-                          sessions?.reduce((sum, s) => sum + s.fail_count, 0) || 0;
+      // Prefer progress data, then sessions, then raw board rows
+      const boardsTestedFromProgress = progress?.reduce((sum, p) => sum + (Number(p.scanned_count) || 0), 0) || 0;
+      const boardsPassedFromProgress = progress?.reduce((sum, p) => sum + (Number(p.passed_count) || 0), 0) || 0;
+      const boardsFailedFromProgress = progress?.reduce((sum, p) => sum + (Number(p.failed_count) || 0), 0) || 0;
+
+      const boardsTestedFromSessions = sessions?.reduce((sum, s) => sum + (Number(s.total_scanned) || 0), 0) || 0;
+      const boardsPassedFromSessions = sessions?.reduce((sum, s) => sum + (Number(s.pass_count) || 0), 0) || 0;
+      const boardsFailedFromSessions = sessions?.reduce((sum, s) => sum + (Number(s.fail_count) || 0), 0) || 0;
+
+      const boardsTestedFromBoardData = (boardRows || []).length;
+      const boardsPassedFromBoardData = (boardRows || []).filter(r => r.test_status === 'pass').length;
+      const boardsFailedFromBoardData = (boardRows || []).filter(r => r.test_status === 'fail').length;
+
+      const boardsTested = boardsTestedFromProgress || boardsTestedFromSessions || boardsTestedFromBoardData;
+      const boardsPassed = boardsPassedFromProgress || boardsPassedFromSessions || boardsPassedFromBoardData;
+      const boardsFailed = boardsFailedFromProgress || boardsFailedFromSessions || boardsFailedFromBoardData;
       
       // Calculate average test time
-      const totalDuration = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
+      const totalDuration = sessions?.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0) || 0;
       const avgTestTime = boardsTested > 0 ? `${(totalDuration / boardsTested).toFixed(1)} min` : '0 min';
       
       // Calculate success rate
