@@ -63,7 +63,7 @@ const LogHistory: React.FC = () => {
         .from('ptl_orders')
         .select(`
           id, created_at, ptl_order_number, status,
-          profiles(full_name),
+          profiles!created_by(full_name),
           hardware_orders(po_number)
         `)
         .order('created_at', { ascending: false })

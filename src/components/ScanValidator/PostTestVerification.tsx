@@ -27,9 +27,7 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
   const { user } = useAuth();
   const [localVerification, setLocalVerification] = useState(verification);
   const [finalCountInput, setFinalCountInput] = useState(verification.finalCount.toString());
-  const [cwStamp, setCwStamp] = useState('');
-  const [cwValid, setCwValid] = useState<boolean | null>(null);
-  const [validatingCW, setValidatingCW] = useState(false);
+  const [verifierInitials, setVerifierInitials] = useState(verification.verifierInitials || '');
   const [firmwareConfirmed, setFirmwareConfirmed] = useState(false);
 
   const handleFinalCountChange = (value: string) => {
@@ -46,34 +44,16 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
     onVerificationChange(updated);
   };
 
-  const validateCwStamp = async (value: string) => {
-    setCwStamp(value);
-    if (!value || value.trim().length === 0) {
-      setCwValid(null);
-      return;
-    }
-    try {
-      setValidatingCW(true);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, role, cw_stamp')
-        .eq('role', 'technician')
-        .eq('cw_stamp', value.trim())
-        .limit(1);
-
-      if (error) throw error;
-      const match = Array.isArray(data) && data.length > 0 ? data[0] : null;
-      const isDifferentTech = match && match.id !== user?.id;
-      setCwValid(Boolean(match && isDifferentTech));
-    } catch (e) {
-      setCwValid(false);
-    } finally {
-      setValidatingCW(false);
-    }
+  const handleVerifierInitialsChange = (value: string) => {
+    setVerifierInitials(value);
+    const updated = { ...localVerification, verifierInitials: value };
+    setLocalVerification(updated);
+    onVerificationChange(updated);
   };
 
   const isCountMatching = localVerification.finalCount === actualCount;
-  const isComplete = isCountMatching && localVerification.accessUpdaterSync && firmwareConfirmed && cwValid === true;
+  const isInitialsValid = verifierInitials.trim().length >= 2;
+  const isComplete = isCountMatching && localVerification.accessUpdaterSync && firmwareConfirmed && isInitialsValid;
   const countDifference = actualCount - expectedCount;
 
   return (
@@ -154,21 +134,19 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cw-stamp">Secondary Technician CW Stamp (required)</Label>
+            <Label htmlFor="verifier-initials">Verifier Initials (required)</Label>
             <Input
-              id="cw-stamp"
-              placeholder="Enter other technician's CW stamp"
-              value={cwStamp}
-              onChange={(e) => validateCwStamp(e.target.value)}
+              id="verifier-initials"
+              placeholder="Enter your first and last name initials (e.g., JD)"
+              value={verifierInitials}
+              onChange={(e) => handleVerifierInitialsChange(e.target.value.toUpperCase())}
+              maxLength={4}
             />
-            {validatingCW && (
-              <p className="text-xs text-muted-foreground">Validating CW stamp...</p>
+            {verifierInitials.length > 0 && verifierInitials.length < 2 && (
+              <p className="text-sm text-red-600">Please enter at least your first and last name initials.</p>
             )}
-            {cwValid === false && !validatingCW && (
-              <p className="text-sm text-red-600">Invalid CW stamp or cannot be your own. Please enter another technician's CW stamp.</p>
-            )}
-            {cwValid === true && !validatingCW && (
-              <p className="text-sm text-green-600">CW stamp verified.</p>
+            {isInitialsValid && (
+              <p className="text-sm text-green-600">Initials verified.</p>
             )}
           </div>
         </div>

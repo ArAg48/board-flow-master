@@ -453,11 +453,14 @@ const ScanValidator: React.FC = () => {
             duration: 8000,
           });
 
-          // Update PTL order status to completed
+          // Update PTL order status to completed with verifier info
           await supabase
             .from('ptl_orders')
             .update({
               status: 'completed',
+              verified_by: user?.id,
+              verified_at: endTime.toISOString(),
+              verifier_initials: currentSession.postTestVerification?.verifierInitials,
               updated_at: endTime.toISOString()
             })
             .eq('id', currentSession.ptlOrder.id);
@@ -633,7 +636,8 @@ const ScanValidator: React.FC = () => {
         <PostTestVerificationComponent
           verification={{
             finalCount: stats.total,
-            accessUpdaterSync: false
+            accessUpdaterSync: false,
+            verifierInitials: ''
           }}
           expectedCount={currentSession.ptlOrder.expectedCount}
           actualCount={stats.total}

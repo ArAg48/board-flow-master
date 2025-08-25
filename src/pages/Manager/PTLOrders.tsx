@@ -538,9 +538,16 @@ const PTLOrders: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(order.status)}>
-                        {order.status}
-                      </Badge>
+                      <div className="space-y-1">
+                        <Badge className={getStatusColor(order.status)}>
+                          {order.status}
+                        </Badge>
+                        {order.status === 'completed' && order.verifier_initials && (
+                          <div className="text-xs text-muted-foreground">
+                            Verified by: {order.verifier_initials}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>

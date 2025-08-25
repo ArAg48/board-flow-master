@@ -15,6 +15,9 @@ interface PTLOrderDetail {
   quantity: number;
   status: string;
   created_at: string;
+  verifier_initials?: string;
+  verified_at?: string;
+  verified_by?: string;
 }
 
 interface BoardData {
@@ -272,6 +275,27 @@ const PTLOrderDetails: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Order Status Card */}
+      {ptlOrder.status === 'completed' && ptlOrder.verifier_initials && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Badge variant="default" className="bg-green-100 text-green-800">Completed</Badge>
+                <div className="text-sm text-muted-foreground mt-2">
+                  Verified by: <span className="font-medium">{ptlOrder.verifier_initials}</span>
+                </div>
+                {ptlOrder.verified_at && (
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(ptlOrder.verified_at).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Board Details Table */}
       <Card>

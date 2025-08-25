@@ -26,6 +26,7 @@ export interface PreTestVerification {
 export interface PostTestVerification {
   finalCount: number;
   accessUpdaterSync: boolean;
+  verifierInitials: string;
 }
 
 export interface ScanEntry {
