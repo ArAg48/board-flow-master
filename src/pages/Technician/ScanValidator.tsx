@@ -480,6 +480,15 @@ const ScanValidator: React.FC = () => {
         await supabase.rpc('deactivate_session', {
           p_session_id: currentSession.id
         });
+
+        // Update PTL order status to completed
+        await supabase
+          .from('ptl_orders')
+          .update({
+            status: 'completed',
+            updated_at: endTime.toISOString()
+          })
+          .eq('id', currentSession.ptlOrder.id);
         
         // Show completion message with session duration
         const hours = Math.floor(duration / 60);
