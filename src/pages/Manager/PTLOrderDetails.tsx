@@ -67,7 +67,8 @@ const PTLOrderDetails: React.FC = () => {
 
   const loadBoardData = async () => {
     try {
-      const { data, error } = await supabase
+      // Try to get board data directly first, as it should work for managers and we know data exists
+      const { data: boardDataResult, error: boardError } = await supabase
         .from('board_data')
         .select(`
           id,
@@ -81,7 +82,13 @@ const PTLOrderDetails: React.FC = () => {
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      // Log for debugging
+      console.log('Board data query result:', { boardDataResult, boardError, ptlOrderId: id });
+
+      if (boardError) {
+        console.error('Error loading board data:', boardError);
+        throw boardError;
+      }
       
       // Check for repaired boards
       const { data: repairData } = await supabase
@@ -96,7 +103,7 @@ const PTLOrderDetails: React.FC = () => {
       );
       
       // Transform the data to match BoardData interface
-      const transformedData: BoardData[] = (data || []).map(item => ({
+      const transformedData: BoardData[] = (boardDataResult || []).map((item: any) => ({
         id: item.id,
         qr_code: item.qr_code,
         test_status: repairedBoards.has(item.qr_code) ? 'repaired' : (item.test_status || 'pending'),
@@ -116,13 +123,17 @@ const PTLOrderDetails: React.FC = () => {
       const pending = transformedData?.filter(b => b.test_status === 'pending').length || 0;
 
       // Get timing data from ptl_order_progress to match the list view
-      const { data: progressData } = await supabase
+      const { data: progressData, error: progressError } = await supabase
         .from('ptl_order_progress')
-        .select('total_time_minutes')
+        .select('total_time_minutes, active_time_minutes')
         .eq('id', id)
         .single();
 
-      const totalTime = progressData?.total_time_minutes || 0;
+      if (progressError) {
+        console.log('No progress data found for PTL order:', id);
+      }
+
+      const totalTime = progressData?.total_time_minutes || progressData?.active_time_minutes || 0;
 
       setStats({ total, passed, failed, repaired, pending, totalTime });
     } catch (error) {
