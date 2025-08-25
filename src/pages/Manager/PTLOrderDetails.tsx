@@ -118,27 +118,31 @@ const PTLOrderDetails: React.FC = () => {
 
       setBoardData(transformedData);
 
-      // 4) Calculate total time only from sessions that actually scanned boards for this PTL order
+      // 4) Calculate total time from scan sessions for this PTL order
       let totalTime = 0;
-      
-      // Get actual scan sessions that have boards for this PTL order
-      const { data: sessionData } = await supabase
-        .from('scan_sessions')
-        .select('duration_minutes, actual_duration_minutes')
-        .eq('ptl_order_id', id);
-      
-      if (sessionData && sessionData.length > 0) {
-        // Only count sessions where boards were actually scanned
-        // Filter out sessions that might not have any corresponding board data
-        const sessionIds = new Set();
-        const boardTechnicianIds = new Set(transformedData.map(b => b.technician_id).filter(Boolean));
+      let progressRow: any | null = null;
+
+      // First try to get progress data from RPC function
+      const { data: rpcRows } = await supabase.rpc('get_ptl_order_progress');
+      if (Array.isArray(rpcRows)) {
+        progressRow = (rpcRows as any[]).find((r: any) => r.id === id);
+      }
+
+      if (progressRow) {
+        // Use the time from the RPC function which properly aggregates session times
+        totalTime = Number(progressRow.total_time_minutes || progressRow.active_time_minutes || 0);
+      } else {
+        // Fallback: calculate from scan_sessions directly
+        const { data: sessionData } = await supabase
+          .from('scan_sessions')
+          .select('duration_minutes, actual_duration_minutes')
+          .eq('ptl_order_id', id);
         
-        for (const session of sessionData) {
-          // Use actual_duration_minutes if available, otherwise fall back to duration_minutes
-          const sessionTime = Number(session.actual_duration_minutes || session.duration_minutes || 0);
-          if (sessionTime > 0) {
-            totalTime += sessionTime;
-          }
+        if (sessionData && sessionData.length > 0) {
+          totalTime = sessionData.reduce((sum, session) => {
+            const sessionTime = Number(session.duration_minutes || session.actual_duration_minutes || 0);
+            return sum + sessionTime;
+          }, 0);
         }
       }
 
