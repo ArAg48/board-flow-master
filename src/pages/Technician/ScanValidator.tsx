@@ -460,7 +460,7 @@ const ScanValidator: React.FC = () => {
               status: 'completed',
               verified_by: user?.id,
               verified_at: endTime.toISOString(),
-              verifier_initials: currentSession.postTestVerification?.verifierInitials,
+              verifier_initials: currentSession.postTestVerification?.productCountVerified,
               updated_at: endTime.toISOString()
             })
             .eq('id', currentSession.ptlOrder.id);
@@ -637,7 +637,8 @@ const ScanValidator: React.FC = () => {
           verification={{
             finalCount: stats.total,
             accessUpdaterSync: false,
-            verifierInitials: ''
+            productCountVerified: '',
+            axxessUpdater: ''
           }}
           expectedCount={currentSession.ptlOrder.expectedCount}
           actualCount={stats.total}

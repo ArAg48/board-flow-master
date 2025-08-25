@@ -26,7 +26,8 @@ export interface PreTestVerification {
 export interface PostTestVerification {
   finalCount: number;
   accessUpdaterSync: boolean;
-  verifierInitials: string;
+  productCountVerified: string;
+  axxessUpdater: string;
 }
 
 export interface ScanEntry {

@@ -27,7 +27,8 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
   const { user } = useAuth();
   const [localVerification, setLocalVerification] = useState(verification);
   const [finalCountInput, setFinalCountInput] = useState(verification.finalCount.toString());
-  const [verifierInitials, setVerifierInitials] = useState(verification.verifierInitials || '');
+  const [productCountVerified, setProductCountVerified] = useState(verification.productCountVerified || '');
+  const [axxessUpdater, setAxxessUpdater] = useState(verification.axxessUpdater || '');
   const [firmwareConfirmed, setFirmwareConfirmed] = useState(false);
 
   const handleFinalCountChange = (value: string) => {
@@ -44,16 +45,24 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
     onVerificationChange(updated);
   };
 
-  const handleVerifierInitialsChange = (value: string) => {
-    setVerifierInitials(value);
-    const updated = { ...localVerification, verifierInitials: value };
+  const handleProductCountVerifiedChange = (value: string) => {
+    setProductCountVerified(value);
+    const updated = { ...localVerification, productCountVerified: value };
+    setLocalVerification(updated);
+    onVerificationChange(updated);
+  };
+
+  const handleAxxessUpdaterChange = (value: string) => {
+    setAxxessUpdater(value);
+    const updated = { ...localVerification, axxessUpdater: value };
     setLocalVerification(updated);
     onVerificationChange(updated);
   };
 
   const isCountMatching = localVerification.finalCount === actualCount;
-  const isInitialsValid = verifierInitials.trim().length >= 2;
-  const isComplete = isCountMatching && localVerification.accessUpdaterSync && firmwareConfirmed && isInitialsValid;
+  const isProductCountValid = productCountVerified.trim().length >= 2;
+  const isAxxessUpdaterValid = axxessUpdater.trim().length >= 2;
+  const isComplete = isCountMatching && localVerification.accessUpdaterSync && firmwareConfirmed && isProductCountValid && isAxxessUpdaterValid;
   const countDifference = actualCount - expectedCount;
 
   return (
@@ -139,8 +148,8 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
               <Input
                 id="product-count"
                 placeholder="Enter verified count"
-                value={verifierInitials}
-                onChange={(e) => handleVerifierInitialsChange(e.target.value)}
+                value={productCountVerified}
+                onChange={(e) => handleProductCountVerifiedChange(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -148,8 +157,8 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
               <Input
                 id="axxess-updater"
                 placeholder="Enter updater info"
-                value={verifierInitials}
-                onChange={(e) => handleVerifierInitialsChange(e.target.value)}
+                value={axxessUpdater}
+                onChange={(e) => handleAxxessUpdaterChange(e.target.value)}
               />
             </div>
           </div>
