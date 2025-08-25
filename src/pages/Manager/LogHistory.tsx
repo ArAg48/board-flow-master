@@ -75,7 +75,11 @@ const LogHistory: React.FC = () => {
       (sessions as any[] | null)?.forEach((session: any) => {
         const isCompleted = session.session_status === 'completed';
         const level = isCompleted ? 'success' : 'info';
-        const duration = session.duration_minutes || 0;
+        const start = session.start_time ? new Date(session.start_time) : null;
+        const end = session.end_time ? new Date(session.end_time) : null;
+        const duration = (typeof session.duration_minutes === 'number' && session.duration_minutes > 0)
+          ? session.duration_minutes
+          : (start ? Math.max(0, Math.floor(((end || new Date()).getTime() - start.getTime()) / 60000)) : 0);
         const durationText = duration > 60 ? `${Math.floor(duration/60)}h ${duration%60}m` : `${duration}m`;
         
         logEntries.push({
