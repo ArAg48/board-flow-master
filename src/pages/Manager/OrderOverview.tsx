@@ -65,7 +65,24 @@ const OrderOverview: React.FC = () => {
 
       if (error) throw error;
 
-      // Calculate statistics from PTL orders and scan sessions
+      // Preload progress across all PTL orders using robust fallbacks
+      const { data: rpcRows, error: rpcErr } = await supabase.rpc('get_ptl_order_progress');
+      if (rpcErr) console.warn('RPC get_ptl_order_progress error:', rpcErr);
+      let progressRows: any[] = Array.isArray(rpcRows) ? rpcRows : [];
+
+      if (progressRows.length === 0) {
+        const { data: progRows, error: progErr } = await supabase
+          .from('ptl_order_progress')
+          .select('id, scanned_count, passed_count, failed_count');
+        if (!progErr) progressRows = progRows || [];
+      }
+
+      const progressMapAll = (progressRows || []).reduce((acc: Record<string, any>, r: any) => {
+        acc[r.id] = r;
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Calculate statistics from PTL orders and progress
       const ordersWithStats = await Promise.all((data || []).map(async (order) => {
         // Get PTL orders for this hardware order
         const { data: ptlOrders } = await supabase
@@ -74,29 +91,42 @@ const OrderOverview: React.FC = () => {
           .eq('hardware_order_id', order.id);
 
         const ptlOrderIds = ptlOrders?.map(p => p.id) || [];
-        
-        // Get progress data for all PTL orders
+
         let totalScanned = 0;
         let totalPassed = 0;
         let totalFailed = 0;
-        
-        if (ptlOrderIds.length > 0) {
-          const { data: progress } = await supabase
-            .from('ptl_order_progress')
-            .select('scanned_count, passed_count, failed_count')
-            .in('id', ptlOrderIds);
 
-          totalScanned = progress?.reduce((sum, p) => sum + (p.scanned_count || 0), 0) || 0;
-          totalPassed = progress?.reduce((sum, p) => sum + (p.passed_count || 0), 0) || 0;
-          totalFailed = progress?.reduce((sum, p) => sum + (p.failed_count || 0), 0) || 0;
+        if (ptlOrderIds.length > 0) {
+          ptlOrderIds.forEach((pid: string) => {
+            const pr = progressMapAll[pid];
+            if (pr) {
+              totalScanned += Number(pr.scanned_count) || 0;
+              totalPassed += Number(pr.passed_count) || 0;
+              totalFailed += Number(pr.failed_count) || 0;
+            }
+          });
+
+          // Last resort: compute via board progress RPC if still zero
+          if (totalScanned === 0) {
+            const { data: boardProg } = await supabase.rpc('get_board_progress');
+            if (Array.isArray(boardProg)) {
+              (boardProg as any[])
+                .filter((bp: any) => ptlOrderIds.includes(bp.ptl_order_id))
+                .forEach((bp: any) => {
+                  totalScanned += Number(bp.scanned_boards) || 0;
+                  totalPassed += Number(bp.passed_boards) || 0;
+                  totalFailed += Number(bp.failed_boards) || 0;
+                });
+            }
+          }
         }
 
         return {
           ...order,
-          ptlOrderCount: ptlOrders?.length || 0,
+          ptlOrderCount: ptlOrderIds.length || 0,
           totalTested: totalScanned,
-          totalPassed: totalPassed,
-          totalFailed: totalFailed,
+          totalPassed,
+          totalFailed,
           status: order.status as 'pending' | 'active' | 'completed' | 'cancelled'
         };
       }));

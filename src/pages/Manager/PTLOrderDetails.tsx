@@ -70,73 +70,79 @@ const PTLOrderDetails: React.FC = () => {
 
   const loadBoardData = async () => {
     try {
-      // Try to get board data directly first, as it should work for managers and we know data exists
-      const { data: boardDataResult, error: boardError } = await supabase
+      // 1) Try minimal fetch from board_data (no embeds) for reliability
+      const { data: baseRows, error: baseErr } = await supabase
         .from('board_data')
-        .select(`
-          id,
-          qr_code,
-          test_status,
-          test_date,
-          test_results,
-          technician_id,
-          profiles(full_name)
-        `)
+        .select('id, qr_code, test_status, test_date, test_results, technician_id')
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
 
-      // Log for debugging
-      console.log('Board data query result:', { boardDataResult, boardError, ptlOrderId: id });
+      console.log('Board base fetch:', { baseRowsLength: baseRows?.length || 0, baseErr, ptlOrderId: id });
 
-      if (boardError) {
-        console.error('Error loading board data:', boardError);
-        throw boardError;
+      let rows: any[] = baseRows || [];
+
+      // 2) Fallback: view with technician name
+      if (!rows || rows.length === 0) {
+        const { data: viewRows, error: viewErr } = await supabase
+          .from('board_data_with_technician')
+          .select('id, qr_code, test_status, test_date, test_results, technician_id, technician_name')
+          .eq('ptl_order_id', id)
+          .order('test_date', { ascending: false });
+        if (!viewErr && viewRows) rows = viewRows;
+        console.log('Board view fetch:', { viewRowsLength: viewRows?.length || 0, viewErr });
       }
-      
-      // Check for repaired boards
+
+      // 3) Repair status overlay
       const { data: repairData } = await supabase
         .from('repair_entries')
         .select('qr_code, repair_status')
         .eq('ptl_order_id', id);
-      
+
       const repairedBoards = new Set(
         (repairData || [])
-          .filter(repair => repair.repair_status === 'completed')
-          .map(repair => repair.qr_code)
+          .filter((r: any) => r.repair_status === 'completed')
+          .map((r: any) => r.qr_code)
       );
-      
-      // Transform the data to match BoardData interface
-      const transformedData: BoardData[] = (boardDataResult || []).map((item: any) => ({
+
+      const transformedData: BoardData[] = (rows || []).map((item: any) => ({
         id: item.id,
         qr_code: item.qr_code,
         test_status: repairedBoards.has(item.qr_code) ? 'repaired' : (item.test_status || 'pending'),
         test_date: item.test_date || '',
         test_results: item.test_results,
         technician_id: item.technician_id || '',
-        profiles: item.profiles || undefined
+        profiles: item.technician_name ? { full_name: item.technician_name } : undefined,
       }));
-      
+
       setBoardData(transformedData);
 
-      // Calculate stats - use transformedData instead of raw data
-      const total = transformedData?.length || 0;
-      const passed = transformedData?.filter(b => b.test_status === 'pass').length || 0;
-      const failed = transformedData?.filter(b => b.test_status === 'fail').length || 0;
-      const repaired = transformedData?.filter(b => b.test_status === 'repaired').length || 0;
-      const pending = transformedData?.filter(b => b.test_status === 'pending').length || 0;
+      // 4) Stats and timing with robust fallbacks
+      let totalTime = 0;
+      let progressRow: any | null = null;
 
-      // Get timing data from ptl_order_progress to match the list view
-      const { data: progressData, error: progressError } = await supabase
-        .from('ptl_order_progress')
-        .select('total_time_minutes, active_time_minutes')
-        .eq('id', id)
-        .single();
-
-      if (progressError) {
-        console.log('No progress data found for PTL order:', id);
+      const { data: rpcRows } = await supabase.rpc('get_ptl_order_progress');
+      if (Array.isArray(rpcRows)) {
+        progressRow = (rpcRows as any[]).find((r: any) => r.id === id);
       }
 
-      const totalTime = progressData?.total_time_minutes || progressData?.active_time_minutes || 0;
+      if (!progressRow) {
+        const { data: progressData } = await supabase
+          .from('ptl_order_progress')
+          .select('total_time_minutes, active_time_minutes')
+          .eq('id', id)
+          .maybeSingle();
+        if (progressData) {
+          totalTime = Number(progressData.total_time_minutes || progressData.active_time_minutes || 0);
+        }
+      } else {
+        totalTime = Number(progressRow.total_time_minutes || progressRow.active_time_minutes || 0);
+      }
+
+      const total = transformedData.length;
+      const passed = transformedData.filter(b => b.test_status === 'pass').length;
+      const failed = transformedData.filter(b => b.test_status === 'fail').length;
+      const repaired = transformedData.filter(b => b.test_status === 'repaired').length;
+      const pending = transformedData.filter(b => b.test_status === 'pending').length;
 
       setStats({ total, passed, failed, repaired, pending, totalTime });
     } catch (error) {
