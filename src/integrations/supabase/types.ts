@@ -220,6 +220,7 @@ export type Database = {
       }
       ptl_orders: {
         Row: {
+          axxess_updater: string | null
           board_type: string
           created_at: string
           created_by: string | null
@@ -228,6 +229,7 @@ export type Database = {
           hardware_order_id: string | null
           id: string
           notes: string | null
+          product_count_verified: string | null
           ptl_order_number: string
           quantity: number
           sale_code: string | null
@@ -239,6 +241,7 @@ export type Database = {
           verifier_initials: string | null
         }
         Insert: {
+          axxess_updater?: string | null
           board_type: string
           created_at?: string
           created_by?: string | null
@@ -247,6 +250,7 @@ export type Database = {
           hardware_order_id?: string | null
           id?: string
           notes?: string | null
+          product_count_verified?: string | null
           ptl_order_number: string
           quantity: number
           sale_code?: string | null
@@ -258,6 +262,7 @@ export type Database = {
           verifier_initials?: string | null
         }
         Update: {
+          axxess_updater?: string | null
           board_type?: string
           created_at?: string
           created_by?: string | null
@@ -266,6 +271,7 @@ export type Database = {
           hardware_order_id?: string | null
           id?: string
           notes?: string | null
+          product_count_verified?: string | null
           ptl_order_number?: string
           quantity?: number
           sale_code?: string | null

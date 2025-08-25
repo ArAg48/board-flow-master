@@ -457,11 +457,13 @@ const ScanValidator: React.FC = () => {
           await supabase
             .from('ptl_orders')
             .update({
-              status: 'completed',
-              verified_by: user?.id,
-              verified_at: endTime.toISOString(),
-              verifier_initials: currentSession.postTestVerification?.productCountVerified,
-              updated_at: endTime.toISOString()
+            status: 'completed',
+            verified_by: user?.id,
+            verified_at: endTime.toISOString(),
+            verifier_initials: currentSession.postTestVerification?.productCountVerified,
+            product_count_verified: currentSession.postTestVerification?.productCountVerified,
+            axxess_updater: currentSession.postTestVerification?.axxessUpdater,
+            updated_at: endTime.toISOString()
             })
             .eq('id', currentSession.ptlOrder.id);
         } else {

@@ -16,6 +16,8 @@ interface PTLOrderDetail {
   status: string;
   created_at: string;
   verifier_initials?: string;
+  product_count_verified?: string;
+  axxess_updater?: string;
   verified_at?: string;
   verified_by?: string;
 }
@@ -283,15 +285,31 @@ const PTLOrderDetails: React.FC = () => {
       </div>
 
       {/* Order Status Card */}
-      {ptlOrder.status === 'completed' && ptlOrder.verifier_initials && (
+      {ptlOrder.status === 'completed' && (ptlOrder.verifier_initials || ptlOrder.product_count_verified || ptlOrder.axxess_updater) && (
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="space-y-2">
                 <Badge variant="default" className="bg-green-100 text-green-800">Completed</Badge>
-                <div className="text-sm text-muted-foreground mt-2">
-                  Verified by: <span className="font-medium">{ptlOrder.verifier_initials}</span>
-                </div>
+                
+                {ptlOrder.verifier_initials && (
+                  <div className="text-sm text-muted-foreground">
+                    Verified by: <span className="font-medium">{ptlOrder.verifier_initials}</span>
+                  </div>
+                )}
+                
+                {ptlOrder.product_count_verified && (
+                  <div className="text-sm text-muted-foreground">
+                    Product Count Verified: <span className="font-medium">{ptlOrder.product_count_verified}</span>
+                  </div>
+                )}
+                
+                {ptlOrder.axxess_updater && (
+                  <div className="text-sm text-muted-foreground">
+                    Axxess Updater: <span className="font-medium">{ptlOrder.axxess_updater}</span>
+                  </div>
+                )}
+                
                 {ptlOrder.verified_at && (
                   <div className="text-xs text-muted-foreground">
                     {new Date(ptlOrder.verified_at).toLocaleString()}
