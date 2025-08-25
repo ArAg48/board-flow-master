@@ -168,8 +168,8 @@ const ScanHistory: React.FC = () => {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-purple-500" />
               <div>
-                <div className="text-2xl font-bold">{Math.round(avgPassRate)}%</div>
-                <div className="text-xs text-muted-foreground">Avg Pass Rate</div>
+                <div className="text-2xl font-bold">{totalPassed}</div>
+                <div className="text-xs text-muted-foreground">Boards Passed</div>
               </div>
             </div>
           </CardContent>
