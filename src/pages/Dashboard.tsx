@@ -32,6 +32,7 @@ const Dashboard: React.FC = () => {
     boardsPassed: 0,
     boardsFailed: 0,
     boardsRepaired: 0,
+    avgTestTime: '0 min',
     todayTests: 0,
     techSuccessRate: 0,
     techAvgTime: '0 min'
@@ -102,6 +103,7 @@ const Dashboard: React.FC = () => {
         return `${mins}m`;
       };
 
+      const avgTestTime = boardsTested > 0 ? formatTime(totalDuration / boardsTested) : '0 min';
       const avgActiveTime = boardsTested > 0 ? formatTime(totalActiveTime / boardsTested) : '0 min';
 
       // Calculate success rate
@@ -116,6 +118,7 @@ const Dashboard: React.FC = () => {
         boardsPassed,
         boardsFailed,
         boardsRepaired: repairs?.length || 0,
+        avgTestTime,
         todayTests: 0,
         techSuccessRate: parseFloat(successRate),
         techAvgTime: avgActiveTime
@@ -317,6 +320,13 @@ const Dashboard: React.FC = () => {
                   </div>
                   <span className="font-semibold">{stats.boardsRepaired}</span>
                 </div>
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <Clock className="h-4 w-4 text-blue-500" />
+                     <span className="text-sm">Avg. Test Time</span>
+                   </div>
+                   <span className="font-semibold">{stats.avgTestTime}</span>
+                 </div>
                  <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
                      <Target className="h-4 w-4 text-purple-500" />
