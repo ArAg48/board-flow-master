@@ -36,6 +36,10 @@ const LogHistory: React.FC = () => {
 
   useEffect(() => {
     fetchLogs();
+    // Set up real-time updates
+    const interval = setInterval(fetchLogs, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchLogs = async () => {

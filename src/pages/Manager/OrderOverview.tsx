@@ -256,7 +256,7 @@ const OrderOverview: React.FC = () => {
             </TableHeader>
             <TableBody>
               {filteredOrders.map((order) => (
-                <TableRow key={order.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/manager/hardware-orders/${order.id}`)}>
+                <TableRow key={order.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/app/hardware-orders/${order.id}`)}>
                   <TableCell>
                     <div>
                       <div className="font-medium">{order.po_number}</div>

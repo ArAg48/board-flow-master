@@ -247,7 +247,7 @@ const HardwareOrderDetails: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/manager/ptl-orders/${order.id}`)}
+                        onClick={() => navigate(`/app/ptl-orders/${order.id}`)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>

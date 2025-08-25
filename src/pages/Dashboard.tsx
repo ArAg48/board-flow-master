@@ -55,7 +55,12 @@ const Dashboard: React.FC = () => {
         .from('ptl_orders')
         .select('id, status, created_at');
 
-      // Fetch scan sessions for board stats
+      // Fetch board test progress from ptl_order_progress
+      const { data: progress } = await supabase
+        .from('ptl_order_progress')
+        .select('scanned_count, passed_count, failed_count');
+
+      // Fetch scan sessions for board stats (fallback)
       const { data: sessions } = await supabase
         .from('scan_sessions')
         .select('pass_count, fail_count, total_scanned, duration_minutes, created_at');
@@ -75,9 +80,14 @@ const Dashboard: React.FC = () => {
       const totalOrders = orders?.length || 0;
       const activeOrders = orders?.filter(o => o.status === 'in_progress').length || 0;
       const completedOrders = orders?.filter(o => o.status === 'completed').length || 0;
-      const boardsTested = sessions?.reduce((sum, s) => sum + s.total_scanned, 0) || 0;
-      const boardsPassed = sessions?.reduce((sum, s) => sum + s.pass_count, 0) || 0;
-      const boardsFailed = sessions?.reduce((sum, s) => sum + s.fail_count, 0) || 0;
+      
+      // Use progress data if available, otherwise fall back to sessions
+      const boardsTested = progress?.reduce((sum, p) => sum + (p.scanned_count || 0), 0) || 
+                          sessions?.reduce((sum, s) => sum + s.total_scanned, 0) || 0;
+      const boardsPassed = progress?.reduce((sum, p) => sum + (p.passed_count || 0), 0) || 
+                          sessions?.reduce((sum, s) => sum + s.pass_count, 0) || 0;
+      const boardsFailed = progress?.reduce((sum, p) => sum + (p.failed_count || 0), 0) || 
+                          sessions?.reduce((sum, s) => sum + s.fail_count, 0) || 0;
       
       // Calculate average test time
       const totalDuration = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
@@ -134,7 +144,7 @@ const Dashboard: React.FC = () => {
       // Fetch technician's scan sessions
       const { data: sessions } = await supabase
         .from('scan_sessions')
-        .select('pass_count, fail_count, total_scanned, duration_minutes, created_at, status')
+        .select('pass_count, fail_count, total_scanned, duration_minutes, created_at, status, ptl_orders(status, quantity)')
         .eq('technician_id', user?.id);
 
       // Today's tests
@@ -148,6 +158,9 @@ const Dashboard: React.FC = () => {
       const totalScanned = sessions?.reduce((sum, s) => sum + s.total_scanned, 0) || 0;
       const successRate = totalScanned > 0 ? ((totalPassed / totalScanned) * 100).toFixed(1) : 0;
       
+      // Count completed PTL orders
+      const completedPTLOrders = sessions?.filter(s => s.ptl_orders?.status === 'completed').length || 0;
+      
       // Average test time
       const totalDuration = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
       const avgTime = totalScanned > 0 ? `${(totalDuration / totalScanned).toFixed(1)} min` : '0 min';
@@ -156,7 +169,8 @@ const Dashboard: React.FC = () => {
         ...prev,
         todayTests,
         techSuccessRate: parseFloat(successRate.toString()),
-        techAvgTime: avgTime
+        techAvgTime: avgTime,
+        completedOrders: completedPTLOrders
       }));
     } catch (error) {
       console.error('Error fetching technician stats:', error);
@@ -302,11 +316,11 @@ const Dashboard: React.FC = () => {
       ) : (
         <>
           {/* Technician Dashboard */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Today's Tests</CardTitle>
-                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                <Scan className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.todayTests}</div>
@@ -338,6 +352,19 @@ const Dashboard: React.FC = () => {
                 <div className="text-2xl font-bold">{stats.techAvgTime}</div>
                 <p className="text-xs text-muted-foreground">
                   Per board tested
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">PTL Orders Done</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.completedOrders || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Orders completed
                 </p>
               </CardContent>
             </Card>

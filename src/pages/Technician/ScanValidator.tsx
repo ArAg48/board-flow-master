@@ -481,14 +481,40 @@ const ScanValidator: React.FC = () => {
           p_session_id: currentSession.id
         });
 
-        // Update PTL order status to completed
-        await supabase
-          .from('ptl_orders')
-          .update({
-            status: 'completed',
-            updated_at: endTime.toISOString()
-          })
-          .eq('id', currentSession.ptlOrder.id);
+        // Check if PTL order should be marked as completed
+        const { data: progressData } = await supabase
+          .from('ptl_order_progress')
+          .select('scanned_count, passed_count, failed_count')
+          .eq('id', currentSession.ptlOrder.id)
+          .single();
+
+        const totalTested = progressData?.scanned_count || 0;
+        const totalPassed = progressData?.passed_count || 0;
+        const isComplete = totalPassed >= currentSession.ptlOrder.expectedCount;
+
+        // Show completion notification to technician
+        if (isComplete) {
+          toast({
+            title: '🎉 PTL Order Complete!',
+            description: `You have successfully tested and passed all ${currentSession.ptlOrder.expectedCount} boards for this PTL order.`,
+            duration: 5000,
+          });
+
+          // Update PTL order status to completed
+          await supabase
+            .from('ptl_orders')
+            .update({
+              status: 'completed',
+              updated_at: endTime.toISOString()
+            })
+            .eq('id', currentSession.ptlOrder.id);
+        } else {
+          toast({
+            title: '✅ Session Complete',
+            description: `Session finished. ${totalPassed}/${currentSession.ptlOrder.expectedCount} boards have passed testing.`,
+            duration: 3000,
+          });
+        }
         
         // Show completion message with session duration
         const hours = Math.floor(duration / 60);
