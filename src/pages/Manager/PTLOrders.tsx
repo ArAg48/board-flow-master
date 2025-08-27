@@ -175,6 +175,15 @@ const PTLOrders: React.FC = () => {
 
         if (error) throw error;
 
+        // Refresh PTL progress after order update
+        const { error: progressError } = await supabase.rpc('update_ptl_progress', {
+          p_ptl_order_id: editingOrder.id
+        });
+
+        if (progressError) {
+          console.error('Error updating PTL progress:', progressError);
+        }
+
         toast({
           title: 'PTL Order Updated',
           description: `Order ${data.ptl_order_number} has been updated successfully.`,
