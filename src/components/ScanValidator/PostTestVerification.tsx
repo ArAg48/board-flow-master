@@ -3,11 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { PostTestVerification as PostTestVerificationType } from '@/types/scan-validator';
 import { CheckSquare, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface PostTestVerificationProps {
   verification: PostTestVerificationType;
@@ -26,23 +23,15 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
   onVerificationChange,
   onComplete
 }) => {
-  const { user } = useAuth();
-  const [localVerification, setLocalVerification] = useState(verification);
-  const [finalCountInput, setFinalCountInput] = useState(verification.finalCount.toString());
-  const [productCountVerified, setProductCountVerified] = useState(verification.productCountVerified || '');
-  const [axxessUpdater, setAxxessUpdater] = useState(verification.axxessUpdater || '');
-  const [firmwareConfirmed, setFirmwareConfirmed] = useState(false);
+const [localVerification, setLocalVerification] = useState(verification);
+const [finalCountInput, setFinalCountInput] = useState(verification.finalCount.toString());
+const [productCountVerified, setProductCountVerified] = useState(verification.productCountVerified || '');
+const [axxessUpdater, setAxxessUpdater] = useState(verification.axxessUpdater || '');
 
   const handleFinalCountChange = (value: string) => {
     setFinalCountInput(value);
     const numValue = parseInt(value) || 0;
     const updated = { ...localVerification, finalCount: numValue };
-    setLocalVerification(updated);
-    onVerificationChange(updated);
-  };
-
-  const handleAccessUpdaterChange = (checked: boolean) => {
-    const updated = { ...localVerification, accessUpdaterSync: checked };
     setLocalVerification(updated);
     onVerificationChange(updated);
   };
@@ -61,11 +50,11 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
     onVerificationChange(updated);
   };
 
-  const isCountMatching = localVerification.finalCount === actualCount;
-  const isProductCountValid = productCountVerified.trim().length >= 2;
-  const isAxxessUpdaterValid = axxessUpdater.trim().length >= 2;
-  const isComplete = isCountMatching && localVerification.accessUpdaterSync && firmwareConfirmed && isProductCountValid && isAxxessUpdaterValid;
-  const countDifference = actualCount - expectedCount;
+const isCountMatching = localVerification.finalCount === actualCount;
+const isProductCountValid = productCountVerified.trim().length >= 2;
+const isAxxessUpdaterValid = axxessUpdater.trim().length >= 2;
+const isComplete = isCountMatching && isProductCountValid && isAxxessUpdaterValid;
+const countDifference = actualCount - expectedCount;
 
   return (
     <Card>
@@ -122,28 +111,6 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="access-updater"
-              checked={localVerification.accessUpdaterSync}
-              onCheckedChange={handleAccessUpdaterChange}
-            />
-            <Label htmlFor="access-updater" className="text-sm font-normal">
-              Access updater synchronized and database updated successfully
-            </Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="firmware-confirm"
-              checked={firmwareConfirmed}
-              onCheckedChange={(checked) => setFirmwareConfirmed(Boolean(checked))}
-            />
-            <Label htmlFor="firmware-confirm" className="text-sm font-normal">
-              Firmware revision verified against PTL order requirements
-            </Label>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="product-count">Product Count Verified</Label>
@@ -163,16 +130,6 @@ const PostTestVerification: React.FC<PostTestVerificationProps> = ({
                 onChange={(e) => handleAxxessUpdaterChange(e.target.value)}
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="expected-info">Expected Information</Label>
-            <Input
-              id="expected-info"
-              value={`${expectedCount} SR and ${firmwareRevision || '1.3'} SR`}
-              readOnly
-              className="bg-muted"
-            />
           </div>
         </div>
 

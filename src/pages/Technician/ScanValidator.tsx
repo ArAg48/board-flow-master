@@ -335,11 +335,28 @@ const ScanValidator: React.FC = () => {
     }
   };
 
-  const handleResume = () => {
-    if (currentSession) {
-      setCurrentSession({ ...currentSession, status: 'scanning' });
+const handleResume = () => {
+  if (currentSession) {
+    const now = new Date();
+    let newStart = currentSession.startTime;
+
+    if (currentSession.pausedTime) {
+      const pausedDelta = now.getTime() - currentSession.pausedTime.getTime();
+      newStart = new Date(newStart.getTime() + pausedDelta);
+    } else if (currentSession.breakTime) {
+      const breakDelta = now.getTime() - currentSession.breakTime.getTime();
+      newStart = new Date(newStart.getTime() + breakDelta);
     }
-  };
+
+    setCurrentSession({ 
+      ...currentSession, 
+      status: 'scanning', 
+      startTime: newStart, 
+      pausedTime: undefined, 
+      breakTime: undefined 
+    });
+  }
+};
 
   const handleFinishPTL = async () => {
     if (currentSession) {
