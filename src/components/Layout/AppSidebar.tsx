@@ -21,15 +21,15 @@ import {
   Users,
   BarChart3,
   QrCode,
-  Archive,
+  FolderOpen,
 } from 'lucide-react';
 
 const managerItems = [
   { title: 'Dashboard', url: '/app/dashboard', icon: BarChart3 },
   { title: 'Hardware Orders', url: '/app/hardware-orders', icon: Package },
-  { title: 'Hardware Order Archive', url: '/app/hardware-orders-archive', icon: Archive },
+  { title: 'Hardware Order Archive', url: '/app/hardware-orders-archive', icon: FolderOpen },
   { title: 'PTL Orders', url: '/app/ptl-orders', icon: ClipboardList },
-  { title: 'PTL Order Archive', url: '/app/ptl-orders-archive', icon: Archive },
+  { title: 'PTL Order Archive', url: '/app/ptl-orders-archive', icon: FolderOpen },
   { title: 'Order Overview', url: '/app/order-overview', icon: Search },
   { title: 'Account Management', url: '/app/account-management', icon: Users },
   { title: 'Log History', url: '/app/log-history', icon: History },
