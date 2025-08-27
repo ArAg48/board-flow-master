@@ -94,11 +94,11 @@ const PTLOrders: React.FC = () => {
       const { data, error } = await supabase
         .from('ptl_orders')
         .select('*')
-        .neq('status', 'completed')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      const active = (data || []).filter(o => o.status !== 'completed');
+      setOrders(active);
     } catch (error) {
       toast({
         title: 'Error',
