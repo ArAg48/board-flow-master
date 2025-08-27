@@ -181,15 +181,24 @@ const ScanValidator: React.FC = () => {
         p_status: currentSession.status === 'paused' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active'),
         p_paused_at: currentSession.pausedTime?.toISOString() || null,
         p_break_started_at: currentSession.breakTime?.toISOString() || null,
-        p_duration_minutes: duration,
-        p_active_duration_minutes: duration,
-        p_session_scanned_count: stats.total,
-        p_session_pass_count: stats.passed,
-        p_session_fail_count: stats.failed,
-        p_total_scanned: stats.total,
-        p_pass_count: stats.passed,
-        p_fail_count: stats.failed,
       });
+
+      // Update session counts separately
+      await supabase
+        .from('scan_sessions')
+        .update({
+          duration_minutes: duration,
+          actual_duration_minutes: duration,
+          session_scanned_count: stats.total,
+          session_pass_count: stats.passed,
+          session_fail_count: stats.failed,
+          total_scanned: stats.total,
+          pass_count: stats.passed,
+          fail_count: stats.failed,
+          pass_rate: stats.passRate,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentSession.id);
 
     } catch (error) {
       console.error('Error saving session:', error);
@@ -286,6 +295,29 @@ const ScanValidator: React.FC = () => {
         totalDuration: 0
       };
       setCurrentSession(newSession);
+
+      // Create initial session record in database
+      try {
+        const sessionData = JSON.parse(JSON.stringify({
+          id: newSession.id,
+          status: newSession.status,
+          startTime: newSession.startTime.toISOString(),
+          testerConfig: newSession.testerConfig,
+          preTestVerification: newSession.preTestVerification,
+          scannedEntries: [],
+          totalDuration: 0
+        }));
+
+        await supabase.rpc('save_session', {
+          p_session_id: newSession.id,
+          p_technician_id: user.id,
+          p_ptl_order_id: newSession.ptlOrder.id,
+          p_session_data: sessionData,
+          p_status: 'active'
+        });
+      } catch (error) {
+        console.error('Error creating session:', error);
+      }
     }
   };
 
@@ -420,25 +452,48 @@ const handleResume = () => {
       try {
         const stats = getSessionStats();
 
+        // Serialize session data properly for JSON storage
+        const completedSessionData = JSON.parse(JSON.stringify({
+          id: updatedSession.id,
+          status: updatedSession.status,
+          startTime: updatedSession.startTime.toISOString(),
+          endTime: updatedSession.endTime?.toISOString(),
+          testerConfig: updatedSession.testerConfig,
+          preTestVerification: updatedSession.preTestVerification,
+          postTestVerification: updatedSession.postTestVerification,
+          scannedEntries: updatedSession.scannedEntries.map(entry => ({
+            ...entry,
+            timestamp: entry.timestamp.toISOString()
+          })),
+          totalDuration: updatedSession.totalDuration,
+          pausedTime: updatedSession.pausedTime?.toISOString(),
+          breakTime: updatedSession.breakTime?.toISOString()
+        }));
+
         await supabase.rpc('save_session', {
           p_session_id: currentSession.id,
           p_technician_id: user.id,
           p_ptl_order_id: currentSession.ptlOrder.id,
-          p_session_data: {
-            ...updatedSession,
-            startTime: updatedSession.startTime.toISOString(),
-            endTime: updatedSession.endTime?.toISOString()
-          },
-          p_status: 'completed',
-          p_duration_minutes: duration,
-          p_active_duration_minutes: duration,
-          p_session_scanned_count: stats.total,
-          p_session_pass_count: stats.passed,
-          p_session_fail_count: stats.failed,
-          p_total_scanned: stats.total,
-          p_pass_count: stats.passed,
-          p_fail_count: stats.failed
+          p_session_data: completedSessionData,
+          p_status: 'completed'
         });
+
+        // Update session final counts and duration
+        await supabase
+          .from('scan_sessions')
+          .update({
+            status: 'completed',
+            end_time: endTime.toISOString(),
+            duration_minutes: duration,
+            actual_duration_minutes: duration,
+            total_scanned: stats.total,
+            pass_count: stats.passed,
+            fail_count: stats.failed,
+            pass_rate: stats.passRate,
+            is_active: false,
+            updated_at: endTime.toISOString()
+          })
+          .eq('id', currentSession.id);
 
         // Session deactivation handled via is_active flag
 
