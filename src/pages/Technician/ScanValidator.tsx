@@ -172,23 +172,24 @@ const ScanValidator: React.FC = () => {
       // Session row is maintained via direct updates (no RPC)
 
       // Update session statistics in database
-      await supabase
-        .from('scan_sessions')
-        .update({
-          total_scanned: stats.total,
-          pass_count: stats.passed,
-          fail_count: stats.failed,
-          pass_rate: stats.passRate,
-          duration_minutes: duration,
-          end_time: currentSession.endTime?.toISOString() || null,
-          session_data: sessionData,
-          status: currentSession.status === 'paused' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active'),
-          paused_at: currentSession.pausedTime?.toISOString() || null,
-          break_started_at: currentSession.breakTime?.toISOString() || null,
-          is_active: currentSession.status !== 'completed',
-          actual_duration_minutes: duration
-        })
-        .eq('id', currentSession.id);
+      // Persist session state via RPC (bypasses RLS)
+      await supabase.rpc('save_session', {
+        p_session_id: currentSession.id,
+        p_technician_id: user.id,
+        p_ptl_order_id: currentSession.ptlOrder.id,
+        p_session_data: sessionData,
+        p_status: currentSession.status === 'paused' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active'),
+        p_paused_at: currentSession.pausedTime?.toISOString() || null,
+        p_break_started_at: currentSession.breakTime?.toISOString() || null,
+        p_duration_minutes: duration,
+        p_active_duration_minutes: duration,
+        p_session_scanned_count: stats.total,
+        p_session_pass_count: stats.passed,
+        p_session_fail_count: stats.failed,
+        p_total_scanned: stats.total,
+        p_pass_count: stats.passed,
+        p_fail_count: stats.failed,
+      });
 
     } catch (error) {
       console.error('Error saving session:', error);
@@ -419,19 +420,25 @@ const handleResume = () => {
       try {
         const stats = getSessionStats();
 
-        await supabase
-          .from('scan_sessions')
-          .update({
-            status: 'completed',
-            end_time: endTime.toISOString(),
-            total_scanned: stats.total,
-            pass_count: stats.passed,
-            fail_count: stats.failed,
-            pass_rate: stats.passRate,
-            duration_minutes: duration,
-            is_active: false
-          })
-          .eq('id', currentSession.id);
+        await supabase.rpc('save_session', {
+          p_session_id: currentSession.id,
+          p_technician_id: user.id,
+          p_ptl_order_id: currentSession.ptlOrder.id,
+          p_session_data: {
+            ...updatedSession,
+            startTime: updatedSession.startTime.toISOString(),
+            endTime: updatedSession.endTime?.toISOString()
+          },
+          p_status: 'completed',
+          p_duration_minutes: duration,
+          p_active_duration_minutes: duration,
+          p_session_scanned_count: stats.total,
+          p_session_pass_count: stats.passed,
+          p_session_fail_count: stats.failed,
+          p_total_scanned: stats.total,
+          p_pass_count: stats.passed,
+          p_fail_count: stats.failed
+        });
 
         // Session deactivation handled via is_active flag
 
