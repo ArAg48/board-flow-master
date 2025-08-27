@@ -55,6 +55,31 @@ const ScanHistory: React.FC = () => {
 
   useEffect(() => {
     fetchSessions();
+
+    // Subscribe to realtime changes on scan_sessions
+    const channel = supabase
+      .channel('scan-sessions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'scan_sessions'
+        },
+        () => {
+          // Refetch sessions when any scan session changes
+          fetchSessions();
+        }
+      )
+      .subscribe();
+
+    // Fallback polling every 30s
+    const pollInterval = setInterval(fetchSessions, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const fetchSessions = async () => {
