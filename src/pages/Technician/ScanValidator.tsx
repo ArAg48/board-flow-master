@@ -87,14 +87,26 @@ const ScanValidator: React.FC = () => {
 
       if (ptlError) throw ptlError;
 
-      // Fetch progress data for all orders
+      // Fetch progress data for all orders using RPC fallback
       const orderIds = (ptlOrdersData || []).map(order => order.id);
-      const { data: progressData } = await supabase
-        .from('ptl_order_progress')
-        .select('*')
-        .in('id', orderIds);
+      let progressRows: any[] = [];
+      
+      // Try RPC first for most up-to-date data
+      const { data: rpcProgress, error: rpcError } = await supabase.rpc('get_ptl_order_progress');
+      if (!rpcError && Array.isArray(rpcProgress)) {
+        progressRows = rpcProgress.filter((r: any) => orderIds.includes(r.id));
+      }
+      
+      // Fallback to progress table if needed
+      if (progressRows.length === 0 && orderIds.length > 0) {
+        const { data: progressData } = await supabase
+          .from('ptl_order_progress')
+          .select('*')
+          .in('id', orderIds);
+        progressRows = progressData || [];
+      }
 
-      const progressMap = (progressData || []).reduce((acc, progress) => {
+      const progressMap = progressRows.reduce((acc, progress) => {
         acc[progress.id] = progress;
         return acc;
       }, {} as Record<string, any>);

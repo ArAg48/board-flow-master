@@ -59,6 +59,7 @@ const ScanHistory: React.FC = () => {
 
   const fetchSessions = async () => {
     try {
+      // Always fetch fresh data from RPC to get live metrics
       const { data, error } = await supabase.rpc('get_scan_history', { p_technician_id: null });
       if (error) throw error;
 
@@ -66,9 +67,14 @@ const ScanHistory: React.FC = () => {
       const sessionsWithPassRate = (data || []).map((session: any) => {
         const start = session.start_time ? new Date(session.start_time) : null;
         const end = session.end_time ? new Date(session.end_time) : null;
-        const computedDuration = (typeof session.duration_minutes === 'number' && session.duration_minutes > 0)
-          ? session.duration_minutes
-          : (start ? Math.max(0, Math.floor(((end || new Date()).getTime() - start.getTime()) / 60000)) : 0);
+        
+        // Use database calculated duration with fallback
+        let computedDuration = 0;
+        if (typeof session.duration_minutes === 'number' && session.duration_minutes > 0) {
+          computedDuration = session.duration_minutes;
+        } else if (start && end) {
+          computedDuration = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 60000));
+        }
 
         return {
           id: session.id,
@@ -77,15 +83,15 @@ const ScanHistory: React.FC = () => {
           start_time: session.start_time,
           end_time: session.end_time,
           duration_minutes: computedDuration,
-          total_scanned: session.total_scanned,
-          pass_count: session.pass_count,
-          fail_count: session.fail_count,
+          total_scanned: session.total_scanned || 0,
+          pass_count: session.pass_count || 0,
+          fail_count: session.fail_count || 0,
           pass_rate: session.total_scanned > 0 ? Math.round((session.pass_count / session.total_scanned) * 100) : 0,
           tester_config: { type: 1, scanBoxes: 1 },
-          status: session.session_status,
+          status: session.session_status || 'completed',
           notes: undefined,
-          ptl_orders: { ptl_order_number: session.ptl_order_number, board_type: session.board_type },
-          profiles: { full_name: session.technician_name }
+          ptl_orders: { ptl_order_number: session.ptl_order_number || 'Unknown', board_type: session.board_type || 'Unknown' },
+          profiles: { full_name: session.technician_name || 'Unknown' }
         } as SessionHistory;
       });
 
