@@ -53,4 +53,7 @@ export interface ValidationSession {
   status: 'setup' | 'pre-test' | 'scanning' | 'paused' | 'break' | 'post-test' | 'completed';
   scannedEntries: ScanEntry[];
   totalDuration: number;
+  // Active time tracking (exclude paused periods)
+  activeStart?: Date;
+  accumulatedActiveMs?: number;
 }

@@ -146,11 +146,16 @@ const ScanValidator: React.FC = () => {
     if (!currentSession || !user?.id) return;
 
     try {
-      // Calculate real-time statistics
       const stats = getSessionStats();
-      const duration = currentSession.endTime 
-        ? Math.floor((currentSession.endTime.getTime() - currentSession.startTime.getTime()) / (1000 * 60))
-        : Math.floor((new Date().getTime() - currentSession.startTime.getTime()) / (1000 * 60));
+      const now = new Date();
+      const totalDuration = currentSession.endTime 
+        ? Math.floor((currentSession.endTime.getTime() - currentSession.startTime.getTime()) / 60000)
+        : Math.floor((now.getTime() - currentSession.startTime.getTime()) / 60000);
+      const activeMsBase = currentSession.accumulatedActiveMs || 0;
+      const activeMsRunning = (currentSession.status === 'scanning' || currentSession.status === 'break') && currentSession.activeStart
+        ? now.getTime() - currentSession.activeStart.getTime()
+        : 0;
+      const activeDuration = Math.floor((activeMsBase + activeMsRunning) / 60000);
 
       const sessionData = JSON.parse(JSON.stringify({
         id: currentSession.id,
@@ -166,12 +171,11 @@ const ScanValidator: React.FC = () => {
         totalDuration: currentSession.totalDuration,
         pausedTime: currentSession.pausedTime?.toISOString(),
         breakTime: currentSession.breakTime?.toISOString(),
-        endTime: currentSession.endTime?.toISOString()
+        endTime: currentSession.endTime?.toISOString(),
+        accumulatedActiveMs: currentSession.accumulatedActiveMs,
+        activeStart: currentSession.activeStart?.toISOString()
       }));
 
-      // Session row is maintained via direct updates (no RPC)
-
-      // Update session statistics in database
       await supabase
         .from('scan_sessions')
         .update({
@@ -179,14 +183,14 @@ const ScanValidator: React.FC = () => {
           pass_count: stats.passed,
           fail_count: stats.failed,
           pass_rate: stats.passRate,
-          duration_minutes: duration,
+          duration_minutes: totalDuration,
+          actual_duration_minutes: activeDuration,
           end_time: currentSession.endTime?.toISOString() || null,
           session_data: sessionData,
           status: currentSession.status === 'paused' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active'),
           paused_at: currentSession.pausedTime?.toISOString() || null,
           break_started_at: currentSession.breakTime?.toISOString() || null,
           is_active: currentSession.status !== 'completed',
-          actual_duration_minutes: duration
         })
         .eq('id', currentSession.id);
 
@@ -282,7 +286,8 @@ const ScanValidator: React.FC = () => {
         startTime: new Date(),
         status: 'setup',
         scannedEntries: [],
-        totalDuration: 0
+        totalDuration: 0,
+        accumulatedActiveMs: 0
       };
       setCurrentSession(newSession);
     }
@@ -296,7 +301,7 @@ const ScanValidator: React.FC = () => {
 
   const handleTesterConfigComplete = () => {
     if (currentSession) {
-      setCurrentSession({ ...currentSession, status: 'scanning' });
+      setCurrentSession({ ...currentSession, status: 'scanning', activeStart: new Date() });
     }
   };
 
@@ -325,7 +330,15 @@ const ScanValidator: React.FC = () => {
 
   const handlePause = () => {
     if (currentSession) {
-      setCurrentSession({ ...currentSession, status: 'paused', pausedTime: new Date() });
+      const now = new Date();
+      const added = currentSession.activeStart ? now.getTime() - currentSession.activeStart.getTime() : 0;
+      setCurrentSession({ 
+        ...currentSession, 
+        status: 'paused', 
+        pausedTime: now,
+        accumulatedActiveMs: (currentSession.accumulatedActiveMs || 0) + added,
+        activeStart: undefined
+      });
     }
   };
 
@@ -337,7 +350,7 @@ const ScanValidator: React.FC = () => {
 
   const handleResume = () => {
     if (currentSession) {
-      setCurrentSession({ ...currentSession, status: 'scanning' });
+      setCurrentSession({ ...currentSession, status: 'scanning', activeStart: new Date() });
     }
   };
 
@@ -389,7 +402,13 @@ const ScanValidator: React.FC = () => {
   const handlePostTestComplete = async () => {
     if (currentSession) {
       const endTime = new Date();
-      const duration = Math.floor((endTime.getTime() - currentSession.startTime.getTime()) / (1000 * 60));
+      const now = endTime;
+      const baseMs = currentSession.accumulatedActiveMs || 0;
+      const runningMs = (currentSession.status === 'scanning' || currentSession.status === 'break') && currentSession.activeStart
+        ? now.getTime() - currentSession.activeStart.getTime()
+        : 0;
+      const activeDurationMinutes = Math.floor((baseMs + runningMs) / 60000);
+      const totalDurationMinutes = Math.floor((endTime.getTime() - currentSession.startTime.getTime()) / 60000);
       
       const updatedSession = {
         ...currentSession,
@@ -411,14 +430,13 @@ const ScanValidator: React.FC = () => {
             pass_count: stats.passed,
             fail_count: stats.failed,
             pass_rate: stats.passRate,
-            duration_minutes: duration,
+            duration_minutes: totalDurationMinutes,
+            actual_duration_minutes: activeDurationMinutes,
             is_active: false
           })
           .eq('id', currentSession.id);
 
-        // Session deactivation handled via is_active flag
-
-        // Check if PTL order should be marked as completed
+        // Update PTL order progress with time aggregates
         const { data: progressData } = await supabase
           .from('ptl_order_progress')
           .select('scanned_count, passed_count, failed_count, total_time_minutes, active_time_minutes')
@@ -430,12 +448,11 @@ const ScanValidator: React.FC = () => {
         const prevTotalTime = progressData?.total_time_minutes || 0;
         const prevActiveTime = progressData?.active_time_minutes || 0;
 
-        // Update PTL order progress with time aggregates
         await supabase
           .from('ptl_order_progress')
           .update({
-            total_time_minutes: prevTotalTime + duration,
-            active_time_minutes: prevActiveTime + duration,
+            total_time_minutes: prevTotalTime + totalDurationMinutes,
+            active_time_minutes: prevActiveTime + activeDurationMinutes,
             updated_at: endTime.toISOString(),
             completion_percentage: currentSession.ptlOrder.expectedCount > 0
               ? Math.min(100, Math.round(((totalPassed) / currentSession.ptlOrder.expectedCount) * 100))
@@ -445,7 +462,6 @@ const ScanValidator: React.FC = () => {
 
         const isComplete = totalPassed >= currentSession.ptlOrder.expectedCount;
 
-        // Show completion notification to technician
         if (isComplete) {
           toast({
             title: '🎉 PTL Order Complete!',
@@ -453,17 +469,16 @@ const ScanValidator: React.FC = () => {
             duration: 8000,
           });
 
-          // Update PTL order status to completed with verifier info
           await supabase
             .from('ptl_orders')
             .update({
-            status: 'completed',
-            verified_by: user?.id,
-            verified_at: endTime.toISOString(),
-            verifier_initials: currentSession.postTestVerification?.productCountVerified,
-            product_count_verified: currentSession.postTestVerification?.productCountVerified,
-            axxess_updater: currentSession.postTestVerification?.axxessUpdater,
-            updated_at: endTime.toISOString()
+              status: 'completed',
+              verified_by: user?.id,
+              verified_at: endTime.toISOString(),
+              verifier_initials: currentSession.postTestVerification?.productCountVerified,
+              product_count_verified: currentSession.postTestVerification?.productCountVerified,
+              axxess_updater: currentSession.postTestVerification?.axxessUpdater,
+              updated_at: endTime.toISOString()
             })
             .eq('id', currentSession.ptlOrder.id);
         } else {
@@ -473,10 +488,9 @@ const ScanValidator: React.FC = () => {
             duration: 3000,
           });
         }
-        
-        // Show completion message with session duration
-        const hours = Math.floor(duration / 60);
-        const minutes = duration % 60;
+
+        const hours = Math.floor(activeDurationMinutes / 60);
+        const minutes = activeDurationMinutes % 60;
         const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
         
         toast({
@@ -495,12 +509,15 @@ const ScanValidator: React.FC = () => {
 
   const getSessionDuration = () => {
     if (!currentSession) return '00:00:00';
-    const start = currentSession.startTime;
-    const end = currentSession.endTime || new Date();
-    const diff = end.getTime() - start.getTime();
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
+    const now = new Date();
+    const baseMs = currentSession.accumulatedActiveMs || 0;
+    const runningMs = (currentSession.status === 'scanning' || currentSession.status === 'break') && currentSession.activeStart
+      ? now.getTime() - currentSession.activeStart.getTime()
+      : 0;
+    const totalMs = baseMs + runningMs;
+    const hours = Math.floor(totalMs / 3600000);
+    const minutes = Math.floor((totalMs % 3600000) / 60000);
+    const seconds = Math.floor((totalMs % 60000) / 1000);
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 

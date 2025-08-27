@@ -37,7 +37,11 @@ export const Header: React.FC = () => {
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
         
-        <Button variant="outline" size="sm" onClick={logout}>
+        <Button variant="outline" size="sm" onClick={async () => {
+          // Signal any active scan to finalize before logout
+          window.dispatchEvent(new CustomEvent('userInitiatedLogout'));
+          await logout();
+        }}>
           <LogOut className="h-4 w-4 mr-2" />
           Logout
         </Button>
