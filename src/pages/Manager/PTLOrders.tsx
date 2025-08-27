@@ -148,10 +148,29 @@ const PTLOrders: React.FC = () => {
   const onSubmit = async (data: PTLOrderForm) => {
     try {
       if (editingOrder) {
-        // Update existing order
+        // Check if quantity is being increased on a completed order
+        const currentPassedCount = orderCounts[editingOrder.id]?.passed || 0;
+        const newQuantity = data.quantity;
+        const wasCompleted = editingOrder.status === 'completed';
+        
+        // Determine new status based on quantity change
+        let newStatus = editingOrder.status;
+        if (wasCompleted && newQuantity > currentPassedCount) {
+          // If order was completed but new quantity exceeds passed boards, revert to pending
+          newStatus = 'pending';
+          toast({
+            title: 'Status Updated',
+            description: `Order quantity increased. Status changed from completed to pending as more boards need to be tested.`,
+          });
+        }
+
+        // Update existing order with potential status change
         const { error } = await supabase
           .from('ptl_orders')
-          .update(data)
+          .update({
+            ...data,
+            status: newStatus
+          })
           .eq('id', editingOrder.id);
 
         if (error) throw error;
