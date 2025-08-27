@@ -133,6 +133,34 @@ const PTLOrders: React.FC = () => {
         };
       });
 
+      // Fallback safety: if any order appears as 0 or missing, derive counts directly per order
+      if (orders.length > 0) {
+        const candidates = orders
+          .filter(o => !counts[o.id] || counts[o.id].scanned === 0)
+          .map(o => o.id);
+
+        if (candidates.length > 0) {
+          const perOrderCounts = await Promise.all(
+            candidates.map(async (id) => {
+              const { data } = await supabase.rpc('count_scanned_boards', { p_ptl_order_id: id });
+              const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
+              return { id, row };
+            })
+          );
+
+          perOrderCounts.forEach(({ id, row }) => {
+            if (row && (Number(row.total_count) || 0) > 0) {
+              counts[id] = {
+                scanned: Number(row.total_count) || 0,
+                passed: Number(row.pass_count) || 0,
+                failed: Number(row.fail_count) || 0,
+                totalTime: counts[id]?.totalTime || 0,
+              };
+            }
+          });
+        }
+      }
+
       setOrderCounts(counts);
     } catch (error) {
       console.error('Error fetching order counts:', error);

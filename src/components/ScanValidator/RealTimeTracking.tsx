@@ -40,17 +40,38 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
     const handleProgressUpdate = async (event: CustomEvent) => {
       if (event.detail.orderId === session.ptlOrder.id) {
         try {
-          const { data: progressData } = await supabase
+          const { data: progressData, error: progErr } = await supabase
             .from('ptl_order_progress')
             .select('passed_count, scanned_count, failed_count')
             .eq('id', session.ptlOrder.id)
-            .single();
+            .maybeSingle();
+
+          let newCounts: { passed: number; scanned: number; failed: number } | null = null;
 
           if (progressData) {
+            newCounts = {
+              passed: Number(progressData.passed_count) || 0,
+              scanned: Number(progressData.scanned_count) || 0,
+              failed: Number(progressData.failed_count) || 0,
+            };
+          } else {
+            // Fallback: derive from live RPC if the materialized row doesn't exist yet
+            const { data: rpcRows } = await supabase.rpc('get_ptl_order_progress');
+            const row = Array.isArray(rpcRows) ? rpcRows.find((r: any) => r.id === session.ptlOrder.id) : null;
+            if (row) {
+              newCounts = {
+                passed: Number(row.passed_count) || 0,
+                scanned: Number(row.scanned_count) || 0,
+                failed: Number(row.failed_count) || 0,
+              };
+            }
+          }
+
+          if (newCounts) {
             setLiveProgress({
-              passedCount: progressData.passed_count || 0,
-              scannedCount: progressData.scanned_count || 0,
-              failedCount: progressData.failed_count || 0
+              passedCount: newCounts.passed,
+              scannedCount: newCounts.scanned,
+              failedCount: newCounts.failed
             });
           }
         } catch (error) {
