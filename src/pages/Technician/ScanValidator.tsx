@@ -173,32 +173,24 @@ const ScanValidator: React.FC = () => {
 
       // Update session statistics in database
       // Persist session state via RPC (bypasses RLS)
-      await supabase.rpc('save_session', {
+      // Upsert session via RPC (long signature) including live counts and duration
+      await (supabase.rpc as any)('save_session', {
         p_session_id: currentSession.id,
         p_technician_id: user.id,
         p_ptl_order_id: currentSession.ptlOrder.id,
         p_session_data: sessionData,
-        p_status: currentSession.status === 'paused' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active'),
+        p_status: (currentSession.status === 'paused' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active')) as any,
         p_paused_at: currentSession.pausedTime?.toISOString() || null,
         p_break_started_at: currentSession.breakTime?.toISOString() || null,
-      });
-
-      // Update session counts separately
-      await supabase
-        .from('scan_sessions')
-        .update({
-          duration_minutes: duration,
-          actual_duration_minutes: duration,
-          session_scanned_count: stats.total,
-          session_pass_count: stats.passed,
-          session_fail_count: stats.failed,
-          total_scanned: stats.total,
-          pass_count: stats.passed,
-          fail_count: stats.failed,
-          pass_rate: stats.passRate,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', currentSession.id);
+        p_duration_minutes: duration,
+        p_active_duration_minutes: duration,
+        p_session_scanned_count: stats.total,
+        p_session_pass_count: stats.passed,
+        p_session_fail_count: stats.failed,
+        p_total_scanned: stats.total,
+        p_pass_count: stats.passed,
+        p_fail_count: stats.failed,
+      } as any);
 
     } catch (error) {
       console.error('Error saving session:', error);
@@ -308,13 +300,23 @@ const ScanValidator: React.FC = () => {
           totalDuration: 0
         }));
 
-        await supabase.rpc('save_session', {
+        await (supabase.rpc as any)('save_session', {
           p_session_id: newSession.id,
           p_technician_id: user.id,
           p_ptl_order_id: newSession.ptlOrder.id,
           p_session_data: sessionData,
-          p_status: 'active'
-        });
+          p_status: 'active' as any,
+          p_paused_at: null,
+          p_break_started_at: null,
+          p_duration_minutes: 0,
+          p_active_duration_minutes: 0,
+          p_session_scanned_count: 0,
+          p_session_pass_count: 0,
+          p_session_fail_count: 0,
+          p_total_scanned: 0,
+          p_pass_count: 0,
+          p_fail_count: 0,
+        } as any);
       } catch (error) {
         console.error('Error creating session:', error);
       }
@@ -497,7 +499,7 @@ const handleResume = () => {
           .from('ptl_order_progress')
           .select('scanned_count, passed_count, failed_count, total_time_minutes, active_time_minutes')
           .eq('id', currentSession.ptlOrder.id)
-          .single();
+          .maybeSingle();
 
         const totalPassed = latestProgress?.passed_count || 0;
         const isComplete = totalPassed >= currentSession.ptlOrder.expectedCount;
