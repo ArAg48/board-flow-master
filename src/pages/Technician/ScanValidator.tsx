@@ -478,50 +478,28 @@ const handleResume = () => {
           p_status: 'completed'
         });
 
-        // Update session final counts and duration
-        await supabase
-          .from('scan_sessions')
-          .update({
-            status: 'completed',
-            end_time: endTime.toISOString(),
-            duration_minutes: duration,
-            actual_duration_minutes: duration,
-            total_scanned: stats.total,
-            pass_count: stats.passed,
-            fail_count: stats.failed,
-            pass_rate: stats.passRate,
-            is_active: false,
-            updated_at: endTime.toISOString()
-          })
-          .eq('id', currentSession.id);
+        // Update session final counts and duration via RPC (bypasses RLS)
+        await supabase.rpc('update_session_counts', {
+          p_session_id: currentSession.id,
+          p_scanned_count: stats.total,
+          p_pass_count: stats.passed,
+          p_fail_count: stats.failed,
+          p_duration_minutes: duration
+        });
 
-        // Session deactivation handled via is_active flag
+        // Refresh PTL order progress aggregates
+        await supabase.rpc('update_ptl_progress', {
+          p_ptl_order_id: currentSession.ptlOrder.id
+        });
 
-        // Check if PTL order should be marked as completed
-        const { data: progressData } = await supabase
+        // Get latest progress to determine completion and show accurate time
+        const { data: latestProgress } = await supabase
           .from('ptl_order_progress')
           .select('scanned_count, passed_count, failed_count, total_time_minutes, active_time_minutes')
           .eq('id', currentSession.ptlOrder.id)
           .single();
 
-        const totalTested = progressData?.scanned_count || 0;
-        const totalPassed = progressData?.passed_count || 0;
-        const prevTotalTime = progressData?.total_time_minutes || 0;
-        const prevActiveTime = progressData?.active_time_minutes || 0;
-
-        // Update PTL order progress with time aggregates
-        await supabase
-          .from('ptl_order_progress')
-          .update({
-            total_time_minutes: prevTotalTime + duration,
-            active_time_minutes: prevActiveTime + duration,
-            updated_at: endTime.toISOString(),
-            completion_percentage: currentSession.ptlOrder.expectedCount > 0
-              ? Math.min(100, Math.round(((totalPassed) / currentSession.ptlOrder.expectedCount) * 100))
-              : 0,
-          })
-          .eq('id', currentSession.ptlOrder.id);
-
+        const totalPassed = latestProgress?.passed_count || 0;
         const isComplete = totalPassed >= currentSession.ptlOrder.expectedCount;
 
         // Show completion notification to technician
