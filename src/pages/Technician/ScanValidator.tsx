@@ -152,7 +152,7 @@ const ScanValidator: React.FC = () => {
         ? Math.floor((currentSession.endTime.getTime() - currentSession.startTime.getTime()) / 60000)
         : Math.floor((now.getTime() - currentSession.startTime.getTime()) / 60000);
       const activeMsBase = currentSession.accumulatedActiveMs || 0;
-      const activeMsRunning = (currentSession.status === 'scanning' || currentSession.status === 'break') && currentSession.activeStart
+      const activeMsRunning = currentSession.status === 'scanning' && currentSession.activeStart
         ? now.getTime() - currentSession.activeStart.getTime()
         : 0;
       const activeDuration = Math.floor((activeMsBase + activeMsRunning) / 60000);
@@ -299,9 +299,29 @@ const ScanValidator: React.FC = () => {
     }
   };
 
-  const handleTesterConfigComplete = () => {
-    if (currentSession) {
-      setCurrentSession({ ...currentSession, status: 'scanning', activeStart: new Date() });
+  const handleTesterConfigComplete = async () => {
+    if (currentSession && user?.id) {
+      const updated = { ...currentSession, status: 'scanning' as const, activeStart: new Date() };
+      setCurrentSession(updated);
+      try {
+        await supabase.rpc('save_session', {
+          p_session_id: updated.id,
+          p_technician_id: user.id,
+          p_ptl_order_id: updated.ptlOrder.id,
+          p_session_data: JSON.parse(JSON.stringify({
+            id: updated.id,
+            status: updated.status,
+            startTime: updated.startTime.toISOString(),
+            testerConfig: updated.testerConfig,
+            scannedEntries: []
+          })),
+          p_status: 'scanning',
+          p_paused_at: null,
+          p_break_started_at: null
+        });
+      } catch (e) {
+        console.error('Error initializing session in DB:', e);
+      }
     }
   };
 
@@ -344,7 +364,15 @@ const ScanValidator: React.FC = () => {
 
   const handleBreak = () => {
     if (currentSession) {
-      setCurrentSession({ ...currentSession, status: 'break', breakTime: new Date() });
+      const now = new Date();
+      const added = currentSession.activeStart ? now.getTime() - currentSession.activeStart.getTime() : 0;
+      setCurrentSession({ 
+        ...currentSession, 
+        status: 'break', 
+        breakTime: now,
+        accumulatedActiveMs: (currentSession.accumulatedActiveMs || 0) + added,
+        activeStart: undefined
+      });
     }
   };
 
@@ -404,7 +432,7 @@ const ScanValidator: React.FC = () => {
       const endTime = new Date();
       const now = endTime;
       const baseMs = currentSession.accumulatedActiveMs || 0;
-      const runningMs = (currentSession.status === 'scanning' || currentSession.status === 'break') && currentSession.activeStart
+      const runningMs = currentSession.status === 'scanning' && currentSession.activeStart
         ? now.getTime() - currentSession.activeStart.getTime()
         : 0;
       const activeDurationMinutes = Math.floor((baseMs + runningMs) / 60000);
@@ -511,7 +539,7 @@ const ScanValidator: React.FC = () => {
     if (!currentSession) return '00:00:00';
     const now = new Date();
     const baseMs = currentSession.accumulatedActiveMs || 0;
-    const runningMs = (currentSession.status === 'scanning' || currentSession.status === 'break') && currentSession.activeStart
+    const runningMs = currentSession.status === 'scanning' && currentSession.activeStart
       ? now.getTime() - currentSession.activeStart.getTime()
       : 0;
     const totalMs = baseMs + runningMs;
