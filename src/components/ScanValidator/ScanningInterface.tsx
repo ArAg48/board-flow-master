@@ -497,7 +497,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                     <div className="flex gap-1">
                       <Button
                         size="sm"
-                        variant="success"
+                        variant="default"
                         onClick={() => handleManualPass(i)}
                         disabled={!isActive || !validatedBoards[i]}
                         className="flex-1 text-xs"
@@ -542,7 +542,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                 </Button>
                  <Button 
                    onClick={handlePassAllUnfailed} 
-                   variant="success"
+                   variant="default"
                    disabled={Object.entries(validatedBoards).filter(([boxIndex, qrCode]) => {
                      const existingEntry = scannedEntries.find(entry => entry.qrCode === qrCode);
                      return !existingEntry;

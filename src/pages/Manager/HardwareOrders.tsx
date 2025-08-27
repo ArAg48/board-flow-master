@@ -74,7 +74,6 @@ const HardwareOrders: React.FC = () => {
       const { data, error } = await supabase
         .from('hardware_orders')
         .select('*')
-        .neq('status', 'completed')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

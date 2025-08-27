@@ -64,25 +64,34 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   }, [session.ptlOrder.id]);
 
   const getDuration = () => {
-    const baseMs = session.accumulatedActiveMs || 0;
-    const now = currentTime;
-
-    // While scanning, add running active time since last resume
-    if (session.status === 'scanning' && session.activeStart) {
-      const running = now.getTime() - session.activeStart.getTime();
-      const total = baseMs + Math.max(0, running);
-      const hours = Math.floor(total / 3600000);
-      const minutes = Math.floor((total % 3600000) / 60000);
-      const seconds = Math.floor((total % 60000) / 1000);
-      return { hours, minutes, seconds, total };
+    const start = session.startTime;
+    
+    // If session is paused, calculate duration up to pause time
+    if (session.status === 'paused' && session.pausedTime) {
+      const diff = session.pausedTime.getTime() - start.getTime();
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      return { hours, minutes, seconds, total: diff };
     }
-
-    // Paused or break: show accumulated active time only
-    const total = baseMs;
-    const hours = Math.floor(total / 3600000);
-    const minutes = Math.floor((total % 3600000) / 60000);
-    const seconds = Math.floor((total % 60000) / 1000);
-    return { hours, minutes, seconds, total };
+    
+    // If session is on break, calculate duration excluding break time
+    if (session.status === 'break' && session.breakTime) {
+      const breakDuration = currentTime.getTime() - session.breakTime.getTime();
+      const totalDuration = currentTime.getTime() - start.getTime() - breakDuration;
+      const hours = Math.floor(totalDuration / 3600000);
+      const minutes = Math.floor((totalDuration % 3600000) / 60000);
+      const seconds = Math.floor((totalDuration % 60000) / 1000);
+      return { hours, minutes, seconds, total: totalDuration };
+    }
+    
+    // Regular running session
+    const end = session.endTime || currentTime;
+    const diff = end.getTime() - start.getTime();
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+    return { hours, minutes, seconds, total: diff };
   };
 
   const getStats = () => {

@@ -97,8 +97,7 @@ const PTLOrders: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      const active = (data || []).filter(o => o.status !== 'completed');
-      setOrders(active);
+      setOrders(data || []);
     } catch (error) {
       toast({
         title: 'Error',
@@ -124,7 +123,6 @@ const PTLOrders: React.FC = () => {
         rows = progRows || [];
       }
 
-      // Base counts from progress (may exclude active sessions without scans)
       const counts: {[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}} = {};
       rows.forEach((row: any) => {
         counts[row.id] = {
@@ -133,37 +131,6 @@ const PTLOrders: React.FC = () => {
           failed: Number(row.failed_count) || 0,
           totalTime: Number(row.total_time_minutes) || 0,
         };
-      });
-
-      // Ensure all currently listed orders have an entry
-      orders.forEach((o) => {
-        if (!counts[o.id]) {
-          counts[o.id] = { scanned: 0, passed: 0, failed: 0, totalTime: 0 };
-        }
-      });
-
-      // Augment with live session time like Log History (even if no boards scanned)
-      const { data: sessions, error: sessionsError } = await supabase.rpc('get_scan_history', { p_technician_id: null });
-      if (sessionsError) console.warn('RPC get_scan_history error:', sessionsError);
-
-      const sessionTimeByOrder: Record<string, number> = {};
-      (sessions as any[] | null)?.forEach((s: any) => {
-        // Only consider sessions for orders currently listed
-        if (!s.ptl_order_id || !orders.find(o => o.id === s.ptl_order_id)) return;
-        const start = s.start_time ? new Date(s.start_time) : null;
-        const end = s.end_time ? new Date(s.end_time) : null;
-        const duration = (typeof s.duration_minutes === 'number' && s.duration_minutes > 0)
-          ? s.duration_minutes
-          : (start ? Math.max(0, Math.floor(((end || new Date()).getTime() - start.getTime()) / 60000)) : 0);
-        sessionTimeByOrder[s.ptl_order_id] = (sessionTimeByOrder[s.ptl_order_id] || 0) + (duration || 0);
-      });
-
-      // Merge: prefer the larger of computed session time vs stored progress time
-      Object.entries(sessionTimeByOrder).forEach(([orderId, minutes]) => {
-        if (!counts[orderId]) {
-          counts[orderId] = { scanned: 0, passed: 0, failed: 0, totalTime: 0 };
-        }
-        counts[orderId].totalTime = Math.max(counts[orderId].totalTime || 0, minutes || 0);
       });
 
       setOrderCounts(counts);

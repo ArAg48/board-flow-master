@@ -17,8 +17,6 @@ import AccountManagement from "@/pages/Manager/AccountManagement";
 import OrderOverview from "@/pages/Manager/OrderOverview";
 import LogHistory from "@/pages/Manager/LogHistory";
 import BarcodeGenerator from "@/pages/Manager/BarcodeGenerator";
-import PTLOrderArchive from "@/pages/Manager/PTLOrderArchive";
-import HardwareOrderArchive from "@/pages/Manager/HardwareOrderArchive";
 import ScanValidator from "@/pages/Technician/ScanValidator";
 import RepairLog from "@/pages/Technician/RepairLog";
 import ScanHistory from "@/pages/Technician/ScanHistory";
@@ -60,19 +58,9 @@ const App = () => (
                   <HardwareOrders />
                 </ProtectedRoute>
               } />
-              <Route path="hardware-orders-archive" element={
-                <ProtectedRoute requiredRole="manager">
-                  <HardwareOrderArchive />
-                </ProtectedRoute>
-              } />
               <Route path="ptl-orders" element={
                 <ProtectedRoute requiredRole="manager">
                   <PTLOrders />
-                </ProtectedRoute>
-              } />
-              <Route path="ptl-orders-archive" element={
-                <ProtectedRoute requiredRole="manager">
-                  <PTLOrderArchive />
                 </ProtectedRoute>
               } />
               <Route path="ptl-orders/:id" element={
