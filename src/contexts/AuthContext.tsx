@@ -179,30 +179,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user?.id) {
         const { data: activeSessions, error: sessionsError } = await supabase
           .from('scan_sessions')
-          .select('id, start_time')
+          .select('id, start_time, duration_minutes, actual_duration_minutes')
           .eq('technician_id', user.id)
           .eq('is_active', true);
 
         if (!sessionsError && activeSessions && activeSessions.length > 0) {
           const now = new Date();
-          // Finalize each active session with accurate end time and duration
+          // Finalize each active session properly using the save_session RPC
           await Promise.all(
             activeSessions.map(async (s) => {
               const start = new Date(s.start_time);
-              const durationMinutes = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 60000));
+              const totalDurationMinutes = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 60000));
+              const activeDurationMinutes = s.actual_duration_minutes || 0; // Use existing accumulated active time
 
-              // Mark session completed and inactive
-              await supabase
-                .from('scan_sessions')
-                .update({
-                  status: 'completed',
-                  is_active: false,
-                  end_time: now.toISOString(),
-                  duration_minutes: durationMinutes,
-                })
-                .eq('id', s.id);
-
-              // Session marked inactive via is_active flag above
+              // Mark session completed using the RPC function
+              await supabase.rpc('save_session', {
+                p_session_id: s.id,
+                p_technician_id: user.id,
+                p_ptl_order_id: null, // Will be filled by existing session data
+                p_session_data: {}, // Will preserve existing session data
+                p_status: 'completed',
+                p_paused_at: null,
+                p_break_started_at: null,
+                p_duration_minutes: totalDurationMinutes,
+                p_active_duration_minutes: activeDurationMinutes,
+                p_session_scanned_count: 0, // Will preserve existing counts
+                p_session_pass_count: 0,
+                p_session_fail_count: 0,
+                p_total_scanned: 0,
+                p_pass_count: 0,
+                p_fail_count: 0
+              });
             })
           );
         }

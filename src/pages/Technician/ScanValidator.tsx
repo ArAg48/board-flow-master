@@ -84,7 +84,29 @@ const ScanValidator: React.FC = () => {
         `)
         .in('status', ['pending', 'in_progress'])
         .order('created_at', { ascending: false });
+  
+  // Auto-save session data periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentSession && currentSession.status !== 'setup' && currentSession.status !== 'completed') {
+        handleSaveSession();
+      }
+    }, 30000); // Save every 30 seconds
 
+    return () => clearInterval(interval);
+  }, [currentSession]);
+
+  // Listen for logout events to finalize session
+  useEffect(() => {
+    const handleLogout = () => {
+      if (currentSession && currentSession.status !== 'setup' && currentSession.status !== 'completed') {
+        handleFinishPTL();
+      }
+    };
+
+    window.addEventListener('userInitiatedLogout', handleLogout);
+    return () => window.removeEventListener('userInitiatedLogout', handleLogout);
+  }, [currentSession]);
       if (ptlError) throw ptlError;
 
       // Fetch progress data for all orders
@@ -382,6 +404,57 @@ const ScanValidator: React.FC = () => {
     }
   };
 
+  const handleSaveSession = async () => {
+    if (!currentSession || !user?.id) return;
+
+    const duration = getSessionDuration();
+    const activeTimeMs = currentSession.accumulatedActiveMs || 0;
+    
+    // Count session-specific stats
+    const sessionScans = currentSession.scannedEntries.filter(e => e.testResult);
+    const sessionPassed = sessionScans.filter(e => e.testResult === 'pass').length;
+    const sessionFailed = sessionScans.filter(e => e.testResult === 'fail').length;
+
+    try {
+      const sessionDataForStorage = JSON.parse(JSON.stringify({
+        ...currentSession,
+        startTime: currentSession.startTime.toISOString(),
+        pausedTime: currentSession.pausedTime?.toISOString(),
+        breakTime: currentSession.breakTime?.toISOString(),
+        endTime: currentSession.endTime?.toISOString(),
+        activeStart: currentSession.activeStart?.toISOString(),
+        scannedEntries: currentSession.scannedEntries.map(entry => ({
+          ...entry,
+          timestamp: entry.timestamp.toISOString()
+        }))
+      }));
+
+      const { error } = await supabase.rpc('save_session', {
+        p_session_id: currentSession.id,
+        p_technician_id: user.id,
+        p_ptl_order_id: currentSession.ptlOrder.id,
+        p_session_data: sessionDataForStorage,
+        p_status: currentSession.status,
+        p_paused_at: currentSession.pausedTime?.toISOString() || null,
+        p_break_started_at: currentSession.breakTime?.toISOString() || null,
+        p_duration_minutes: Math.floor(duration.total / 60000),
+        p_active_duration_minutes: Math.floor(activeTimeMs / 60000),
+        p_session_scanned_count: sessionScans.length,
+        p_session_pass_count: sessionPassed,
+        p_session_fail_count: sessionFailed,
+        p_total_scanned: sessionScans.length,
+        p_pass_count: sessionPassed,
+        p_fail_count: sessionFailed
+      });
+
+      if (error) {
+        console.error('Error saving session:', error);
+      }
+    } catch (error) {
+      console.error('Error saving session:', error);
+    }
+  };
+
   const handleFinishPTL = async () => {
     if (currentSession) {
       try {
@@ -536,7 +609,7 @@ const ScanValidator: React.FC = () => {
   };
 
   const getSessionDuration = () => {
-    if (!currentSession) return '00:00:00';
+    if (!currentSession) return { hours: 0, minutes: 0, seconds: 0, total: 0 };
     const now = new Date();
     const baseMs = currentSession.accumulatedActiveMs || 0;
     const runningMs = currentSession.status === 'scanning' && currentSession.activeStart
@@ -546,7 +619,12 @@ const ScanValidator: React.FC = () => {
     const hours = Math.floor(totalMs / 3600000);
     const minutes = Math.floor((totalMs % 3600000) / 60000);
     const seconds = Math.floor((totalMs % 60000) / 1000);
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    return { hours, minutes, seconds, total: totalMs };
+  };
+
+  const getSessionDurationString = () => {
+    const duration = getSessionDuration();
+    return `${duration.hours.toString().padStart(2, '0')}:${duration.minutes.toString().padStart(2, '0')}:${duration.seconds.toString().padStart(2, '0')}`;
   };
 
   const getSessionStats = () => {
@@ -597,7 +675,7 @@ const ScanValidator: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              <span className="font-medium">Duration: {getSessionDuration()}</span>
+              <span className="font-medium">Duration: {getSessionDurationString()}</span>
               <Badge variant={
                 currentSession.status === 'scanning' ? 'default' :
                 currentSession.status === 'paused' ? 'secondary' :

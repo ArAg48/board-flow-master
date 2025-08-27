@@ -732,15 +732,33 @@ export type Database = {
         Returns: string
       }
       save_session: {
-        Args: {
-          p_break_started_at?: string
-          p_paused_at?: string
-          p_ptl_order_id: string
-          p_session_data: Json
-          p_session_id: string
-          p_status?: string
-          p_technician_id: string
-        }
+        Args:
+          | {
+              p_active_duration_minutes?: number
+              p_break_started_at?: string
+              p_duration_minutes?: number
+              p_fail_count?: number
+              p_pass_count?: number
+              p_paused_at?: string
+              p_ptl_order_id: string
+              p_session_data: Json
+              p_session_fail_count?: number
+              p_session_id: string
+              p_session_pass_count?: number
+              p_session_scanned_count?: number
+              p_status?: Database["public"]["Enums"]["session_status"]
+              p_technician_id: string
+              p_total_scanned?: number
+            }
+          | {
+              p_break_started_at?: string
+              p_paused_at?: string
+              p_ptl_order_id: string
+              p_session_data: Json
+              p_session_id: string
+              p_status?: string
+              p_technician_id: string
+            }
         Returns: string
       }
       set_viewable_password: {
