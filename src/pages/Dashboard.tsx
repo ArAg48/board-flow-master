@@ -48,6 +48,57 @@ const Dashboard: React.FC = () => {
     }
   }, [user]);
 
+  // Real-time updates for technician dashboard
+  useEffect(() => {
+    if (user?.role !== 'technician' || !user?.id) return;
+
+    // Set up real-time subscriptions for technician data
+    const boardDataChannel = supabase
+      .channel('board-data-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'board_data',
+          filter: `technician_id=eq.${user.id}`
+        },
+        () => {
+          // Refresh technician stats when their board data changes
+          fetchTechnicianStats();
+        }
+      )
+      .subscribe();
+
+    const sessionChannel = supabase
+      .channel('scan-session-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'scan_sessions',
+          filter: `technician_id=eq.${user.id}`
+        },
+        () => {
+          // Refresh technician stats when their sessions change
+          fetchTechnicianStats();
+        }
+      )
+      .subscribe();
+
+    // Also refresh every 30 seconds to catch any missed updates
+    const interval = setInterval(() => {
+      fetchTechnicianStats();
+    }, 30000);
+
+    return () => {
+      supabase.removeChannel(boardDataChannel);
+      supabase.removeChannel(sessionChannel);
+      clearInterval(interval);
+    };
+  }, [user?.role, user?.id]);
+
   const fetchManagerStats = async () => {
     try {
       // Fetch hardware orders
