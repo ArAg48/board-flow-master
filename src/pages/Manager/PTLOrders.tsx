@@ -94,6 +94,7 @@ const PTLOrders: React.FC = () => {
       const { data, error } = await supabase
         .from('ptl_orders')
         .select('*')
+        .neq('status', 'completed') // Exclude completed orders - they go to archive
         .order('created_at', { ascending: false });
 
       if (error) throw error;
