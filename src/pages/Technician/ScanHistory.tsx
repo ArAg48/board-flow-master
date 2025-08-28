@@ -11,6 +11,7 @@ import { History, Search, Filter, TrendingUp, Users, Target, ArrowLeft } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SessionHistory {
   id: string;
@@ -52,6 +53,7 @@ const ScanHistory: React.FC = () => {
   const [selectedSession, setSelectedSession] = useState<SessionHistory | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchSessions();
@@ -84,8 +86,13 @@ const ScanHistory: React.FC = () => {
 
   const fetchSessions = async () => {
     try {
-      // Always fetch fresh data from RPC to get live metrics
-      const { data, error } = await supabase.rpc('get_scan_history', { p_technician_id: null });
+      // Get current logged-in user to filter for their sessions
+      const currentUserId = user?.id;
+      
+      // Always fetch fresh data from RPC - for technicians, filter by their ID
+      const { data, error } = await supabase.rpc('get_scan_history', { 
+        p_technician_id: currentUserId || null 
+      });
       if (error) throw error;
 
       // Calculate pass rate and map to expected shape
