@@ -99,34 +99,41 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
     
     console.log('getDuration called, session status:', session.status);
     
-    // If session is paused, calculate duration up to pause time
+    // Calculate active duration by subtracting accumulated pause/break time
+    const getActiveDuration = (endTime: Date) => {
+      const totalElapsed = endTime.getTime() - start.getTime();
+      const activeDuration = totalElapsed - (session.accumulatedPauseTime || 0) - (session.accumulatedBreakTime || 0);
+      return Math.max(0, activeDuration); // Ensure non-negative
+    };
+    
+    // If session is paused, freeze at the duration when pause started
     if (session.status === 'paused' && session.pausedTime) {
-      const diff = session.pausedTime.getTime() - start.getTime();
-      const hours = Math.floor(diff / 3600000);
-      const minutes = Math.floor((diff % 3600000) / 60000);
-      const seconds = Math.floor((diff % 60000) / 1000);
+      const activeDiff = getActiveDuration(session.pausedTime);
+      const hours = Math.floor(activeDiff / 3600000);
+      const minutes = Math.floor((activeDiff % 3600000) / 60000);
+      const seconds = Math.floor((activeDiff % 60000) / 1000);
       console.log('Paused duration:', { hours, minutes, seconds });
-      return { hours, minutes, seconds, total: diff };
+      return { hours, minutes, seconds, total: activeDiff };
     }
     
-    // If session is on break, calculate duration up to break time (frozen)
+    // If session is on break, freeze at the duration when break started
     if (session.status === 'break' && session.breakTime) {
-      const diff = session.breakTime.getTime() - start.getTime();
-      const hours = Math.floor(diff / 3600000);
-      const minutes = Math.floor((diff % 3600000) / 60000);
-      const seconds = Math.floor((diff % 60000) / 1000);
+      const activeDiff = getActiveDuration(session.breakTime);
+      const hours = Math.floor(activeDiff / 3600000);
+      const minutes = Math.floor((activeDiff % 3600000) / 60000);
+      const seconds = Math.floor((activeDiff % 60000) / 1000);
       console.log('Break duration:', { hours, minutes, seconds });
-      return { hours, minutes, seconds, total: diff };
+      return { hours, minutes, seconds, total: activeDiff };
     }
     
-    // Regular running session - only use currentTime if actively scanning
+    // Regular running session - calculate active time
     const end = session.status === 'scanning' ? currentTime : (session.endTime || session.startTime);
-    const diff = end.getTime() - start.getTime();
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-    console.log('Regular duration:', { hours, minutes, seconds, status: session.status });
-    return { hours, minutes, seconds, total: diff };
+    const activeDiff = getActiveDuration(end);
+    const hours = Math.floor(activeDiff / 3600000);
+    const minutes = Math.floor((activeDiff % 3600000) / 60000);
+    const seconds = Math.floor((activeDiff % 60000) / 1000);
+    console.log('Active duration:', { hours, minutes, seconds, status: session.status });
+    return { hours, minutes, seconds, total: activeDiff };
   };
 
   const getStats = () => {

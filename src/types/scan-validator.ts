@@ -53,4 +53,6 @@ export interface ValidationSession {
   status: 'setup' | 'pre-test' | 'scanning' | 'paused' | 'break' | 'post-test' | 'completed';
   scannedEntries: ScanEntry[];
   totalDuration: number;
+  accumulatedPauseTime: number; // Total time spent paused in milliseconds
+  accumulatedBreakTime: number; // Total time spent on break in milliseconds
 }

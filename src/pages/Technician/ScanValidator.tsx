@@ -248,7 +248,9 @@ const ScanValidator: React.FC = () => {
         breakTime: sessionData.break_started_at ? new Date(sessionData.break_started_at) : undefined,
         status: 'pre-test', // Always require pre-test verification when resuming
         scannedEntries: restoredScannedEntries, // Use only this session's entries
-        totalDuration: storedData.totalDuration || 0
+        totalDuration: storedData.totalDuration || 0,
+        accumulatedPauseTime: storedData.accumulatedPauseTime || 0,
+        accumulatedBreakTime: storedData.accumulatedBreakTime || 0
       };
 
       setCurrentSession(reconstructedSession);
@@ -296,7 +298,9 @@ const ScanValidator: React.FC = () => {
         startTime: new Date(),
         status: 'setup',
         scannedEntries: [],
-        totalDuration: 0
+        totalDuration: 0,
+        accumulatedPauseTime: 0,
+        accumulatedBreakTime: 0
       };
       setCurrentSession(newSession);
 
@@ -384,12 +388,24 @@ const ScanValidator: React.FC = () => {
 
 const handleResume = () => {
   if (currentSession) {
-    // Don't modify the original start time - just track pause/break times for duration calculation
+    const now = new Date();
+    let newAccumulatedPauseTime = currentSession.accumulatedPauseTime;
+    let newAccumulatedBreakTime = currentSession.accumulatedBreakTime;
+    
+    // Add the time spent paused/breaking to accumulated totals
+    if (currentSession.status === 'paused' && currentSession.pausedTime) {
+      newAccumulatedPauseTime += now.getTime() - currentSession.pausedTime.getTime();
+    } else if (currentSession.status === 'break' && currentSession.breakTime) {
+      newAccumulatedBreakTime += now.getTime() - currentSession.breakTime.getTime();
+    }
+    
     setCurrentSession({ 
       ...currentSession, 
       status: 'scanning', 
       pausedTime: undefined, 
-      breakTime: undefined 
+      breakTime: undefined,
+      accumulatedPauseTime: newAccumulatedPauseTime,
+      accumulatedBreakTime: newAccumulatedBreakTime
     });
   }
 };
