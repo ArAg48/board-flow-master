@@ -96,14 +96,13 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
       return { hours, minutes, seconds, total: diff };
     }
     
-    // If session is on break, calculate duration excluding break time
+    // If session is on break, calculate duration up to break time (frozen)
     if (session.status === 'break' && session.breakTime) {
-      const breakDuration = currentTime.getTime() - session.breakTime.getTime();
-      const totalDuration = currentTime.getTime() - start.getTime() - breakDuration;
-      const hours = Math.floor(totalDuration / 3600000);
-      const minutes = Math.floor((totalDuration % 3600000) / 60000);
-      const seconds = Math.floor((totalDuration % 60000) / 1000);
-      return { hours, minutes, seconds, total: totalDuration };
+      const diff = session.breakTime.getTime() - start.getTime();
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      return { hours, minutes, seconds, total: diff };
     }
     
     // Regular running session
