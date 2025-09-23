@@ -87,12 +87,15 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   const getDuration = () => {
     const start = session.startTime;
     
+    console.log('getDuration called, session status:', session.status);
+    
     // If session is paused, calculate duration up to pause time
     if (session.status === 'paused' && session.pausedTime) {
       const diff = session.pausedTime.getTime() - start.getTime();
       const hours = Math.floor(diff / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
       const seconds = Math.floor((diff % 60000) / 1000);
+      console.log('Paused duration:', { hours, minutes, seconds });
       return { hours, minutes, seconds, total: diff };
     }
     
@@ -102,15 +105,17 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
       const hours = Math.floor(diff / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
       const seconds = Math.floor((diff % 60000) / 1000);
+      console.log('Break duration:', { hours, minutes, seconds });
       return { hours, minutes, seconds, total: diff };
     }
     
-    // Regular running session
-    const end = session.endTime || currentTime;
+    // Regular running session - only use currentTime if actively scanning
+    const end = session.status === 'scanning' ? currentTime : (session.endTime || session.startTime);
     const diff = end.getTime() - start.getTime();
     const hours = Math.floor(diff / 3600000);
     const minutes = Math.floor((diff % 3600000) / 60000);
     const seconds = Math.floor((diff % 60000) / 1000);
+    console.log('Regular duration:', { hours, minutes, seconds, status: session.status });
     return { hours, minutes, seconds, total: diff };
   };
 
