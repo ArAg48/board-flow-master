@@ -20,8 +20,8 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   });
 
   useEffect(() => {
-    // Only update timer if session is not paused
-    if (session.status !== 'paused') {
+    // Only update timer if session is actively running (not paused or on break)
+    if (session.status === 'scanning') {
       const timer = setInterval(() => {
         setCurrentTime(new Date());
       }, 1000);
