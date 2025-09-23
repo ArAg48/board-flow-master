@@ -571,12 +571,40 @@ const handleResume = () => {
 
   const getSessionDuration = () => {
     if (!currentSession) return '00:00:00';
+    
     const start = currentSession.startTime;
+    
+    // Calculate active duration by subtracting accumulated pause/break time
+    const getActiveDuration = (endTime: Date) => {
+      const totalElapsed = endTime.getTime() - start.getTime();
+      const activeDuration = totalElapsed - (currentSession.accumulatedPauseTime || 0) - (currentSession.accumulatedBreakTime || 0);
+      return Math.max(0, activeDuration); // Ensure non-negative
+    };
+    
+    // If session is paused, freeze at the duration when pause started
+    if (currentSession.status === 'paused' && currentSession.pausedTime) {
+      const activeDiff = getActiveDuration(currentSession.pausedTime);
+      const hours = Math.floor(activeDiff / 3600000);
+      const minutes = Math.floor((activeDiff % 3600000) / 60000);
+      const seconds = Math.floor((activeDiff % 60000) / 1000);
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // If session is on break, freeze at the duration when break started
+    if (currentSession.status === 'break' && currentSession.breakTime) {
+      const activeDiff = getActiveDuration(currentSession.breakTime);
+      const hours = Math.floor(activeDiff / 3600000);
+      const minutes = Math.floor((activeDiff % 3600000) / 60000);
+      const seconds = Math.floor((activeDiff % 60000) / 1000);
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Regular running session - calculate active time
     const end = currentSession.endTime || new Date();
-    const diff = end.getTime() - start.getTime();
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
+    const activeDiff = getActiveDuration(end);
+    const hours = Math.floor(activeDiff / 3600000);
+    const minutes = Math.floor((activeDiff % 3600000) / 60000);
+    const seconds = Math.floor((activeDiff % 60000) / 1000);
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
