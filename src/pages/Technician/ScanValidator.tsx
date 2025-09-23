@@ -191,7 +191,7 @@ const ScanValidator: React.FC = () => {
         p_technician_id: user.id,
         p_ptl_order_id: currentSession.ptlOrder.id,
         p_session_data: sessionData,
-        p_status: (currentSession.status === 'paused' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active')) as any,
+        p_status: (currentSession.status === 'paused' || currentSession.status === 'break' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active')) as any,
         p_paused_at: currentSession.pausedTime?.toISOString() || null,
         p_break_started_at: currentSession.breakTime?.toISOString() || null,
         p_duration_minutes: duration,
