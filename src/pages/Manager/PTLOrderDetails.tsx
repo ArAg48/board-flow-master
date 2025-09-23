@@ -85,7 +85,7 @@ const PTLOrderDetails: React.FC = () => {
 
       // 2) Fallback: view with technician name
       if (!rows || rows.length === 0) {
-        const { data: viewRows, error: viewErr } = await supabase
+        const { data: viewRows, error: viewErr } = await (supabase as any)
           .from('board_data_with_technician')
           .select('id, qr_code, test_status, test_date, test_results, technician_id, technician_name')
           .eq('ptl_order_id', id)

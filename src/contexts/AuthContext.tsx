@@ -42,18 +42,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkUser = async () => {
     try {
-      const storedSession = localStorage.getItem('supabase_user_session');
-      if (storedSession) {
-        const session = JSON.parse(storedSession);
-        // Load the full profile using the stored session
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.userId)
-          .single();
+      const stored = localStorage.getItem('supabase_user_session');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const profile = parsed.user ?? {
+          id: parsed.userId,
+          username: parsed.username,
+          role: parsed.role,
+          full_name: parsed.full_name,
+          is_active: parsed.is_active,
+          cw_stamp: parsed.cw_stamp,
+        };
 
-        if (!error && profile) {
-          const nameParts = profile.full_name?.split(' ') || [];
+        if (profile?.id) {
+          const nameParts = (profile.full_name || '').split(' ');
           const firstName = nameParts[0] || '';
           const lastName = nameParts.slice(1).join(' ') || '';
 
@@ -64,17 +66,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             last_name: lastName,
             full_name: profile.full_name || '',
             role: profile.role,
-            is_active: profile.is_active,
-            cw_stamp: profile.cw_stamp
+            is_active: profile.is_active ?? true,
+            cw_stamp: profile.cw_stamp,
           });
         } else {
-          // If profile fetch fails, clear invalid session
           localStorage.removeItem('supabase_user_session');
         }
       }
     } catch (error) {
       console.error('Error checking user session:', error);
-      // Clear invalid session on error
       localStorage.removeItem('supabase_user_session');
     } finally {
       setIsLoading(false);
@@ -151,11 +151,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cw_stamp: profile.cw_stamp
       });
 
-      // Store a simple token for session persistence
+      // Store full profile for session persistence
       localStorage.setItem('supabase_user_session', JSON.stringify({
-        userId: profile.id,
-        username: profile.username,
-        role: profile.role
+        user: profile
       }));
 
       // Redirect based on role
