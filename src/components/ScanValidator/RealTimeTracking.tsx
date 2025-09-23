@@ -20,12 +20,22 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
   });
 
   useEffect(() => {
+    console.log('Timer useEffect triggered, session status:', session.status);
+    
     // Only update timer if session is actively running (not paused or on break)
     if (session.status === 'scanning') {
+      console.log('Starting timer interval');
       const timer = setInterval(() => {
+        console.log('Timer tick - updating currentTime');
         setCurrentTime(new Date());
       }, 1000);
-      return () => clearInterval(timer);
+      
+      return () => {
+        console.log('Cleaning up timer interval');
+        clearInterval(timer);
+      };
+    } else {
+      console.log('Not starting timer - status is:', session.status);
     }
   }, [session.status]);
 
