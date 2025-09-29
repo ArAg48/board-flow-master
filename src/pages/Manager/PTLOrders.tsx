@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Eye, Clipboard, Link, Trash2, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -33,6 +34,8 @@ interface PTLOrderForm {
 
 const PTLOrders: React.FC = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [hardwareOrders, setHardwareOrders] = useState<HardwareOrder[]>([]);
   const [orders, setOrders] = useState<PTLOrder[]>([]);
   const [orderCounts, setOrderCounts] = useState<{[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}}>({});
@@ -42,7 +45,6 @@ const PTLOrders: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PTLOrder | null>(null);
   const [viewOrderDetails, setViewOrderDetails] = useState(false);
-  const { toast } = useToast();
 
   const form = useForm<PTLOrderForm>({
     defaultValues: {
@@ -222,6 +224,7 @@ const PTLOrders: React.FC = () => {
         const orderData = {
           ...data,
           ptl_order_number: data.ptl_order_number || generatePTLOrderNumber(),
+          created_by: user?.id, // Add the current user's ID
         };
 
         const { error } = await supabase
