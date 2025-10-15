@@ -50,6 +50,19 @@ const PTLOrderDetails: React.FC = () => {
     }
   }, [id]);
 
+  // Add refresh on window focus to catch updates from other pages
+  useEffect(() => {
+    const handleFocus = () => {
+      if (id) {
+        loadPTLOrderDetails();
+        loadBoardData();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [id]);
+
   const loadPTLOrderDetails = async () => {
     try {
       const { data, error } = await supabase
@@ -236,7 +249,7 @@ const PTLOrderDetails: React.FC = () => {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">PTL Order {ptlOrder.ptl_order_number}</h1>
-            <p className="text-muted-foreground">Individual board scan results</p>
+            <p className="text-muted-foreground">Detailed test results and board scan history</p>
           </div>
         </div>
         <Button onClick={exportToCSV} disabled={boardData.length === 0}>
@@ -327,9 +340,9 @@ const PTLOrderDetails: React.FC = () => {
       {/* Board Details Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Scanned Boards</CardTitle>
+          <CardTitle>Board Test Results</CardTitle>
           <CardDescription>
-            Individual test results for each board in this PTL order
+            Complete testing history for all boards in this PTL order
           </CardDescription>
         </CardHeader>
         <CardContent>
