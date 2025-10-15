@@ -363,11 +363,11 @@ const PTLOrderDetails: React.FC = () => {
                     </TableCell>
                     <TableCell>{board.profiles?.full_name || 'N/A'}</TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {board.test_results ? 
+                      {board.test_status === 'fail' && board.test_results ? 
                         (typeof board.test_results === 'object' ? 
                           JSON.stringify(board.test_results) : 
                           String(board.test_results)
-                        ) : 'N/A'
+                        ) : '-'
                       }
                     </TableCell>
                   </TableRow>
