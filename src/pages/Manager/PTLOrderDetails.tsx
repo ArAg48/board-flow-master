@@ -31,6 +31,7 @@ interface BoardData {
   technician_id: string;
   profiles?: {
     full_name: string;
+    cw_stamp?: string;
   };
 }
 
@@ -85,10 +86,13 @@ const PTLOrderDetails: React.FC = () => {
 
   const loadBoardData = async () => {
     try {
-      // 1) Try minimal fetch from board_data (no embeds) for reliability
+      // 1) Fetch board_data with technician profile info
       const { data: baseRows, error: baseErr } = await supabase
         .from('board_data')
-        .select('id, qr_code, test_status, test_date, test_results, technician_id')
+        .select(`
+          id, qr_code, test_status, test_date, test_results, technician_id,
+          profiles:technician_id (full_name, cw_stamp)
+        `)
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
 
@@ -126,7 +130,7 @@ const PTLOrderDetails: React.FC = () => {
         test_date: item.test_date || '',
         test_results: item.test_results,
         technician_id: item.technician_id || '',
-        profiles: item.technician_name ? { full_name: item.technician_name } : undefined,
+        profiles: item.profiles || (item.technician_name ? { full_name: item.technician_name } : undefined),
       }));
 
       setBoardData(transformedData);
@@ -374,7 +378,7 @@ const PTLOrderDetails: React.FC = () => {
                     <TableCell>
                       {board.test_date ? new Date(board.test_date).toLocaleDateString() : 'N/A'}
                     </TableCell>
-                    <TableCell>{board.profiles?.full_name || 'N/A'}</TableCell>
+                    <TableCell>{board.profiles?.cw_stamp || board.profiles?.full_name || 'N/A'}</TableCell>
                     <TableCell className="max-w-xs truncate">
                       {board.test_status === 'fail' && board.test_results ? 
                         (typeof board.test_results === 'object' ? 
