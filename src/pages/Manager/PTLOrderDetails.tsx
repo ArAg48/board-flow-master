@@ -97,6 +97,7 @@ const PTLOrderDetails: React.FC = () => {
         .order('created_at', { ascending: false });
 
       console.log('Board base fetch:', { baseRowsLength: baseRows?.length || 0, baseErr, ptlOrderId: id });
+      console.log('First board row sample:', baseRows?.[0]);
 
       let rows: any[] = baseRows || [];
 
