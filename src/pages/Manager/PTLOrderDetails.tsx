@@ -86,31 +86,31 @@ const PTLOrderDetails: React.FC = () => {
 
   const loadBoardData = async () => {
     try {
-      // 1) Fetch board_data with technician profile info
+      // 1) Fetch board_data
       const { data: baseRows, error: baseErr } = await supabase
         .from('board_data')
-        .select(`
-          *,
-          profiles!board_data_technician_id_fkey(full_name, cw_stamp)
-        `)
+        .select('*')
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
 
       console.log('Board base fetch:', { baseRowsLength: baseRows?.length || 0, baseErr, ptlOrderId: id });
-      console.log('First board row sample:', baseRows?.[0]);
+
+      if (baseErr) {
+        console.error('Error fetching board data:', baseErr);
+        throw baseErr;
+      }
 
       let rows: any[] = baseRows || [];
 
-      // 2) Fallback: view with technician name
-      if (!rows || rows.length === 0) {
-        const { data: viewRows, error: viewErr } = await (supabase as any)
-          .from('board_data_with_technician')
-          .select('id, qr_code, test_status, test_date, test_results, technician_id, technician_name')
-          .eq('ptl_order_id', id)
-          .order('test_date', { ascending: false });
-        if (!viewErr && viewRows) rows = viewRows;
-        console.log('Board view fetch:', { viewRowsLength: viewRows?.length || 0, viewErr });
-      }
+      // 2) Fetch technician profiles separately
+      const technicianIds = [...new Set(rows.map(r => r.technician_id).filter(Boolean))];
+      const { data: technicians } = await supabase
+        .from('profiles')
+        .select('id, full_name, cw_stamp')
+        .in('id', technicianIds);
+
+      // Create a map of technician data
+      const techMap = new Map(technicians?.map(t => [t.id, t]) || []);
 
       // 3) Repair status overlay
       const { data: repairData } = await supabase
@@ -124,15 +124,18 @@ const PTLOrderDetails: React.FC = () => {
           .map((r: any) => r.qr_code)
       );
 
-      const transformedData: BoardData[] = (rows || []).map((item: any) => ({
-        id: item.id,
-        qr_code: item.qr_code,
-        test_status: repairedBoards.has(item.qr_code) ? 'repaired' : (item.test_status || 'pending'),
-        test_date: item.test_date || '',
-        test_results: item.test_results,
-        technician_id: item.technician_id || '',
-        profiles: item.profiles || (item.technician_name ? { full_name: item.technician_name } : undefined),
-      }));
+      const transformedData: BoardData[] = (rows || []).map((item: any) => {
+        const tech = item.technician_id ? techMap.get(item.technician_id) : null;
+        return {
+          id: item.id,
+          qr_code: item.qr_code,
+          test_status: repairedBoards.has(item.qr_code) ? 'repaired' : (item.test_status || 'pending'),
+          test_date: item.test_date || '',
+          test_results: item.test_results,
+          technician_id: item.technician_id || '',
+          profiles: tech ? { full_name: tech.full_name, cw_stamp: tech.cw_stamp } : undefined,
+        };
+      });
 
       setBoardData(transformedData);
 
