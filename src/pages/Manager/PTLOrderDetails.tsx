@@ -90,8 +90,8 @@ const PTLOrderDetails: React.FC = () => {
       const { data: baseRows, error: baseErr } = await supabase
         .from('board_data')
         .select(`
-          id, qr_code, test_status, test_date, test_results, technician_id,
-          profiles:technician_id (full_name, cw_stamp)
+          *,
+          profiles!board_data_technician_id_fkey(full_name, cw_stamp)
         `)
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
