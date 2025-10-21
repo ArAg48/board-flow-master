@@ -86,10 +86,10 @@ const PTLOrderDetails: React.FC = () => {
 
   const loadBoardData = async () => {
     try {
-      // Fetch board_data with profiles joined directly
+      // 1) Fetch board_data
       const { data: baseRows, error: baseErr } = await supabase
         .from('board_data')
-        .select('*, profiles:technician_id(id, full_name, cw_stamp)')
+        .select('*')
         .eq('ptl_order_id', id)
         .order('created_at', { ascending: false });
 
@@ -101,6 +101,20 @@ const PTLOrderDetails: React.FC = () => {
       }
 
       let rows: any[] = baseRows || [];
+
+      // 2) Fetch technician profiles separately
+      const technicianIds = [...new Set(rows.map(r => r.technician_id).filter(Boolean))];
+      const { data: technicians, error: techErr } = await supabase
+        .from('profiles')
+        .select('id, full_name, cw_stamp')
+        .in('id', technicianIds);
+      if (techErr) {
+        console.error('Error fetching technicians:', techErr);
+      }
+      console.log('Technicians fetched:', { count: technicians?.length || 0, technicianIds });
+
+      // Create a map of technician data
+      const techMap = new Map((technicians || []).map(t => [t.id, t]));
 
       // 3) Repair status overlay
       const { data: repairData } = await supabase
@@ -115,6 +129,7 @@ const PTLOrderDetails: React.FC = () => {
       );
 
       const transformedData: BoardData[] = (rows || []).map((item: any) => {
+        const tech = item.technician_id ? techMap.get(item.technician_id) : null;
         return {
           id: item.id,
           qr_code: item.qr_code,
@@ -122,7 +137,7 @@ const PTLOrderDetails: React.FC = () => {
           test_date: item.test_date || '',
           test_results: item.test_results,
           technician_id: item.technician_id || '',
-          profiles: item.profiles || undefined,
+          profiles: tech ? { full_name: tech.full_name, cw_stamp: tech.cw_stamp } : undefined,
         };
       });
 
