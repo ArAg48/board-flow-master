@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Eye, Clipboard, Link, Trash2, Search } from 'lucide-react';
+import { Plus, Edit, Eye, Clipboard, Link, Trash2, Search, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +45,9 @@ const PTLOrders: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PTLOrder | null>(null);
   const [viewOrderDetails, setViewOrderDetails] = useState(false);
+  const [dateCodeDialogOpen, setDateCodeDialogOpen] = useState(false);
+  const [dateCodeEditOrder, setDateCodeEditOrder] = useState<PTLOrder | null>(null);
+  const [newDateCode, setNewDateCode] = useState('');
 
   const form = useForm<PTLOrderForm>({
     defaultValues: {
@@ -321,6 +324,41 @@ const PTLOrders: React.FC = () => {
       toast({
         title: 'Error',
         description: 'Failed to delete PTL order.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDateCodeEdit = (order: PTLOrder) => {
+    setDateCodeEditOrder(order);
+    setNewDateCode(order.date_code || '');
+    setDateCodeDialogOpen(true);
+  };
+
+  const handleDateCodeUpdate = async () => {
+    if (!dateCodeEditOrder) return;
+
+    try {
+      const { error } = await supabase
+        .from('ptl_orders')
+        .update({ date_code: newDateCode })
+        .eq('id', dateCodeEditOrder.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Date Code Updated',
+        description: `Date code for ${dateCodeEditOrder.ptl_order_number} has been updated to ${newDateCode}.`,
+      });
+
+      setDateCodeDialogOpen(false);
+      setDateCodeEditOrder(null);
+      setNewDateCode('');
+      await fetchPTLOrders();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update date code.',
         variant: 'destructive',
       });
     }
@@ -624,6 +662,9 @@ const PTLOrders: React.FC = () => {
                         <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleDateCodeEdit(order); }} title="Edit Date Code">
+                          <Calendar className="h-4 w-4" />
+                        </Button>
                         <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleEdit(order); }}>
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -737,6 +778,40 @@ const PTLOrders: React.FC = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Date Code Edit Dialog */}
+      <Dialog open={dateCodeDialogOpen} onOpenChange={setDateCodeDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Edit Date Code</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>PTL Order</Label>
+              <p className="text-sm font-mono">{dateCodeEditOrder?.ptl_order_number}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="date-code">Date Code (4 digits)</Label>
+              <Input
+                id="date-code"
+                placeholder="e.g., 2501"
+                maxLength={4}
+                pattern="[0-9]{4}"
+                value={newDateCode}
+                onChange={(e) => setNewDateCode(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setDateCodeDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleDateCodeUpdate}>
+                Update Date Code
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
