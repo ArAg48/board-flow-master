@@ -73,7 +73,7 @@ const HardwareOrders: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('hardware_orders')
-        .select('*')
+        .select('*, profiles:created_by(full_name)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -387,6 +387,7 @@ const HardwareOrders: React.FC = () => {
                 <TableHead>Quantity</TableHead>
                 <TableHead>Sequence Range</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Created By</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -404,6 +405,9 @@ const HardwareOrders: React.FC = () => {
                     <Badge className={getStatusColor(order.status)}>
                       {order.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {(order as any).profiles?.full_name || 'N/A'}
                   </TableCell>
                   <TableCell>
                     {new Date(order.created_at).toLocaleDateString()}
