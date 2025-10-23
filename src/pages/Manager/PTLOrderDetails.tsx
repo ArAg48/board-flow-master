@@ -20,6 +20,7 @@ interface PTLOrderDetail {
   axxess_updater?: string;
   verified_at?: string;
   verified_by?: string;
+  date_code?: string;
 }
 
 interface BoardData {
@@ -269,6 +270,18 @@ const PTLOrderDetails: React.FC = () => {
           Export CSV
         </Button>
       </div>
+
+      {/* Date Code Card */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-muted-foreground mb-1">Date Code</div>
+              <div className="text-2xl font-bold font-mono">{ptlOrder.date_code || 'N/A'}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
