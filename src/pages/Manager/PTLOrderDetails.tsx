@@ -386,7 +386,7 @@ const PTLOrderDetails: React.FC = () => {
                     <TableCell>
                       {board.test_date ? new Date(board.test_date).toLocaleDateString() : 'N/A'}
                     </TableCell>
-                    <TableCell>{board.profiles?.cw_stamp || board.profiles?.full_name || 'N/A'}</TableCell>
+                    <TableCell>{board.profiles?.full_name || board.profiles?.cw_stamp || 'N/A'}</TableCell>
                     <TableCell className="max-w-xs truncate">
                       {board.test_status === 'fail' && board.test_results ? 
                         (typeof board.test_results === 'object' ? 
