@@ -271,20 +271,14 @@ const PTLOrderDetails: React.FC = () => {
         </Button>
       </div>
 
-      {/* Date Code Card */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Date Code</div>
-              <div className="text-2xl font-bold font-mono">{ptlOrder.date_code || 'N/A'}</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-2xl font-bold font-mono">{ptlOrder.date_code || 'N/A'}</div>
+            <div className="text-sm text-muted-foreground">Date Code</div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-6">
             <div className="text-2xl font-bold">{stats.total}</div>
