@@ -488,6 +488,35 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -527,6 +556,17 @@ export type Database = {
         Returns: string
       }
       create_user_account:
+        | {
+            Args: {
+              p_cw_stamp?: string
+              p_first_name: string
+              p_last_name: string
+              p_password: string
+              p_role: Database["public"]["Enums"]["app_role"]
+              p_username: string
+            }
+            Returns: string
+          }
         | {
             Args: {
               p_cw_stamp?: string
@@ -579,10 +619,6 @@ export type Database = {
           scanned_boards: number
           total_boards: number
         }[]
-      }
-      get_current_user_role: {
-        Args: never
-        Returns: Database["public"]["Enums"]["user_role"]
       }
       get_ptl_order_progress: {
         Args: never
@@ -649,8 +685,15 @@ export type Database = {
         }[]
       }
       get_user_role: {
-        Args: { user_id: string }
-        Returns: Database["public"]["Enums"]["user_role"]
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       hash_password: { Args: { password_text: string }; Returns: string }
       lookup_board_details: {
@@ -753,6 +796,7 @@ export type Database = {
       }
     }
     Enums: {
+      app_role: "manager" | "technician" | "customer"
       order_status: "pending" | "in_progress" | "completed" | "cancelled"
       repair_status: "pending" | "in_progress" | "completed" | "scrapped"
       retest_result: "pass" | "fail"
@@ -885,6 +929,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["manager", "technician", "customer"],
       order_status: ["pending", "in_progress", "completed", "cancelled"],
       repair_status: ["pending", "in_progress", "completed", "scrapped"],
       retest_result: ["pass", "fail"],
