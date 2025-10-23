@@ -82,6 +82,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_board_data_technician"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       hardware_orders: {
@@ -497,10 +504,7 @@ export type Database = {
           username: string
         }[]
       }
-      auto_complete_ptl_orders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      auto_complete_ptl_orders: { Args: never; Returns: undefined }
       count_scanned_boards: {
         Args: { p_ptl_order_id: string }
         Returns: {
@@ -522,9 +526,9 @@ export type Database = {
         }
         Returns: string
       }
-      create_user_account: {
-        Args:
-          | {
+      create_user_account:
+        | {
+            Args: {
               p_cw_stamp?: string
               p_first_name: string
               p_last_name: string
@@ -532,31 +536,25 @@ export type Database = {
               p_role: Database["public"]["Enums"]["user_role"]
               p_username: string
             }
-          | {
+            Returns: string
+          }
+        | {
+            Args: {
               p_first_name: string
               p_last_name: string
               p_password: string
               p_role: Database["public"]["Enums"]["user_role"]
               p_username: string
             }
-        Returns: string
-      }
-      deactivate_session: {
-        Args: { p_session_id: string }
-        Returns: boolean
-      }
+            Returns: string
+          }
+      deactivate_session: { Args: { p_session_id: string }; Returns: boolean }
       delete_hardware_order: {
         Args: { p_hardware_order_id: string }
         Returns: boolean
       }
-      delete_ptl_order: {
-        Args: { p_ptl_order_id: string }
-        Returns: boolean
-      }
-      delete_user_account: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
+      delete_ptl_order: { Args: { p_ptl_order_id: string }; Returns: boolean }
+      delete_user_account: { Args: { p_user_id: string }; Returns: boolean }
       get_active_session_for_user: {
         Args: { user_id: string }
         Returns: {
@@ -583,11 +581,11 @@ export type Database = {
         }[]
       }
       get_current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
       get_ptl_order_progress: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active_time_minutes: number
           board_type: string
@@ -624,7 +622,7 @@ export type Database = {
         }[]
       }
       get_user_credentials: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           cw_stamp: string
@@ -638,7 +636,7 @@ export type Database = {
         }[]
       }
       get_user_profiles: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           cw_stamp: string
@@ -654,10 +652,7 @@ export type Database = {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      hash_password: {
-        Args: { password_text: string }
-        Returns: string
-      }
+      hash_password: { Args: { password_text: string }; Returns: string }
       lookup_board_details: {
         Args: { p_qr_code: string }
         Returns: {
@@ -674,10 +669,7 @@ export type Database = {
           test_status: string
         }[]
       }
-      refresh_ptl_progress: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      refresh_ptl_progress: { Args: never; Returns: undefined }
       save_board_scan: {
         Args: {
           p_assembly_number: string
@@ -691,9 +683,21 @@ export type Database = {
         }
         Returns: string
       }
-      save_session: {
-        Args:
-          | {
+      save_session:
+        | {
+            Args: {
+              p_break_started_at?: string
+              p_paused_at?: string
+              p_ptl_order_id: string
+              p_session_data: Json
+              p_session_id: string
+              p_status?: string
+              p_technician_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
               p_active_duration_minutes?: number
               p_break_started_at?: string
               p_duration_minutes?: number
@@ -710,25 +714,13 @@ export type Database = {
               p_technician_id: string
               p_total_scanned?: number
             }
-          | {
-              p_break_started_at?: string
-              p_paused_at?: string
-              p_ptl_order_id: string
-              p_session_data: Json
-              p_session_id: string
-              p_status?: string
-              p_technician_id: string
-            }
-        Returns: string
-      }
+            Returns: string
+          }
       set_viewable_password: {
         Args: { p_password: string; p_user_id: string }
         Returns: boolean
       }
-      toggle_user_status: {
-        Args: { p_user_id: string }
-        Returns: boolean
-      }
+      toggle_user_status: { Args: { p_user_id: string }; Returns: boolean }
       update_board_firmware: {
         Args: { p_firmware_revision: string; p_qr_code: string }
         Returns: boolean
