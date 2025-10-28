@@ -54,14 +54,18 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   const { user } = useAuth();
 
   const validateQRFormat = (qrCode: string): boolean => {
+    // If no expected format is defined, accept any non-empty alphanumeric code
+    if (!ptlOrder.expectedFormat || ptlOrder.expectedFormat.trim() === '') {
+      return qrCode.trim().length >= 4;
+    }
+    
     try {
       const regex = new RegExp(ptlOrder.expectedFormat);
       return regex.test(qrCode);
     } catch (error) {
       console.error('Invalid regex pattern:', ptlOrder.expectedFormat, error);
-      // Fallback validation: check if it matches the expected board format (4 chars + 7 digits)
-      const fallbackRegex = /^[A-Z0-9]{4}\d{7}$/;
-      return fallbackRegex.test(qrCode);
+      // Fallback: accept any non-empty alphanumeric code
+      return qrCode.trim().length >= 4;
     }
   };
 
