@@ -69,7 +69,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     }
   };
 
-  const handleScanInput = (boxIndex: number, value: string) => {
+  const handleScanInput = async (boxIndex: number, value: string) => {
     if (!isActive || isBreakMode) return;
 
     const newInputs = [...scanInputs];
@@ -81,7 +81,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     if (value.length >= 11 || value.includes('\n') || value.includes('\r')) {
       const cleanQrCode = value.replace(/[\n\r]/g, '').trim();
       if (cleanQrCode.length >= 11) {
-        processScan(boxIndex, cleanQrCode);
+        await processScan(boxIndex, cleanQrCode);
       }
     }
   };
@@ -268,7 +268,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     }
   };
 
-  const processScan = (boxIndex: number, qrCode: string) => {
+  const processScan = async (boxIndex: number, qrCode: string) => {
     const isValid = validateQRFormat(qrCode);
     
     if (!isValid) {
@@ -284,7 +284,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       return;
     }
 
-    // Check if this QR code was already scanned anywhere in this PTL order
+    // Check if this QR code was already scanned anywhere in this PTL order (current session)
     const existingEntry = scannedEntries.find(entry => entry.qrCode === qrCode);
     if (existingEntry) {
       toast({
@@ -292,7 +292,43 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
         description: `This code was already processed in Box ${existingEntry.boxIndex + 1}`,
         variant: "destructive"
       });
+      // Clear the input
+      const newInputs = [...scanInputs];
+      newInputs[boxIndex] = '';
+      setScanInputs(newInputs);
       return;
+    }
+
+    // Check database for any previous scans of this board across all sessions
+    try {
+      const { data: existingBoard, error } = await supabase
+        .from('board_data')
+        .select('test_status, test_date')
+        .eq('qr_code', qrCode)
+        .eq('ptl_order_id', ptlOrder.id)
+        .single();
+
+      if (existingBoard && !error) {
+        const statusText = existingBoard.test_status === 'pass' ? 'PASSED ✓' : 
+                          existingBoard.test_status === 'fail' ? 'FAILED ✗' : 'PENDING';
+        const statusColor = existingBoard.test_status === 'pass' ? 'text-green-600' : 
+                           existingBoard.test_status === 'fail' ? 'text-red-600' : 'text-yellow-600';
+        
+        toast({
+          title: "⚠️ Board Already Scanned",
+          description: `This QR code was previously scanned and ${statusText}`,
+          variant: "destructive"
+        });
+        
+        // Clear the input
+        const newInputs = [...scanInputs];
+        newInputs[boxIndex] = '';
+        setScanInputs(newInputs);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking for duplicate scan:', error);
+      // Continue with scan if database check fails (don't block the scan)
     }
 
     // Store validated board in local state - don't create scan entry yet, just mark as ready for testing
