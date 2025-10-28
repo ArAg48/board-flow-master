@@ -47,9 +47,9 @@ const ScanValidator: React.FC = () => {
     }
   }, [user]);
 
-  // Auto-save session when it changes
+  // Auto-save session when it changes (including post-test)
   useEffect(() => {
-    if (currentSession && user && (currentSession.status === 'scanning' || currentSession.status === 'paused' || currentSession.status === 'break')) {
+    if (currentSession && user && (currentSession.status === 'scanning' || currentSession.status === 'paused' || currentSession.status === 'break' || currentSession.status === 'post-test')) {
       saveSession();
     }
   }, [currentSession, user]);
@@ -149,9 +149,21 @@ const ScanValidator: React.FC = () => {
   };
 
   const checkForActiveSession = async () => {
-    // Skip session resume for simplified workflow
-    // Sessions end when users log out or finish PTL orders
-    return;
+    if (!user?.id) return;
+
+    try {
+      const { data: activeSession, error } = await supabase
+        .rpc('get_active_session_for_user', { user_id: user.id });
+
+      if (error) throw error;
+
+      if (activeSession && activeSession.length > 0) {
+        const session = activeSession[0];
+        setResumeDialog({ open: true, session });
+      }
+    } catch (error) {
+      console.error('Error checking for active session:', error);
+    }
   };
 
   const saveSession = async () => {
@@ -186,12 +198,17 @@ const ScanValidator: React.FC = () => {
       // Update session statistics in database
       // Persist session state via RPC (bypasses RLS)
       // Upsert session via RPC (long signature) including live counts and duration
+      // Map status to database enum, keeping post-test as active so it can be resumed
+      const dbStatus = currentSession.status === 'paused' || currentSession.status === 'break' 
+        ? 'paused' 
+        : (currentSession.status === 'completed' ? 'completed' : 'active');
+      
       await (supabase.rpc as any)('save_session', {
         p_session_id: currentSession.id,
         p_technician_id: user.id,
         p_ptl_order_id: currentSession.ptlOrder.id,
         p_session_data: sessionData,
-        p_status: (currentSession.status === 'paused' || currentSession.status === 'break' ? 'paused' : (currentSession.status === 'completed' ? 'completed' : 'active')) as any,
+        p_status: dbStatus as any,
         p_paused_at: currentSession.pausedTime?.toISOString() || null,
         p_break_started_at: currentSession.breakTime?.toISOString() || null,
         p_duration_minutes: duration,
@@ -238,15 +255,26 @@ const ScanValidator: React.FC = () => {
         failureReason: e.failureReason
       }));
 
+      // Determine the appropriate status based on stored session status
+      let resumeStatus: ValidationSession['status'] = 'pre-test';
+      if (storedData.status === 'post-test') {
+        // If session was in post-test, resume directly to post-test
+        resumeStatus = 'post-test';
+      } else if (storedData.status === 'scanning' || storedData.status === 'paused' || storedData.status === 'break') {
+        // For scanning sessions, require pre-test verification
+        resumeStatus = 'pre-test';
+      }
+
       const reconstructedSession: ValidationSession = {
         id: sessionData.session_id,
         ptlOrder,
         testerConfig: storedData.testerConfig || { type: 1, scanBoxes: 1 },
-        preTestVerification: { testerCheck: false, firmwareCheck: false }, // Reset verification for resumed sessions
+        preTestVerification: storedData.preTestVerification || { testerCheck: false, firmwareCheck: false },
+        postTestVerification: storedData.postTestVerification,
         startTime: new Date(storedData.startTime || sessionData.start_time),
         pausedTime: sessionData.paused_at ? new Date(sessionData.paused_at) : undefined,
         breakTime: sessionData.break_started_at ? new Date(sessionData.break_started_at) : undefined,
-        status: 'pre-test', // Always require pre-test verification when resuming
+        status: resumeStatus,
         scannedEntries: restoredScannedEntries, // Use only this session's entries
         totalDuration: storedData.totalDuration || 0,
         accumulatedPauseTime: storedData.accumulatedPauseTime || 0,
@@ -635,6 +663,35 @@ const handleResume = () => {
 
   return (
     <div className="space-y-6">
+      {/* Resume Session Dialog */}
+      <Dialog open={resumeDialog.open} onOpenChange={(open) => {
+        if (!open) setResumeDialog({ open: false, session: null });
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resume Active Session?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p>You have an active session. Would you like to resume it or start a new one?</p>
+            {resumeDialog.session?.session_data?.status === 'post-test' && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-700 font-medium">
+                  ⚠️ This session needs post-test verification to complete
+                </p>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={resumeActiveSession} className="flex-1">
+                Resume Session
+              </Button>
+              <Button onClick={startNewSessionFromDialog} variant="outline" className="flex-1">
+                Start New
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">CW PTL</h1>
