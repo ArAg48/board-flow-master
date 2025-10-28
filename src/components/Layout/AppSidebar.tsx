@@ -30,6 +30,7 @@ const managerItems = [
   { title: 'Hardware Orders', url: '/app/hardware-orders', icon: Package },
   { title: 'PTL Orders', url: '/app/ptl-orders', icon: ClipboardList },
   { title: 'Order Overview', url: '/app/order-overview', icon: Search },
+  { title: 'Repair Log', url: '/app/repair-log', icon: Wrench },
   { title: 'Account Management', url: '/app/account-management', icon: Users },
   { title: 'Log History', url: '/app/log-history', icon: History },
   { title: 'Barcode Generator', url: '/app/barcode-generator', icon: QrCode },

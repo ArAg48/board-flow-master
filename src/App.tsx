@@ -105,6 +105,11 @@ const App = () => (
                   <HardwareOrderArchive />
                 </ProtectedRoute>
               } />
+              <Route path="repair-log" element={
+                <ProtectedRoute requiredRole="manager">
+                  <RepairLog />
+                </ProtectedRoute>
+              } />
               
               {/* Technician Routes */}
               <Route path="scan-validator" element={
