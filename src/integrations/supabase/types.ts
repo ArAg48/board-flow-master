@@ -764,6 +764,10 @@ export type Database = {
         Returns: boolean
       }
       toggle_user_status: { Args: { p_user_id: string }; Returns: boolean }
+      update_board_after_repair: {
+        Args: { p_ptl_order_id: string; p_qr_code: string }
+        Returns: boolean
+      }
       update_board_firmware: {
         Args: { p_firmware_revision: string; p_qr_code: string }
         Returns: boolean

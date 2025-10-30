@@ -164,15 +164,12 @@ const RepairLog: React.FC = () => {
 
       if (repairError) throw repairError;
 
-      // Update board status to passed
-      const { error: boardError } = await supabase
-        .from('board_data')
-        .update({
-          test_status: 'pass',
-          test_date: new Date().toISOString()
-        })
-        .eq('qr_code', entry.qr_code)
-        .eq('ptl_order_id', entry.ptl_order_id);
+      // Update board status using secure database function
+      const { data, error: boardError } = await supabase
+        .rpc('update_board_after_repair', {
+          p_qr_code: entry.qr_code,
+          p_ptl_order_id: entry.ptl_order_id
+        });
 
       if (boardError) throw boardError;
 
@@ -182,7 +179,9 @@ const RepairLog: React.FC = () => {
       });
       
       fetchRepairEntries();
+      setSelectedEntry(null);
     } catch (error) {
+      console.error('Failed to update board status:', error);
       toast({
         title: "Error",
         description: "Failed to update board status",
