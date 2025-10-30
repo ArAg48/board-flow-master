@@ -4,9 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Download, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Download, CheckCircle, XCircle, Clock, ClipboardCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PTLOrderDetail {
   id: string;
@@ -43,7 +47,15 @@ const PTLOrderDetails: React.FC = () => {
   const [boardData, setBoardData] = useState<BoardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, repaired: 0, pending: 0, totalTime: 0 });
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [verificationData, setVerificationData] = useState({
+    finalCount: '',
+    productCountVerified: '',
+    axxessUpdater: '',
+    verifierInitials: ''
+  });
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (id) {
@@ -212,6 +224,62 @@ const PTLOrderDetails: React.FC = () => {
     }
   };
 
+  const handlePostTestVerification = async () => {
+    if (!user || !id) return;
+
+    const { finalCount, productCountVerified, axxessUpdater, verifierInitials } = verificationData;
+
+    // Validation
+    if (!finalCount || !productCountVerified || !axxessUpdater || !verifierInitials) {
+      toast({
+        title: 'Incomplete Information',
+        description: 'Please fill in all verification fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (parseInt(finalCount) !== stats.total) {
+      toast({
+        title: 'Count Mismatch',
+        description: `Final count (${finalCount}) must match scanned count (${stats.total})`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('ptl_orders')
+        .update({
+          product_count_verified: productCountVerified,
+          axxess_updater: axxessUpdater,
+          verifier_initials: verifierInitials,
+          verified_by: user.id,
+          verified_at: new Date().toISOString(),
+          status: 'completed'
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Verification Complete',
+        description: 'PTL order has been verified and marked as completed'
+      });
+
+      setShowVerificationDialog(false);
+      loadPTLOrderDetails();
+    } catch (error) {
+      console.error('Error completing verification:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete post-test verification',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const exportToCSV = () => {
     const headers = ['QR Code', 'Status', 'Test Date', 'Technician', 'Notes'];
     const csvContent = [
@@ -233,6 +301,12 @@ const PTLOrderDetails: React.FC = () => {
     link.click();
     window.URL.revokeObjectURL(url);
   };
+
+  const needsVerification = ptlOrder && 
+    !ptlOrder.verifier_initials && 
+    !ptlOrder.product_count_verified && 
+    !ptlOrder.axxess_updater &&
+    stats.total > 0;
 
   if (loading) {
     return (
@@ -263,10 +337,18 @@ const PTLOrderDetails: React.FC = () => {
             <p className="text-muted-foreground">Detailed test results and board scan history</p>
           </div>
         </div>
-        <Button onClick={exportToCSV} disabled={boardData.length === 0}>
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          {needsVerification && (
+            <Button onClick={() => setShowVerificationDialog(true)} variant="default">
+              <ClipboardCheck className="h-4 w-4 mr-2" />
+              Complete Verification
+            </Button>
+          )}
+          <Button onClick={exportToCSV} disabled={boardData.length === 0} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -407,6 +489,79 @@ const PTLOrderDetails: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Post-Test Verification Dialog */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Post-Test Verification</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-3 gap-4 p-4 border rounded-lg">
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Expected</div>
+                <div className="text-2xl font-bold">{ptlOrder?.quantity || 0}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Scanned</div>
+                <div className="text-2xl font-bold">{stats.total}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">Passed</div>
+                <div className="text-2xl font-bold text-green-600">{stats.passed}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="final-count">Final Count</Label>
+              <Input
+                id="final-count"
+                type="number"
+                placeholder={`Must match scanned count (${stats.total})`}
+                value={verificationData.finalCount}
+                onChange={(e) => setVerificationData({ ...verificationData, finalCount: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="product-count">Product Count Verified</Label>
+              <Input
+                id="product-count"
+                placeholder="Enter verified count"
+                value={verificationData.productCountVerified}
+                onChange={(e) => setVerificationData({ ...verificationData, productCountVerified: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="axxess-updater">Axxess Updater</Label>
+              <Input
+                id="axxess-updater"
+                placeholder="Enter updater info"
+                value={verificationData.axxessUpdater}
+                onChange={(e) => setVerificationData({ ...verificationData, axxessUpdater: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="verifier-initials">Verifier Initials</Label>
+              <Input
+                id="verifier-initials"
+                placeholder="Your initials"
+                value={verificationData.verifierInitials}
+                onChange={(e) => setVerificationData({ ...verificationData, verifierInitials: e.target.value })}
+              />
+            </div>
+
+            <Button 
+              onClick={handlePostTestVerification} 
+              className="w-full"
+            >
+              Complete Verification
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
