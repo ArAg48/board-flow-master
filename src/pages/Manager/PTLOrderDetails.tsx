@@ -117,16 +117,14 @@ const PTLOrderDetails: React.FC = () => {
       // Create a map of technician data
       const techMap = new Map((technicians || []).map(t => [t.id, t]));
 
-      // 3) Repair status overlay
+      // 3) Get all boards that have been through repair (for repair count)
       const { data: repairData } = await supabase
         .from('repair_entries')
-        .select('qr_code, repair_status')
+        .select('qr_code')
         .eq('ptl_order_id', id);
 
-      const repairedBoards = new Set(
-        (repairData || [])
-          .filter((r: any) => r.repair_status === 'completed')
-          .map((r: any) => r.qr_code)
+      const repairedBoardsSet = new Set(
+        (repairData || []).map((r: any) => r.qr_code)
       );
 
       const transformedData: BoardData[] = (rows || []).map((item: any) => {
@@ -134,7 +132,7 @@ const PTLOrderDetails: React.FC = () => {
         return {
           id: item.id,
           qr_code: item.qr_code,
-          test_status: repairedBoards.has(item.qr_code) ? 'repaired' : (item.test_status || 'pending'),
+          test_status: item.test_status || 'pending', // Use actual status from board_data
           test_date: item.test_date || '',
           test_results: item.test_results,
           technician_id: item.technician_id || '',
@@ -172,7 +170,7 @@ const PTLOrderDetails: React.FC = () => {
       const total = transformedData.length;
       const passed = transformedData.filter(b => b.test_status === 'pass').length;
       const failed = transformedData.filter(b => b.test_status === 'fail').length;
-      const repaired = transformedData.filter(b => b.test_status === 'repaired').length;
+      const repaired = transformedData.filter(b => repairedBoardsSet.has(b.qr_code)).length; // Count boards that went through repair
       const pending = transformedData.filter(b => b.test_status === 'pending').length;
 
       setStats({ total, passed, failed, repaired, pending, totalTime });
