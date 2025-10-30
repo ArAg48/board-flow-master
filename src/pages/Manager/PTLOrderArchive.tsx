@@ -51,14 +51,23 @@ const PTLOrderArchive: React.FC = () => {
 
   const fetchCompletedPTLOrders = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch all completed orders
+      const { data: allCompleted, error } = await supabase
         .from('ptl_orders')
         .select('*')
-        .eq('status', 'completed') // Only show completed orders
+        .eq('status', 'completed')
         .order('updated_at', { ascending: false }); // Sort by completion date
 
       if (error) throw error;
-      setOrders(data || []);
+      
+      // Only show orders that have been properly verified (post-test verification complete)
+      const verifiedOrders = (allCompleted || []).filter(order =>
+        order.verifier_initials && 
+        order.product_count_verified && 
+        order.axxess_updater
+      );
+      
+      setOrders(verifiedOrders);
     } catch (error) {
       toast({
         title: 'Error',

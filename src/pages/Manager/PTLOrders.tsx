@@ -96,14 +96,24 @@ const PTLOrders: React.FC = () => {
 
   const fetchPTLOrders = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch all orders first
+      const { data: allOrders, error } = await supabase
         .from('ptl_orders')
         .select('*')
-        .neq('status', 'completed') // Exclude completed orders - they go to archive
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      
+      // Filter: Show orders that are NOT completed, OR completed but not yet verified
+      // Only move to archive after post-test verification is complete
+      const activeOrders = (allOrders || []).filter(order => 
+        order.status !== 'completed' || 
+        !order.verifier_initials || 
+        !order.product_count_verified || 
+        !order.axxess_updater
+      );
+      
+      setOrders(activeOrders);
     } catch (error) {
       toast({
         title: 'Error',
