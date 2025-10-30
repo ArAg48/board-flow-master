@@ -150,6 +150,47 @@ const RepairLog: React.FC = () => {
     }
   };
 
+  const handleMarkAsPassed = async (entry: RepairEntry) => {
+    try {
+      // Update repair entry
+      const { error: repairError } = await supabase
+        .from('repair_entries')
+        .update({
+          retest_results: 'pass',
+          repair_status: 'completed',
+          repair_completed_date: new Date().toISOString().split('T')[0]
+        })
+        .eq('id', entry.id);
+
+      if (repairError) throw repairError;
+
+      // Update board status to passed
+      const { error: boardError } = await supabase
+        .from('board_data')
+        .update({
+          test_status: 'pass',
+          test_date: new Date().toISOString()
+        })
+        .eq('qr_code', entry.qr_code)
+        .eq('ptl_order_id', entry.ptl_order_id);
+
+      if (boardError) throw boardError;
+
+      toast({
+        title: "Test Passed",
+        description: "Board has been marked as passed after repair",
+      });
+      
+      fetchRepairEntries();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update board status",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
@@ -298,7 +339,7 @@ const RepairLog: React.FC = () => {
                               onChange={(e) => setRepairNotes(e.target.value)}
                             />
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <Button onClick={() => handleUpdateRepair(entry.id, { repair_notes: repairNotes })}>
                               Update Notes
                             </Button>
@@ -315,6 +356,16 @@ const RepairLog: React.FC = () => {
                             {entry.repair_status === 'in_progress' && (
                               <Button variant="default" onClick={() => handleUpdateRepair(entry.id, { repair_status: 'completed', repair_completed_date: new Date().toISOString().split('T')[0] })}>
                                 Mark Complete
+                              </Button>
+                            )}
+                            {(entry.retest_results !== 'pass') && (
+                              <Button 
+                                variant="default" 
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => handleMarkAsPassed(entry)}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Passed Test
                               </Button>
                             )}
                           </div>
