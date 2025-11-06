@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const BoardLookup = () => {
   const [boardId, setBoardId] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
   const [boardDetails, setBoardDetails] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [firmwareDialogOpen, setFirmwareDialogOpen] = useState(false);
@@ -70,11 +71,11 @@ const BoardLookup = () => {
         const board = data[0];
         console.log('Board data found:', board);
         
-        const serialNumber = board.sequence_number ? board.sequence_number.slice(-7) : 'N/A';
+        const serialNum = board.sequence_number ? board.sequence_number.slice(-7) : 'N/A';
         
         setBoardDetails({
           boardId: board.qr_code,
-          serialNumber: serialNumber,
+          serialNumber: serialNum,
           assemblyNumber: board.assembly_number,
           boardType: board.board_type || 'N/A',
           testStatus: board.test_status,
@@ -90,6 +91,59 @@ const BoardLookup = () => {
       }
     } catch (error) {
       console.error('Board lookup error:', error);
+      setBoardDetails(null);
+      setError('Error looking up board details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSerialLookup = async () => {
+    if (!serialNumber.trim()) {
+      setError('Please enter a serial number');
+      return;
+    }
+
+    if (!validateInput(serialNumber)) {
+      setError('Invalid characters in serial number');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setBoardDetails(null);
+
+    try {
+      const { data, error } = await supabase.rpc('lookup_board_by_serial', {
+        p_serial_number: serialNumber.trim()
+      });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const board = data[0];
+        console.log('Board data found by serial:', board);
+        
+        const serialNum = board.sequence_number ? board.sequence_number.slice(-7) : 'N/A';
+        
+        setBoardDetails({
+          boardId: board.qr_code,
+          serialNumber: serialNum,
+          assemblyNumber: board.assembly_number,
+          boardType: board.board_type || 'N/A',
+          testStatus: board.test_status,
+          dateCode: board.date_code || 'N/A',
+          ptlOrderNumber: board.ptl_order_number || 'N/A',
+          firmwareVersion: board.firmware_revision || 'N/A',
+          technicianName: board.technician_name || 'N/A'
+        });
+        setFirmwareValue(board.firmware_revision || '');
+      } else {
+        setBoardDetails(null);
+        setError(`No board found with serial number: ${serialNumber}`);
+      }
+    } catch (error) {
+      console.error('Serial lookup error:', error);
       setBoardDetails(null);
       setError('Error looking up board details');
     } finally {
@@ -160,8 +214,9 @@ const BoardLookup = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="lookup" className="w-full">
-              <TabsList className="grid w-full grid-cols-1">
-                <TabsTrigger value="lookup">Board Lookup</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="lookup">Board ID Lookup</TabsTrigger>
+                <TabsTrigger value="serial">Serial Number Lookup</TabsTrigger>
               </TabsList>
               
               <TabsContent value="lookup" className="space-y-4 mt-4">
@@ -183,6 +238,119 @@ const BoardLookup = () => {
                   className="w-full"
                 >
                   {loading ? 'Looking up...' : 'Lookup Board'}
+                </Button>
+
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {boardDetails && (
+                  <Card className="mt-4">
+                    <CardHeader>
+                      <CardTitle>Board Information</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Field</TableHead>
+                            <TableHead>Value</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="font-medium">Board ID</TableCell>
+                            <TableCell className="font-mono">{boardDetails.boardId}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Serial Number</TableCell>
+                            <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Board Type</TableCell>
+                            <TableCell className="font-mono">{boardDetails.boardType}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Date Code</TableCell>
+                            <TableCell className="font-mono">{boardDetails.dateCode}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">Firmware Version</TableCell>
+                            <TableCell className="font-mono">{boardDetails.firmwareVersion}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                      
+                      <Dialog open={firmwareDialogOpen} onOpenChange={setFirmwareDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            onClick={openFirmwareDialog}
+                            className="w-full mt-4"
+                          >
+                            Update Firmware Version
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Update Firmware Version</DialogTitle>
+                            <DialogDescription>
+                              Enter the new firmware version for this board.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="firmwareInput">Firmware Version</Label>
+                              <Input
+                                id="firmwareInput"
+                                value={firmwareValue}
+                                onChange={(e) => setFirmwareValue(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleUpdateFirmware()}
+                                className="font-mono"
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button 
+                                variant="outline" 
+                                onClick={() => setFirmwareDialogOpen(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button 
+                                onClick={handleUpdateFirmware} 
+                                disabled={updating || !firmwareValue.trim()}
+                              >
+                                {updating ? 'Updating...' : 'Update'}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="serial" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="serialNumber">Serial Number</Label>
+                  <Input
+                    id="serialNumber"
+                    value={serialNumber}
+                    onChange={(e) => setSerialNumber(e.target.value)}
+                    placeholder="Enter last 7 digits of serial number"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSerialLookup()}
+                    maxLength={20}
+                  />
+                </div>
+                
+                <Button 
+                  onClick={handleSerialLookup} 
+                  disabled={loading || !serialNumber.trim()} 
+                  className="w-full"
+                >
+                  {loading ? 'Looking up...' : 'Lookup by Serial'}
                 </Button>
 
                 {error && (

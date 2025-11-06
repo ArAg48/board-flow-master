@@ -699,6 +699,22 @@ export type Database = {
         Returns: boolean
       }
       hash_password: { Args: { password_text: string }; Returns: string }
+      lookup_board_by_serial: {
+        Args: { p_serial_number: string }
+        Returns: {
+          assembly_number: string
+          board_type: string
+          date_code: string
+          firmware_revision: string
+          ptl_order_number: string
+          qr_code: string
+          sale_code: string
+          sequence_number: string
+          technician_name: string
+          test_date: string
+          test_status: string
+        }[]
+      }
       lookup_board_details: {
         Args: { p_qr_code: string }
         Returns: {
