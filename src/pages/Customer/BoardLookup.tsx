@@ -209,6 +209,10 @@ const BoardLookup = () => {
                     <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
                   </TableRow>
                   <TableRow>
+                    <TableCell className="font-medium">Board Type</TableCell>
+                    <TableCell className="font-mono">{boardDetails.boardType}</TableCell>
+                  </TableRow>
+                  <TableRow>
                     <TableCell className="font-medium">Date Code</TableCell>
                     <TableCell className="font-mono">{boardDetails.dateCode}</TableCell>
                   </TableRow>
