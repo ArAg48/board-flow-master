@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Eye, Package, Search, Trash2 } from 'lucide-react';
+import { Plus, Edit, Eye, Package, Search, Trash2, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -234,6 +234,34 @@ const HardwareOrders: React.FC = () => {
     }
   };
 
+  const handleCompleteOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('hardware_orders')
+        .update({ status: 'completed' })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Hardware order marked as completed',
+      });
+
+      fetchOrders();
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, status: 'completed' });
+      }
+    } catch (error) {
+      console.error('Error completing hardware order:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete hardware order',
+        variant: 'destructive'
+      });
+    }
+  };
+
   // Filter orders based on search term
   const filteredOrders = orders.filter(order =>
     order.po_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -436,7 +464,15 @@ const HardwareOrders: React.FC = () => {
       <Dialog open={viewPTLOrders} onOpenChange={setViewPTLOrders}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>PTL Orders for {selectedOrder?.po_number}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>PTL Orders for {selectedOrder?.po_number}</DialogTitle>
+              {selectedOrder && selectedOrder.status !== 'completed' && (
+                <Button onClick={() => handleCompleteOrder(selectedOrder.id)} variant="success" size="sm">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Complete Order
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           {selectedOrder && (
             <div className="space-y-4">
