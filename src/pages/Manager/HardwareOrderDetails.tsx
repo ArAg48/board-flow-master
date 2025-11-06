@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { ArrowLeft, Eye, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -164,6 +164,34 @@ const HardwareOrderDetails: React.FC = () => {
     return order.quantity > 0 ? Math.round((order.tested / order.quantity) * 100) : 0;
   };
 
+  const handleCompleteOrder = async () => {
+    if (!id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('hardware_orders')
+        .update({ status: 'completed' })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Hardware order marked as completed',
+      });
+
+      // Reload the order details to reflect the change
+      loadHardwareOrderDetails();
+    } catch (error) {
+      console.error('Error completing hardware order:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete hardware order',
+        variant: 'destructive'
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -182,15 +210,23 @@ const HardwareOrderDetails: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Hardware Order {hardwareOrder.po_number}</h1>
-          <p className="text-muted-foreground">PTL orders and testing progress</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Hardware Order {hardwareOrder.po_number}</h1>
+            <p className="text-muted-foreground">PTL orders and testing progress</p>
+          </div>
         </div>
+        {hardwareOrder.status !== 'completed' && (
+          <Button onClick={handleCompleteOrder} variant="success">
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Complete Order
+          </Button>
+        )}
       </div>
 
       {/* Hardware Order Summary */}
