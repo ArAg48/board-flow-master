@@ -54,6 +54,11 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   const { user } = useAuth();
 
   const validateQRFormat = (qrCode: string): boolean => {
+    // For firmware update PTL orders, accept any QR code
+    if (ptlOrder.is_firmware_update) {
+      return qrCode.trim().length > 0;
+    }
+    
     // If no expected format is defined, accept any non-empty alphanumeric code
     if (!ptlOrder.expectedFormat || ptlOrder.expectedFormat.trim() === '') {
       return qrCode.trim().length >= 4;
@@ -78,9 +83,11 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
 
     // Auto-process when QR code is complete (11 characters: 4 letters + 7 digits)
     // Also check for newline character which indicates scan completion
-    if (value.length >= 11 || value.includes('\n') || value.includes('\r')) {
+    // For firmware update PTL, process on any newline/enter key
+    const minLength = ptlOrder.is_firmware_update ? 1 : 11;
+    if (value.length >= minLength || value.includes('\n') || value.includes('\r')) {
       const cleanQrCode = value.replace(/[\n\r]/g, '').trim();
-      if (cleanQrCode.length >= 11) {
+      if (cleanQrCode.length >= (ptlOrder.is_firmware_update ? 1 : 11)) {
         await processScan(boxIndex, cleanQrCode);
       }
     }
