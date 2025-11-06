@@ -300,31 +300,49 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     }
 
     // Check database for any previous scans of this board across all sessions
+    // For firmware update PTL orders, check if this board exists but allow re-scanning
     try {
+      // First check if this is a firmware update PTL order
+      const { data: ptlOrderData } = await supabase
+        .from('ptl_orders')
+        .select('is_firmware_update')
+        .eq('id', ptlOrder.id)
+        .single();
+
+      const isFirmwareUpdate = ptlOrderData?.is_firmware_update || false;
+
       const { data: existingBoard, error } = await supabase
         .from('board_data')
-        .select('test_status, test_date')
+        .select('test_status, test_date, ptl_order_id')
         .eq('qr_code', qrCode)
         .eq('ptl_order_id', ptlOrder.id)
         .single();
 
       if (existingBoard && !error) {
-        const statusText = existingBoard.test_status === 'pass' ? 'PASSED ✓' : 
-                          existingBoard.test_status === 'fail' ? 'FAILED ✗' : 'PENDING';
-        const statusColor = existingBoard.test_status === 'pass' ? 'text-green-600' : 
-                           existingBoard.test_status === 'fail' ? 'text-red-600' : 'text-yellow-600';
-        
-        toast({
-          title: "⚠️ Board Already Scanned",
-          description: `This QR code was previously scanned and ${statusText}`,
-          variant: "destructive"
-        });
-        
-        // Clear the input
-        const newInputs = [...scanInputs];
-        newInputs[boxIndex] = '';
-        setScanInputs(newInputs);
-        return;
+        // If this is a firmware update order, allow re-scanning
+        if (isFirmwareUpdate) {
+          toast({
+            title: "🔄 Firmware Update Scan",
+            description: `This board was previously scanned. Firmware will be updated upon pass.`,
+          });
+          // Continue with the scan - don't return
+        } else {
+          // For regular PTL orders, block duplicate scans
+          const statusText = existingBoard.test_status === 'pass' ? 'PASSED ✓' : 
+                            existingBoard.test_status === 'fail' ? 'FAILED ✗' : 'PENDING';
+          
+          toast({
+            title: "⚠️ Board Already Scanned",
+            description: `This QR code was previously scanned and ${statusText}`,
+            variant: "destructive"
+          });
+          
+          // Clear the input
+          const newInputs = [...scanInputs];
+          newInputs[boxIndex] = '';
+          setScanInputs(newInputs);
+          return;
+        }
       }
     } catch (error) {
       console.error('Error checking for duplicate scan:', error);

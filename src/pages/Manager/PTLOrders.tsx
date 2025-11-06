@@ -30,6 +30,7 @@ interface PTLOrderForm {
   date_code: string;
   notes?: string;
   test_parameters?: any;
+  is_firmware_update?: boolean;
 }
 
 const PTLOrders: React.FC = () => {
@@ -42,6 +43,7 @@ const PTLOrders: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFWDialogOpen, setIsFWDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PTLOrder | null>(null);
   const [viewOrderDetails, setViewOrderDetails] = useState(false);
@@ -264,6 +266,7 @@ const PTLOrders: React.FC = () => {
       }
 
       setIsDialogOpen(false);
+      setIsFWDialogOpen(false);
       setEditingOrder(null);
       form.reset();
       await fetchPTLOrders(); // Refresh the list
@@ -401,19 +404,176 @@ const PTLOrders: React.FC = () => {
           <p className="text-muted-foreground">Create and manage PTL orders linked to hardware orders</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditingOrder(null);
-            form.reset();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New PTL Order
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={isFWDialogOpen} onOpenChange={(open) => {
+            setIsFWDialogOpen(open);
+            if (!open) {
+              form.reset();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                FW Update PTL
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Create FW Update PTL Order</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((data) => onSubmit({...data, is_firmware_update: true}))} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="hardware_order_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hardware Order</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select hardware order" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {hardwareOrders.map((order) => (
+                              <SelectItem key={order.id} value={order.id}>
+                                {order.po_number} - {order.assembly_number}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="ptl_order_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PTL Order Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder={generatePTLOrderNumber()} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="board_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Board Type</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Main Board, Control Board" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="quantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Number of Boards</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="1" 
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="sale_code"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sale Code</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., SC-001" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="firmware_revision"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Firmware Rev</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., v2.0.1" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="date_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., 2025-01" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Optional notes..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit" className="w-full">Create FW Update PTL Order</Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingOrder(null);
+              form.reset();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                New PTL Order
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{editingOrder ? 'Edit PTL Order' : 'Create PTL Order'}</DialogTitle>
@@ -576,6 +736,8 @@ const PTLOrders: React.FC = () => {
             </Form>
           </DialogContent>
         </Dialog>
+      </div>
+      
       </div>
 
       <Card>

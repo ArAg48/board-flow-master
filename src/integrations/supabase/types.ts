@@ -235,6 +235,7 @@ export type Database = {
           firmware_revision: string | null
           hardware_order_id: string | null
           id: string
+          is_firmware_update: boolean
           notes: string | null
           product_count_verified: string | null
           ptl_order_number: string
@@ -256,6 +257,7 @@ export type Database = {
           firmware_revision?: string | null
           hardware_order_id?: string | null
           id?: string
+          is_firmware_update?: boolean
           notes?: string | null
           product_count_verified?: string | null
           ptl_order_number: string
@@ -277,6 +279,7 @@ export type Database = {
           firmware_revision?: string | null
           hardware_order_id?: string | null
           id?: string
+          is_firmware_update?: boolean
           notes?: string | null
           product_count_verified?: string | null
           ptl_order_number?: string
