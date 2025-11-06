@@ -75,7 +75,7 @@ const BoardLookup = () => {
           boardId: board.qr_code,
           serialNumber: serialNumber,
           assemblyNumber: board.assembly_number,
-          boardType: board.board_type,
+          boardType: board.board_type || 'N/A',
           testStatus: board.test_status,
           dateCode: board.date_code || 'N/A',
           ptlOrderNumber: board.ptl_order_number || 'N/A',
