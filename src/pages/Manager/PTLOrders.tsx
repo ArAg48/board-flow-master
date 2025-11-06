@@ -21,7 +21,7 @@ type PTLOrder = Database['public']['Tables']['ptl_orders']['Row'];
 type HardwareOrder = Database['public']['Tables']['hardware_orders']['Row'];
 
 interface PTLOrderForm {
-  hardware_order_id: string;
+  hardware_order_id?: string;
   ptl_order_number: string;
   board_type: string;
   quantity: number;
@@ -422,32 +422,7 @@ const PTLOrders: React.FC = () => {
                 <DialogTitle>Create FW Update PTL Order</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => onSubmit({...data, is_firmware_update: true}))} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="hardware_order_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hardware Order</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select hardware order" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {hardwareOrders.map((order) => (
-                              <SelectItem key={order.id} value={order.id}>
-                                {order.po_number} - {order.assembly_number}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
+                <form onSubmit={form.handleSubmit((data) => onSubmit({...data, is_firmware_update: true, hardware_order_id: undefined}))} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="ptl_order_number"
