@@ -173,9 +173,10 @@ const ScanValidator: React.FC = () => {
     try {
       // Calculate real-time statistics
       const stats = getSessionStats();
-      const duration = currentSession.endTime 
-        ? Math.floor((currentSession.endTime.getTime() - currentSession.startTime.getTime()) / (1000 * 60))
-        : Math.floor((new Date().getTime() - currentSession.startTime.getTime()) / (1000 * 60));
+      const endTimeForCalc = currentSession.endTime || new Date();
+      const totalElapsed = endTimeForCalc.getTime() - currentSession.startTime.getTime();
+      const activeDuration = totalElapsed - (currentSession.accumulatedPauseTime || 0) - (currentSession.accumulatedBreakTime || 0);
+      const duration = Math.floor(Math.max(0, activeDuration) / (1000 * 60));
 
       const sessionData = JSON.parse(JSON.stringify({
         id: currentSession.id,
@@ -191,7 +192,9 @@ const ScanValidator: React.FC = () => {
         totalDuration: currentSession.totalDuration,
         pausedTime: currentSession.pausedTime?.toISOString(),
         breakTime: currentSession.breakTime?.toISOString(),
-        endTime: currentSession.endTime?.toISOString()
+        endTime: currentSession.endTime?.toISOString(),
+        accumulatedPauseTime: currentSession.accumulatedPauseTime || 0,
+        accumulatedBreakTime: currentSession.accumulatedBreakTime || 0
       }));
 
       // Session row is maintained via direct updates (no RPC)
@@ -487,7 +490,9 @@ const handleResume = () => {
   const handlePostTestComplete = async () => {
     if (currentSession) {
       const endTime = new Date();
-      const duration = Math.floor((endTime.getTime() - currentSession.startTime.getTime()) / (1000 * 60));
+      const totalElapsed = endTime.getTime() - currentSession.startTime.getTime();
+      const activeDuration = totalElapsed - (currentSession.accumulatedPauseTime || 0) - (currentSession.accumulatedBreakTime || 0);
+      const duration = Math.floor(Math.max(0, activeDuration) / (1000 * 60));
       
       const updatedSession = {
         ...currentSession,
@@ -515,7 +520,9 @@ const handleResume = () => {
           })),
           totalDuration: updatedSession.totalDuration,
           pausedTime: updatedSession.pausedTime?.toISOString(),
-          breakTime: updatedSession.breakTime?.toISOString()
+          breakTime: updatedSession.breakTime?.toISOString(),
+          accumulatedPauseTime: updatedSession.accumulatedPauseTime || 0,
+          accumulatedBreakTime: updatedSession.accumulatedBreakTime || 0
         }));
 
         await supabase.rpc('save_session', {
