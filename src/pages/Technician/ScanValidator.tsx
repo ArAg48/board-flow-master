@@ -269,20 +269,46 @@ const ScanValidator: React.FC = () => {
         resumeStatus = 'pre-test';
       }
 
+      // Handle multi-day sessions by adjusting accumulated times
+      const originalStartTime = new Date(storedData.startTime || sessionData.start_time);
+      const now = new Date();
+      const elapsedMs = now.getTime() - originalStartTime.getTime();
+      const elapsedHours = elapsedMs / (1000 * 60 * 60);
+      
+      let adjustedStartTime = originalStartTime;
+      let adjustedAccumulatedPauseTime = storedData.accumulatedPauseTime || 0;
+      let adjustedAccumulatedBreakTime = storedData.accumulatedBreakTime || 0;
+      
+      // If session has been running for more than 16 hours (likely overnight)
+      // and accumulated pause/break times don't account for most of it, adjust times
+      if (elapsedHours > 16) {
+        const totalAccumulated = adjustedAccumulatedPauseTime + adjustedAccumulatedBreakTime;
+        const activeMs = elapsedMs - totalAccumulated;
+        const activeHours = activeMs / (1000 * 60 * 60);
+        
+        // If active time is still more than 16 hours, this is an old session without proper tracking
+        // Add the overnight time (everything beyond 16 hours) to accumulated pause time
+        if (activeHours > 16) {
+          const excessMs = (activeHours - 16) * 60 * 60 * 1000;
+          adjustedAccumulatedPauseTime += excessMs;
+          console.log(`Adjusted accumulated pause time by ${Math.floor(excessMs / (1000 * 60 * 60))} hours for multi-day session`);
+        }
+      }
+
       const reconstructedSession: ValidationSession = {
         id: sessionData.session_id,
         ptlOrder,
         testerConfig: storedData.testerConfig || { type: 1, scanBoxes: 1 },
         preTestVerification: storedData.preTestVerification || { testerCheck: false, firmwareCheck: false },
         postTestVerification: storedData.postTestVerification,
-        startTime: new Date(storedData.startTime || sessionData.start_time),
+        startTime: adjustedStartTime,
         pausedTime: sessionData.paused_at ? new Date(sessionData.paused_at) : undefined,
         breakTime: sessionData.break_started_at ? new Date(sessionData.break_started_at) : undefined,
         status: resumeStatus,
-        scannedEntries: restoredScannedEntries, // Use only this session's entries
+        scannedEntries: restoredScannedEntries,
         totalDuration: storedData.totalDuration || 0,
-        accumulatedPauseTime: storedData.accumulatedPauseTime || 0,
-        accumulatedBreakTime: storedData.accumulatedBreakTime || 0
+        accumulatedPauseTime: adjustedAccumulatedPauseTime,
+        accumulatedBreakTime: adjustedAccumulatedBreakTime
       };
 
       setCurrentSession(reconstructedSession);
@@ -614,7 +640,8 @@ const handleResume = () => {
     const getActiveDuration = (endTime: Date) => {
       const totalElapsed = endTime.getTime() - start.getTime();
       const activeDuration = totalElapsed - (currentSession.accumulatedPauseTime || 0) - (currentSession.accumulatedBreakTime || 0);
-      return Math.max(0, activeDuration); // Ensure non-negative
+      // Cap at 24 hours to prevent unrealistic display values
+      return Math.max(0, Math.min(activeDuration, 86400000));
     };
     
     // If session is paused, freeze at the duration when pause started

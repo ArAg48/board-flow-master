@@ -103,7 +103,8 @@ const RealTimeTracking: React.FC<RealTimeTrackingProps> = ({ session }) => {
     const getActiveDuration = (endTime: Date) => {
       const totalElapsed = endTime.getTime() - start.getTime();
       const activeDuration = totalElapsed - (session.accumulatedPauseTime || 0) - (session.accumulatedBreakTime || 0);
-      return Math.max(0, activeDuration); // Ensure non-negative
+      // Cap at 24 hours (86400000 ms) to prevent unrealistic display values
+      return Math.max(0, Math.min(activeDuration, 86400000));
     };
     
     // If session is paused, freeze at the duration when pause started
