@@ -269,30 +269,27 @@ const ScanValidator: React.FC = () => {
         resumeStatus = 'pre-test';
       }
 
-      // Handle multi-day sessions by adjusting accumulated times
-      const originalStartTime = new Date(storedData.startTime || sessionData.start_time);
+      // Calculate accumulated times when resuming from pause or break
       const now = new Date();
-      const elapsedMs = now.getTime() - originalStartTime.getTime();
-      const elapsedHours = elapsedMs / (1000 * 60 * 60);
-      
-      let adjustedStartTime = originalStartTime;
-      let adjustedAccumulatedPauseTime = storedData.accumulatedPauseTime || 0;
-      let adjustedAccumulatedBreakTime = storedData.accumulatedBreakTime || 0;
-      
-      // If session has been running for more than 16 hours (likely overnight)
-      // and accumulated pause/break times don't account for most of it, adjust times
-      if (elapsedHours > 16) {
-        const totalAccumulated = adjustedAccumulatedPauseTime + adjustedAccumulatedBreakTime;
-        const activeMs = elapsedMs - totalAccumulated;
-        const activeHours = activeMs / (1000 * 60 * 60);
-        
-        // If active time is still more than 16 hours, this is an old session without proper tracking
-        // Add the overnight time (everything beyond 16 hours) to accumulated pause time
-        if (activeHours > 16) {
-          const excessMs = (activeHours - 16) * 60 * 60 * 1000;
-          adjustedAccumulatedPauseTime += excessMs;
-          console.log(`Adjusted accumulated pause time by ${Math.floor(excessMs / (1000 * 60 * 60))} hours for multi-day session`);
-        }
+      let accumulatedPauseTime = storedData.accumulatedPauseTime || 0;
+      let accumulatedBreakTime = storedData.accumulatedBreakTime || 0;
+      let pausedTime: Date | undefined = undefined;
+      let breakTime: Date | undefined = undefined;
+
+      // If resuming from a pause, add the pause duration to accumulated time
+      if (sessionData.paused_at) {
+        const pauseStart = new Date(sessionData.paused_at);
+        const pauseDuration = now.getTime() - pauseStart.getTime();
+        accumulatedPauseTime += pauseDuration;
+        console.log(`Resuming from pause: added ${Math.floor(pauseDuration / (1000 * 60))} minutes to accumulated pause time`);
+      }
+
+      // If resuming from a break, add the break duration to accumulated time
+      if (sessionData.break_started_at) {
+        const breakStart = new Date(sessionData.break_started_at);
+        const breakDuration = now.getTime() - breakStart.getTime();
+        accumulatedBreakTime += breakDuration;
+        console.log(`Resuming from break: added ${Math.floor(breakDuration / (1000 * 60))} minutes to accumulated break time`);
       }
 
       const reconstructedSession: ValidationSession = {
@@ -301,14 +298,14 @@ const ScanValidator: React.FC = () => {
         testerConfig: storedData.testerConfig || { type: 1, scanBoxes: 1 },
         preTestVerification: storedData.preTestVerification || { testerCheck: false, firmwareCheck: false },
         postTestVerification: storedData.postTestVerification,
-        startTime: adjustedStartTime,
-        pausedTime: sessionData.paused_at ? new Date(sessionData.paused_at) : undefined,
-        breakTime: sessionData.break_started_at ? new Date(sessionData.break_started_at) : undefined,
+        startTime: new Date(storedData.startTime || sessionData.start_time),
+        pausedTime,
+        breakTime,
         status: resumeStatus,
         scannedEntries: restoredScannedEntries,
         totalDuration: storedData.totalDuration || 0,
-        accumulatedPauseTime: adjustedAccumulatedPauseTime,
-        accumulatedBreakTime: adjustedAccumulatedBreakTime
+        accumulatedPauseTime,
+        accumulatedBreakTime
       };
 
       setCurrentSession(reconstructedSession);
