@@ -463,7 +463,7 @@ const HardwareOrders: React.FC = () => {
 
       {/* PTL Orders Dialog */}
       <Dialog open={viewPTLOrders} onOpenChange={setViewPTLOrders}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>PTL Orders for {selectedOrder?.po_number}</DialogTitle>
@@ -496,7 +496,7 @@ const HardwareOrders: React.FC = () => {
                 </div>
               </div>
               
-              <ScrollArea className="max-h-[400px]">
+              <ScrollArea className="h-[300px] w-full">
                 <Table>
                   <TableHeader>
                     <TableRow>
