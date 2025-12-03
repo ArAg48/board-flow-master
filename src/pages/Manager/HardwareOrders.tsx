@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Eye, Package, Search, Trash2, CheckCircle } from 'lucide-react';
@@ -495,32 +496,34 @@ const HardwareOrders: React.FC = () => {
                 </div>
               </div>
               
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>PTL Order</TableHead>
-                    <TableHead>Board Type</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {ptlOrders.map((ptlOrder) => (
-                    <TableRow key={ptlOrder.id}>
-                      <TableCell className="font-medium">{ptlOrder.ptl_order_number}</TableCell>
-                      <TableCell>{ptlOrder.board_type}</TableCell>
-                      <TableCell>{ptlOrder.quantity}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(ptlOrder.status)}>
-                          {ptlOrder.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(ptlOrder.created_at).toLocaleDateString()}</TableCell>
+              <ScrollArea className="max-h-[400px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>PTL Order</TableHead>
+                      <TableHead>Board Type</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {ptlOrders.map((ptlOrder) => (
+                      <TableRow key={ptlOrder.id}>
+                        <TableCell className="font-medium">{ptlOrder.ptl_order_number}</TableCell>
+                        <TableCell>{ptlOrder.board_type}</TableCell>
+                        <TableCell>{ptlOrder.quantity}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(ptlOrder.status)}>
+                            {ptlOrder.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(ptlOrder.created_at).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             </div>
           )}
         </DialogContent>
