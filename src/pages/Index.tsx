@@ -74,6 +74,7 @@ const Index = () => {
         setBoardDetails({
           boardId: board.qr_code,
           serialNumber: serialNumber,
+          productId: board.board_type || 'N/A',
           dateCode: board.date_code || 'N/A',
           firmwareVersion: board.firmware_revision || 'N/A'
         });
@@ -166,6 +167,10 @@ const Index = () => {
                       <TableRow>
                         <TableCell className="font-medium">Serial Number</TableCell>
                         <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Product ID</TableCell>
+                        <TableCell className="font-mono">{boardDetails.productId}</TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-medium">Date Code</TableCell>

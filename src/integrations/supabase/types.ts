@@ -592,6 +592,14 @@ export type Database = {
             Returns: string
           }
       deactivate_session: { Args: { p_session_id: string }; Returns: boolean }
+      debug_ptl_progress: {
+        Args: { p_ptl_order_id: string }
+        Returns: {
+          calc_active_time: number
+          calc_total_time: number
+          session_count: number
+        }[]
+      }
       delete_hardware_order: {
         Args: { p_hardware_order_id: string }
         Returns: boolean
@@ -778,6 +786,10 @@ export type Database = {
             }
             Returns: string
           }
+      set_ptl_active_time: {
+        Args: { p_active_minutes: number; p_ptl_order_id: string }
+        Returns: boolean
+      }
       set_viewable_password: {
         Args: { p_password: string; p_user_id: string }
         Returns: boolean
