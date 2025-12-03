@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Eye, Package, Search, Trash2, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Package, Search, Trash2, CheckCircle } from 'lucide-react';
+import EyeWithLashes from '@/components/icons/EyeWithLashes';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -445,7 +446,7 @@ const HardwareOrders: React.FC = () => {
                   <TableCell>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => handleViewPTLOrders(order)}>
-                        <Eye className="h-4 w-4" />
+                        <EyeWithLashes className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleEdit(order); }}>
                         <Edit className="h-4 w-4" />
