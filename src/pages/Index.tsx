@@ -155,18 +155,14 @@ const Index = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Field</TableHead>
-                        <TableHead>Value</TableHead>
+                        <TableHead>Product Info</TableHead>
+                        <TableHead>Results</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       <TableRow>
                         <TableCell className="font-medium">Board ID</TableCell>
                         <TableCell className="font-mono">{boardDetails.boardId}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Serial Number</TableCell>
-                        <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-medium">Product ID</TableCell>
@@ -179,6 +175,10 @@ const Index = () => {
                       <TableRow>
                         <TableCell className="font-medium">Firmware Version</TableCell>
                         <TableCell className="font-mono">{boardDetails.firmwareVersion}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Serial Number</TableCell>
+                        <TableCell className="font-mono">{boardDetails.serialNumber}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
