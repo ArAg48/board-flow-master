@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Eye, Clipboard, Link, Trash2, Search, Calendar } from 'lucide-react';
+import { Plus, Edit, Eye, Clipboard, Link, Trash2, Search, Calendar, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +41,7 @@ const PTLOrders: React.FC = () => {
   const [orders, setOrders] = useState<PTLOrder[]>([]);
   const [orderCounts, setOrderCounts] = useState<{[key: string]: {scanned: number, passed: number, failed: number, totalTime: number}}>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'ptl_number' | 'status'>('newest');
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFWDialogOpen, setIsFWDialogOpen] = useState(false);
@@ -387,14 +388,29 @@ const PTLOrders: React.FC = () => {
     }
   };
 
-  // Filter orders based on search term
-  const filteredOrders = orders.filter(order =>
-    order.ptl_order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.board_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.sale_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.firmware_revision?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.date_code?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter and sort orders
+  const filteredOrders = orders
+    .filter(order =>
+      order.ptl_order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.board_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.sale_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.firmware_revision?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.date_code?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'ptl_number':
+          return a.ptl_order_number.localeCompare(b.ptl_order_number);
+        case 'status':
+          return a.status.localeCompare(b.status);
+        default:
+          return 0;
+      }
+    });
 
   return (
     <div className="space-y-6">
@@ -726,8 +742,8 @@ const PTLOrders: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <div className="relative">
+          <div className="mb-4 flex gap-4">
+            <div className="relative flex-1">
               <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
               <Input
                 placeholder="Search orders by PTL number, board type, sale code, firmware..."
@@ -736,6 +752,18 @@ const PTLOrders: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <Select value={sortBy} onValueChange={(value: 'newest' | 'oldest' | 'ptl_number' | 'status') => setSortBy(value)}>
+              <SelectTrigger className="w-[180px]">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="ptl_number">PTL Number</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Table>
             <TableHeader>
