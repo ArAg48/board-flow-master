@@ -572,7 +572,6 @@ export type Database = {
           }
         | {
             Args: {
-              p_cw_stamp?: string
               p_first_name: string
               p_last_name: string
               p_password: string
@@ -583,6 +582,7 @@ export type Database = {
           }
         | {
             Args: {
+              p_cw_stamp?: string
               p_first_name: string
               p_last_name: string
               p_password: string
