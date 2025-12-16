@@ -740,7 +740,7 @@ const PTLOrders: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>PTL Order</TableHead>
+                <TableHead className="min-w-[180px]">PTL Order</TableHead>
                 <TableHead>Sale Code</TableHead>
                 <TableHead>Firmware Rev</TableHead>
                 <TableHead>Date Code</TableHead>
