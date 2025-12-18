@@ -768,12 +768,12 @@ const PTLOrders: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[180px]">PTL Order</TableHead>
+                <TableHead className="min-w-[220px]">PTL Order</TableHead>
                 <TableHead>Sale Code</TableHead>
-                <TableHead>Firmware Rev</TableHead>
+                <TableHead>FW Rev</TableHead>
                 <TableHead>Date Code</TableHead>
                 <TableHead>Board Type</TableHead>
-                <TableHead>Quantity</TableHead>
+                <TableHead>Qty</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Status</TableHead>
