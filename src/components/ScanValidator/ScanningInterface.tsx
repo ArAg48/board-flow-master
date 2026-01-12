@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TesterConfig, ScanEntry, PTLOrder } from '@/types/scan-validator';
-import { Scan, CheckCircle, XCircle, Coffee, Pause, Play, AlertTriangle } from 'lucide-react';
+import { Scan, CheckCircle, XCircle, Coffee, Pause, Play, AlertTriangle, PartyPopper } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +50,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     qrCode: ''
   });
   const [failureReason, setFailureReason] = useState('');
+  const [ptlCompleteDialog, setPtlCompleteDialog] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -142,15 +143,10 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
             .eq('ptl_order_id', ptlOrder.id)
             .eq('test_status', 'pass');
 
-          const currentPassed = boardData?.length || 0;
-          const newPassedCount = currentPassed + 1;
+          const currentPassed = (boardData?.length || 0);
           
-          if (newPassedCount >= ptlOrder.expectedCount) {
-            toast({
-              title: "🎉 Target Reached!",
-              description: `You have successfully passed ${ptlOrder.expectedCount} boards for this PTL order. Ready to finish PTL!`,
-              duration: 8000
-            });
+          if (currentPassed >= ptlOrder.expectedCount) {
+            setPtlCompleteDialog(true);
           }
         } catch (error) {
           console.error('Error checking progress:', error);
@@ -235,15 +231,10 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
           .eq('ptl_order_id', ptlOrder.id)
           .eq('test_status', 'pass');
 
-        const currentPassed = boardData?.length || 0;
-        const newPassedCount = currentPassed + newEntries.length;
+        const currentPassed = (boardData?.length || 0);
         
-        if (newPassedCount >= ptlOrder.expectedCount) {
-          toast({
-            title: "🎉 Target Reached!",
-            description: `You have successfully passed ${ptlOrder.expectedCount} boards for this PTL order. Ready to finish PTL!`,
-            duration: 8000
-          });
+        if (currentPassed >= ptlOrder.expectedCount) {
+          setPtlCompleteDialog(true);
         }
       } catch (error) {
         console.error('Error checking progress:', error);
@@ -677,6 +668,35 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
                 Cancel
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={ptlCompleteDialog} onOpenChange={setPtlCompleteDialog}>
+        <DialogContent className="sm:max-w-md border-green-500 animate-pulse">
+          <div className="absolute inset-0 bg-green-500/10 rounded-lg animate-pulse" />
+          <DialogHeader className="relative">
+            <DialogTitle className="flex items-center justify-center gap-3 text-2xl text-green-600">
+              <PartyPopper className="h-8 w-8" />
+              PTL Complete!
+              <PartyPopper className="h-8 w-8" />
+            </DialogTitle>
+            <DialogDescription className="text-center text-lg pt-2">
+              🎉 You have successfully completed all {ptlOrder.expectedCount} boards for this PTL order!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center pt-4 relative">
+            <Button 
+              onClick={() => {
+                setPtlCompleteDialog(false);
+                onFinishPTL();
+              }}
+              size="lg"
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-8"
+            >
+              <CheckCircle className="h-5 w-5 mr-2" />
+              Complete PTL
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
