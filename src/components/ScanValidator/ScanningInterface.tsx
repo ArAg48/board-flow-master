@@ -673,8 +673,8 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
       </Dialog>
 
       <Dialog open={ptlCompleteDialog} onOpenChange={setPtlCompleteDialog}>
-        <DialogContent className="sm:max-w-md border-green-500 animate-pulse">
-          <div className="absolute inset-0 bg-green-500/10 rounded-lg animate-pulse" />
+        <DialogContent className="sm:max-w-md border-green-500 animate-in fade-in zoom-in duration-300">
+          <div className="absolute inset-0 bg-green-500/20 rounded-lg animate-in fade-in duration-500" />
           <DialogHeader className="relative">
             <DialogTitle className="flex items-center justify-center gap-3 text-2xl text-green-600">
               <PartyPopper className="h-8 w-8" />
