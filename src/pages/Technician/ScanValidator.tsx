@@ -23,6 +23,14 @@ const ScanValidator: React.FC = () => {
     open: false, 
     session: null 
   });
+  const [stillTestingDialog, setStillTestingDialog] = useState<{ 
+    open: boolean; 
+    pausedAt: Date | null 
+  }>({ 
+    open: false, 
+    pausedAt: null 
+  });
+  const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -63,6 +71,85 @@ const ScanValidator: React.FC = () => {
     window.addEventListener('ptlProgressUpdated', handleProgressUpdate);
     return () => window.removeEventListener('ptlProgressUpdated', handleProgressUpdate);
   }, []);
+
+  // 3-hour inactivity check - pause session and show dialog every 3 hours
+  useEffect(() => {
+    // Only run when session is actively scanning
+    if (!currentSession || currentSession.status !== 'scanning') {
+      return;
+    }
+
+    const THREE_HOURS_MS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+    const CHECK_INTERVAL = 60 * 1000; // Check every minute
+
+    const checkTimer = setInterval(() => {
+      if (!currentSession || currentSession.status !== 'scanning') {
+        return;
+      }
+
+      const now = new Date();
+      const sessionStart = currentSession.startTime;
+      const lastCheck = lastCheckTime || sessionStart;
+      
+      // Calculate total active time since start (excluding pauses)
+      const totalElapsed = now.getTime() - sessionStart.getTime();
+      const activeTime = totalElapsed - (currentSession.accumulatedPauseTime || 0) - (currentSession.accumulatedBreakTime || 0);
+      
+      // Calculate time since last check prompt
+      const timeSinceLastCheck = now.getTime() - lastCheck.getTime();
+      
+      // Show dialog if it's been 3 hours since last check (or since session start if first check)
+      if (timeSinceLastCheck >= THREE_HOURS_MS) {
+        // Pause the session and show dialog
+        const pauseTime = new Date();
+        setStillTestingDialog({ open: true, pausedAt: pauseTime });
+        setCurrentSession(prev => prev ? { ...prev, status: 'paused', pausedTime: pauseTime } : null);
+        setLastCheckTime(now);
+      }
+    }, CHECK_INTERVAL);
+
+    return () => clearInterval(checkTimer);
+  }, [currentSession?.status, currentSession?.startTime, lastCheckTime]);
+
+  const handleStillTestingYes = () => {
+    if (currentSession && stillTestingDialog.pausedAt) {
+      const now = new Date();
+      const pauseDuration = now.getTime() - stillTestingDialog.pausedAt.getTime();
+      
+      setCurrentSession({ 
+        ...currentSession, 
+        status: 'scanning', 
+        pausedTime: undefined,
+        accumulatedPauseTime: (currentSession.accumulatedPauseTime || 0) + pauseDuration
+      });
+      setLastCheckTime(now);
+    }
+    setStillTestingDialog({ open: false, pausedAt: null });
+    toast({
+      title: 'Session Resumed',
+      description: 'Keep up the good work!'
+    });
+  };
+
+  const handleStillTestingNo = () => {
+    if (currentSession && stillTestingDialog.pausedAt) {
+      const now = new Date();
+      const pauseDuration = now.getTime() - stillTestingDialog.pausedAt.getTime();
+      
+      // Keep session paused but add the pause duration
+      setCurrentSession({ 
+        ...currentSession, 
+        status: 'paused', 
+        pausedTime: undefined,
+        accumulatedPauseTime: (currentSession.accumulatedPauseTime || 0) + pauseDuration
+      });
+    }
+    setStillTestingDialog({ open: false, pausedAt: null });
+    toast({
+      title: 'Session Stopped',
+      description: 'Click "Start PTL" when you\'re ready to continue.'
+    });
+  };
 
   const loadPTLOrders = async () => {
     if (!user) {
@@ -309,6 +396,7 @@ const ScanValidator: React.FC = () => {
       };
 
       setCurrentSession(reconstructedSession);
+      setLastCheckTime(new Date()); // Reset 3-hour timer when resuming
       setResumeDialog({ open: false, session: null });
 
       toast({
@@ -358,6 +446,7 @@ const ScanValidator: React.FC = () => {
         accumulatedBreakTime: 0
       };
       setCurrentSession(newSession);
+      setLastCheckTime(newSession.startTime); // Reset 3-hour timer for new session
 
       // Create initial session record in database
       try {
@@ -429,15 +518,10 @@ const ScanValidator: React.FC = () => {
     });
   };
 
-  const handlePause = () => {
+  const handleStop = () => {
     if (currentSession) {
+      // Use 'paused' status internally to stop the timer
       setCurrentSession({ ...currentSession, status: 'paused', pausedTime: new Date() });
-    }
-  };
-
-  const handleBreak = () => {
-    if (currentSession) {
-      setCurrentSession({ ...currentSession, status: 'break', breakTime: new Date() });
     }
   };
 
@@ -724,6 +808,37 @@ const handleResume = () => {
         </DialogContent>
       </Dialog>
 
+      {/* 3-Hour Inactivity Check Dialog */}
+      <Dialog open={stillTestingDialog.open} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-center">Are you still testing?</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-6">
+            <p className="text-center text-muted-foreground">
+              It's been 3 hours since the last check. The session timer has been paused.
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Button 
+                onClick={handleStillTestingYes} 
+                size="lg"
+                className="px-8"
+              >
+                Yes
+              </Button>
+              <Button 
+                onClick={handleStillTestingNo} 
+                variant="destructive"
+                size="lg"
+                className="px-8"
+              >
+                No
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">CW PTL</h1>
@@ -816,12 +931,11 @@ const handleResume = () => {
             ptlOrder={currentSession.ptlOrder}
             scannedEntries={currentSession.scannedEntries}
             onScanEntry={handleScanEntry}
-            onPause={handlePause}
-            onBreak={handleBreak}
+            onStop={handleStop}
             onResume={handleResume}
             onFinishPTL={handleFinishPTL}
             isActive={currentSession.status === 'scanning'}
-            isBreakMode={currentSession.status === 'break'}
+            isStopped={currentSession.status === 'paused' || currentSession.status === 'break'}
             sessionId={currentSession.id}
           />
         </div>

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TesterConfig, ScanEntry, PTLOrder } from '@/types/scan-validator';
-import { Scan, CheckCircle, XCircle, Coffee, Pause, Play, AlertTriangle, PartyPopper } from 'lucide-react';
+import { Scan, CheckCircle, XCircle, StopCircle, Play, AlertTriangle, PartyPopper } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,12 +19,11 @@ interface ScanningInterfaceProps {
   ptlOrder: PTLOrder;
   scannedEntries: ScanEntry[];
   onScanEntry: (entry: ScanEntry) => void;
-  onPause: () => void;
-  onBreak: () => void;
+  onStop: () => void;
   onResume: () => void;
   onFinishPTL: () => void;
   isActive: boolean;
-  isBreakMode: boolean;
+  isStopped: boolean;
   sessionId: string;
 }
 
@@ -33,12 +32,11 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   ptlOrder,
   scannedEntries,
   onScanEntry,
-  onPause,
-  onBreak,
+  onStop,
   onResume,
   onFinishPTL,
   isActive,
-  isBreakMode,
+  isStopped,
   sessionId
 }) => {
   const [scanInputs, setScanInputs] = useState<string[]>(Array(testerConfig.scanBoxes).fill(''));
@@ -76,7 +74,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
   };
 
   const handleScanInput = async (boxIndex: number, value: string) => {
-    if (!isActive || isBreakMode) return;
+    if (!isActive || isStopped) return;
 
     const newInputs = [...scanInputs];
     newInputs[boxIndex] = value;
@@ -485,22 +483,22 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
     return { total: boxEntries.length, passed, failed };
   };
 
-  if (isBreakMode) {
+  if (isStopped) {
     return (
       <Card className="border-amber-200 bg-amber-50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-amber-700">
-            <Coffee className="h-5 w-5" />
-            Break Mode
+            <StopCircle className="h-5 w-5" />
+            Session Stopped
           </CardTitle>
           <CardDescription className="text-amber-600">
-            Session is on break. Timer continues running but scanning is disabled.
+            Session is stopped. Timer is paused. Click Start PTL to resume.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center py-8">
           <Button onClick={onResume} size="lg">
             <Play className="h-4 w-4 mr-2" />
-            Resume Scanning
+            Start PTL
           </Button>
         </CardContent>
       </Card>
@@ -588,13 +586,9 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
           <div className="flex flex-wrap gap-2">
             {isActive ? (
               <>
-                <Button onClick={onPause} variant="outline">
-                  <Pause className="h-4 w-4 mr-2" />
-                  Pause Session
-                </Button>
-                <Button onClick={onBreak} variant="secondary">
-                  <Coffee className="h-4 w-4 mr-2" />
-                  Take Break
+                <Button onClick={onStop} variant="destructive">
+                  <StopCircle className="h-4 w-4 mr-2" />
+                  Stop PTL
                 </Button>
                  <Button 
                    onClick={handlePassAllUnfailed} 
@@ -621,7 +615,7 @@ const ScanningInterface: React.FC<ScanningInterfaceProps> = ({
             ) : (
               <Button onClick={onResume}>
                 <Play className="h-4 w-4 mr-2" />
-                Resume Session
+                Start PTL
               </Button>
             )}
           </div>
