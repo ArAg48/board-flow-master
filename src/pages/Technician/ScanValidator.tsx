@@ -79,8 +79,9 @@ const ScanValidator: React.FC = () => {
       return;
     }
 
-    const THREE_HOURS_MS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
-    const CHECK_INTERVAL = 60 * 1000; // Check every minute
+    // TESTING: 5 minutes (change back to 3 * 60 * 60 * 1000 for production)
+    const THREE_HOURS_MS = 5 * 60 * 1000; // 5 minutes for testing
+    const CHECK_INTERVAL = 30 * 1000; // Check every 30 seconds for testing
 
     const checkTimer = setInterval(() => {
       if (!currentSession || currentSession.status !== 'scanning') {
