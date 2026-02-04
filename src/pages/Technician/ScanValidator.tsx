@@ -79,8 +79,9 @@ const ScanValidator: React.FC = () => {
       return;
     }
 
-    const THREE_HOURS_MS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
-    const CHECK_INTERVAL = 60 * 1000; // Check every minute
+    // SCREENSHOT MODE: 2 minutes (change back to 3 * 60 * 60 * 1000 for production)
+    const THREE_HOURS_MS = 2 * 60 * 1000; // 2 minutes for screenshot
+    const CHECK_INTERVAL = 30 * 1000; // Check every 30 seconds
 
     const checkTimer = setInterval(() => {
       if (!currentSession || currentSession.status !== 'scanning') {
