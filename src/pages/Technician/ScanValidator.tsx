@@ -79,9 +79,9 @@ const ScanValidator: React.FC = () => {
       return;
     }
 
-    // SCREENSHOT MODE: 2 minutes (change back to 3 * 60 * 60 * 1000 for production)
-    const THREE_HOURS_MS = 2 * 60 * 1000; // 2 minutes for screenshot
-    const CHECK_INTERVAL = 30 * 1000; // Check every 30 seconds
+    // 3-hour inactivity check interval
+    const THREE_HOURS_MS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+    const CHECK_INTERVAL = 60 * 1000; // Check every minute
 
     const checkTimer = setInterval(() => {
       if (!currentSession || currentSession.status !== 'scanning') {
@@ -163,20 +163,41 @@ const ScanValidator: React.FC = () => {
       setLoading(true);
       console.log('Loading PTL orders for user:', user.id);
       
-      // Fetch PTL orders with hardware order details - include both pending and in_progress
+      // Fetch PTL orders with hardware order details
+      // Include pending, in_progress, AND completed orders that still need verification
       const { data: ptlOrdersData, error: ptlError } = await supabase
         .from('ptl_orders')
         .select(`
           *,
           hardware_orders(starting_sequence)
         `)
-        .in('status', ['pending', 'in_progress'])
         .order('created_at', { ascending: false });
 
       if (ptlError) throw ptlError;
 
-      // Fetch progress data for all orders using RPC fallback
-      const orderIds = (ptlOrdersData || []).map(order => order.id);
+      // Filter to show:
+      // 1. Orders with status 'pending' or 'in_progress'
+      // 2. Completed orders that are MISSING verification data (not yet archived)
+      const filteredOrders = (ptlOrdersData || []).filter(order => {
+        // Always show pending and in_progress orders
+        if (order.status === 'pending' || order.status === 'in_progress') {
+          return true;
+        }
+        
+        // For completed orders, show them if they're missing ANY verification data
+        if (order.status === 'completed') {
+          const needsVerification = 
+            !order.verifier_initials || 
+            !order.product_count_verified || 
+            !order.axxess_updater;
+          return needsVerification;
+        }
+        
+        return false;
+      });
+
+      // Fetch progress data for all filtered orders using RPC fallback
+      const orderIds = filteredOrders.map(order => order.id);
       let progressRows: any[] = [];
       
       // Try RPC first for most up-to-date data
@@ -200,11 +221,18 @@ const ScanValidator: React.FC = () => {
       }, {} as Record<string, any>);
 
       // Transform database records to PTLOrder format
-      const transformedOrders: PTLOrder[] = (ptlOrdersData || []).map(order => {
+      const transformedOrders: PTLOrder[] = filteredOrders.map(order => {
         const hardwareOrder = order.hardware_orders as any;
         const startSequence = hardwareOrder?.starting_sequence || '411E0000001';
         const first4Chars = startSequence.substring(0, 4);
         const progress = progressMap[order.id];
+        
+        // Check if this completed order needs verification
+        const needsVerification = order.status === 'completed' && (
+          !order.verifier_initials || 
+          !order.product_count_verified || 
+          !order.axxess_updater
+        );
         
         return {
           id: order.id,
@@ -212,7 +240,7 @@ const ScanValidator: React.FC = () => {
           boardType: order.board_type,
           expectedFormat: `^${first4Chars}\\d{7}$`, // First 4 chars + 7 digits
           expectedCount: order.quantity,
-          priority: 'medium' as const, // Default priority
+          priority: needsVerification ? 'high' as const : 'medium' as const, // High priority for orders needing verification
           dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 7 days from now
           scannedCount: progress?.scanned_count || 0,
           passedCount: progress?.passed_count || 0,
@@ -220,6 +248,7 @@ const ScanValidator: React.FC = () => {
           status: order.status,
           firmwareRevision: order.firmware_revision,
           is_firmware_update: order.is_firmware_update || false,
+          needsVerification, // Flag to indicate this order needs post-test verification
         };
       });
 
@@ -481,6 +510,70 @@ const ScanValidator: React.FC = () => {
       } catch (error) {
         console.error('Error creating session:', error);
       }
+    }
+  };
+
+  // Handler for orders that need verification only (already completed testing)
+  const handleVerifyOrder = async (order: PTLOrder) => {
+    if (!user?.id) return;
+    
+    // Create a session that goes directly to post-test status
+    const verificationSession: ValidationSession = {
+      id: crypto.randomUUID(),
+      ptlOrder: order,
+      testerConfig: { type: 1, scanBoxes: 1 },
+      preTestVerification: {
+        testerCheck: true,
+        firmwareCheck: true
+      },
+      startTime: new Date(),
+      status: 'post-test', // Go directly to post-test verification
+      scannedEntries: [], // No new scans needed
+      totalDuration: 0,
+      accumulatedPauseTime: 0,
+      accumulatedBreakTime: 0
+    };
+    
+    setCurrentSession(verificationSession);
+    setLastCheckTime(verificationSession.startTime);
+
+    // Create session record in database
+    try {
+      const sessionData = JSON.parse(JSON.stringify({
+        id: verificationSession.id,
+        status: 'post-test',
+        startTime: verificationSession.startTime.toISOString(),
+        testerConfig: verificationSession.testerConfig,
+        preTestVerification: verificationSession.preTestVerification,
+        scannedEntries: [],
+        totalDuration: 0,
+        verificationOnly: true // Flag to indicate this is verification-only session
+      }));
+
+      await (supabase.rpc as any)('save_session', {
+        p_session_id: verificationSession.id,
+        p_technician_id: user.id,
+        p_ptl_order_id: verificationSession.ptlOrder.id,
+        p_session_data: sessionData,
+        p_status: 'active' as any,
+        p_paused_at: null,
+        p_break_started_at: null,
+        p_duration_minutes: 0,
+        p_active_duration_minutes: 0,
+        p_session_scanned_count: 0,
+        p_session_pass_count: 0,
+        p_session_fail_count: 0,
+        p_total_scanned: order.scannedCount || 0,
+        p_pass_count: order.passedCount || 0,
+        p_fail_count: order.failedCount || 0,
+      } as any);
+      
+      toast({
+        title: 'Verification Session Started',
+        description: `Ready to verify PTL order ${order.orderNumber}. Complete the post-test verification to finalize the order.`
+      });
+    } catch (error) {
+      console.error('Error creating verification session:', error);
     }
   };
 
@@ -900,6 +993,7 @@ const handleResume = () => {
           selectedOrder={null}
           onOrderSelect={handleOrderSelect}
           onConfirm={handlePreTestComplete}
+          onVerifyOrder={handleVerifyOrder}
         />
       )}
 

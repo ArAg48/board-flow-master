@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PTLOrder } from '@/types/scan-validator';
-import { Package, Calendar, AlertCircle, Search, Info } from 'lucide-react';
+import { Package, Calendar, AlertCircle, Search, Info, ClipboardCheck } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 interface PTLOrderSelectorProps {
@@ -12,13 +12,15 @@ interface PTLOrderSelectorProps {
   selectedOrder: PTLOrder | null;
   onOrderSelect: (order: PTLOrder) => void;
   onConfirm: () => void;
+  onVerifyOrder?: (order: PTLOrder) => void; // New prop for starting verification directly
 }
 
 const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
   orders,
   selectedOrder,
   onOrderSelect,
-  onConfirm
+  onConfirm,
+  onVerifyOrder
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredOrders, setFilteredOrders] = useState(orders);
@@ -31,7 +33,8 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
     setFilteredOrders(filtered);
   }, [searchTerm, orders]);
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string, needsVerification?: boolean) => {
+    if (needsVerification) return 'default'; // Blue badge for verification needed
     switch (priority) {
       case 'high': return 'destructive';
       case 'medium': return 'default';
@@ -39,6 +42,10 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
       default: return 'outline';
     }
   };
+
+  // Separate orders into regular and verification-needed
+  const regularOrders = filteredOrders.filter(o => !o.needsVerification);
+  const verificationOrders = filteredOrders.filter(o => o.needsVerification);
 
   return (
     <Card>
@@ -62,44 +69,95 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
           />
         </div>
 
-        <div className="max-h-64 overflow-y-auto space-y-2">
-          {filteredOrders.map((order) => {
-            const remainingCount = Math.max(0, order.expectedCount - (order.scannedCount || 0));
-            const progressPercentage = Math.min(100, ((order.scannedCount || 0) / order.expectedCount) * 100);
-            
-            return (
-              <div
-                key={order.id}
-                className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedOrder?.id === order.id ? 'border-primary bg-primary/5' : 'border-border'
-                }`}
-                onClick={() => onOrderSelect(order)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{order.orderNumber}</div>
-                    <div className="text-sm text-muted-foreground">{order.boardType}</div>
+        {/* Show verification-needed orders in a separate section */}
+        {verificationOrders.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">
+              <ClipboardCheck className="h-4 w-4" />
+              <span>Orders Awaiting Verification ({verificationOrders.length})</span>
+            </div>
+            <div className="max-h-32 overflow-y-auto space-y-2">
+              {verificationOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className={`p-3 border-2 border-amber-300 rounded-lg cursor-pointer transition-colors hover:bg-amber-50 ${
+                    selectedOrder?.id === order.id ? 'border-primary bg-primary/5' : 'bg-amber-50/50'
+                  }`}
+                  onClick={() => onOrderSelect(order)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        {order.orderNumber}
+                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
+                          Needs Verification
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">{order.boardType}</div>
+                    </div>
                   </div>
-                  <Badge variant={getPriorityColor(order.priority)}>
-                    {order.priority}
-                  </Badge>
-                </div>
-                
-                <div className="mt-2">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>Progress: {order.scannedCount || 0} / {order.expectedCount}</span>
-                    <span className="font-medium text-primary">{remainingCount} remaining</span>
+                  
+                  <div className="mt-2">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                      <span>Completed: {order.scannedCount || 0} / {order.expectedCount}</span>
+                      <span className="font-medium text-green-600">Testing Complete</span>
+                    </div>
+                    <Progress value={100} className="h-1.5" />
                   </div>
-                  <Progress value={progressPercentage} className="h-1.5" />
                 </div>
-                
-                <div className="text-xs text-muted-foreground mt-1">
-                  Due: {order.dueDate.toLocaleDateString()}
-                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Regular orders section */}
+        {regularOrders.length > 0 && (
+          <div className="space-y-2">
+            {verificationOrders.length > 0 && (
+              <div className="text-sm font-medium text-muted-foreground">
+                Active Orders ({regularOrders.length})
               </div>
-            );
-          })}
-        </div>
+            )}
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {regularOrders.map((order) => {
+                const remainingCount = Math.max(0, order.expectedCount - (order.scannedCount || 0));
+                const progressPercentage = Math.min(100, ((order.scannedCount || 0) / order.expectedCount) * 100);
+                
+                return (
+                  <div
+                    key={order.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                      selectedOrder?.id === order.id ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                    onClick={() => onOrderSelect(order)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{order.orderNumber}</div>
+                        <div className="text-sm text-muted-foreground">{order.boardType}</div>
+                      </div>
+                      <Badge variant={getPriorityColor(order.priority)}>
+                        {order.priority}
+                      </Badge>
+                    </div>
+                    
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>Progress: {order.scannedCount || 0} / {order.expectedCount}</span>
+                        <span className="font-medium text-primary">{remainingCount} remaining</span>
+                      </div>
+                      <Progress value={progressPercentage} className="h-1.5" />
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Due: {order.dueDate.toLocaleDateString()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {filteredOrders.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
@@ -111,9 +169,15 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
           <div className="border rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">{selectedOrder.orderNumber}</h3>
-              <Badge variant={getPriorityColor(selectedOrder.priority)}>
-                {selectedOrder.priority} priority
-              </Badge>
+              {selectedOrder.needsVerification ? (
+                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                  Verification Required
+                </Badge>
+              ) : (
+                <Badge variant={getPriorityColor(selectedOrder.priority)}>
+                  {selectedOrder.priority} priority
+                </Badge>
+              )}
             </div>
             
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -148,8 +212,24 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
               </div>
             </div>
 
-            {/* Show progress if there's any */}
-            {(selectedOrder.scannedCount || 0) > 0 && (
+            {/* Show verification notice for completed orders */}
+            {selectedOrder.needsVerification && (
+              <div className="border-t pt-3 mt-3">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
+                    <ClipboardCheck className="h-4 w-4" />
+                    <span>Post-Test Verification Required</span>
+                  </div>
+                  <div className="text-xs text-amber-700 mt-1">
+                    This order has completed testing but still needs verification from a technician.
+                    Click below to complete the verification process.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show progress if there's any (for non-verification orders) */}
+            {!selectedOrder.needsVerification && (selectedOrder.scannedCount || 0) > 0 && (
               <div className="border-t pt-3 mt-3">
                 <div className="text-sm font-medium mb-2">Current Progress:</div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
@@ -187,12 +267,19 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
               </span>
             </div>
 
-            <Button onClick={onConfirm} className="w-full">
-              {(selectedOrder.scannedCount || 0) > 0 
-                ? `Continue PTL Order (${Math.max(0, selectedOrder.expectedCount - (selectedOrder.scannedCount || 0))} boards remaining)`
-                : 'Start PTL Order'
-              }
-            </Button>
+            {selectedOrder.needsVerification && onVerifyOrder ? (
+              <Button onClick={() => onVerifyOrder(selectedOrder)} className="w-full bg-amber-600 hover:bg-amber-700">
+                <ClipboardCheck className="h-4 w-4 mr-2" />
+                Complete Verification
+              </Button>
+            ) : (
+              <Button onClick={onConfirm} className="w-full">
+                {(selectedOrder.scannedCount || 0) > 0 
+                  ? `Continue PTL Order (${Math.max(0, selectedOrder.expectedCount - (selectedOrder.scannedCount || 0))} boards remaining)`
+                  : 'Start PTL Order'
+                }
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
