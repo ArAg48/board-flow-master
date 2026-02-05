@@ -12,6 +12,7 @@ export interface PTLOrder {
   status?: string;
   firmwareRevision?: string;
   is_firmware_update?: boolean;
+  needsVerification?: boolean; // True when order is completed but missing verification data
 }
 
 export interface TesterConfig {
