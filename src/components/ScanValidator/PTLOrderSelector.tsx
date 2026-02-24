@@ -113,19 +113,19 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
                     </div>
                     <Progress value={100} className="h-1.5" />
                   </div>
-
-                  {selectedOrder?.id === order.id && onVerifyOrder && (
-                    <Button 
-                      onClick={(e) => { e.stopPropagation(); onVerifyOrder(order); }} 
-                      className="w-full mt-3 bg-amber-600 hover:bg-amber-700"
-                    >
-                      <ClipboardCheck className="h-4 w-4 mr-2" />
-                      Complete Verification
-                    </Button>
-                  )}
                 </div>
               ))}
             </div>
+
+            {selectedOrder?.needsVerification && onVerifyOrder && (
+              <Button 
+                onClick={() => onVerifyOrder(selectedOrder)} 
+                className="w-full bg-amber-600 hover:bg-amber-700"
+              >
+                <ClipboardCheck className="h-4 w-4 mr-2" />
+                Complete Verification for {selectedOrder.orderNumber}
+              </Button>
+            )}
           </div>
         )}
 
