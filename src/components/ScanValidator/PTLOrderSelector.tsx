@@ -17,13 +17,22 @@ interface PTLOrderSelectorProps {
 
 const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
   orders,
-  selectedOrder,
+  selectedOrder: externalSelectedOrder,
   onOrderSelect,
   onConfirm,
   onVerifyOrder
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredOrders, setFilteredOrders] = useState(orders);
+  const [internalSelectedOrder, setInternalSelectedOrder] = useState<PTLOrder | null>(null);
+
+  // Use internal state if external is null
+  const selectedOrder = externalSelectedOrder || internalSelectedOrder;
+
+  const handleOrderClick = (order: PTLOrder) => {
+    setInternalSelectedOrder(order);
+    onOrderSelect(order);
+  };
 
   useEffect(() => {
     const filtered = orders.filter(order =>
@@ -83,7 +92,7 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
                   className={`p-3 border-2 border-amber-300 rounded-lg cursor-pointer transition-colors hover:bg-amber-50 ${
                     selectedOrder?.id === order.id ? 'border-primary bg-primary/5' : 'bg-amber-50/50'
                   }`}
-                  onClick={() => onOrderSelect(order)}
+                  onClick={() => handleOrderClick(order)}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -129,7 +138,7 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
                     className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
                       selectedOrder?.id === order.id ? 'border-primary bg-primary/5' : 'border-border'
                     }`}
-                    onClick={() => onOrderSelect(order)}
+                    onClick={() => handleOrderClick(order)}
                   >
                     <div className="flex items-center justify-between">
                       <div>
