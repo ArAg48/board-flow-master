@@ -454,6 +454,12 @@ const ScanValidator: React.FC = () => {
 
   const handleOrderSelect = async (order: PTLOrder) => {
     if (!currentSession && user?.id) {
+      // If this order needs verification only, don't create a full session yet
+      // The user will click "Complete Verification" button which calls handleVerifyOrder
+      if (order.needsVerification) {
+        return;
+      }
+
       // Refresh the order data to get the latest progress before starting
       await loadPTLOrders();
       
