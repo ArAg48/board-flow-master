@@ -1042,23 +1042,27 @@ const handleResume = () => {
         </div>
       )}
 
-      {currentSession?.status === 'post-test' && (
+      {currentSession?.status === 'post-test' && (() => {
+        // For verification-only sessions, use the order's scanned count instead of current session stats
+        const verificationActualCount = stats.total > 0 ? stats.total : (currentSession.ptlOrder.scannedCount || currentSession.ptlOrder.expectedCount);
+        return (
         <PostTestVerificationComponent
           verification={{
-            finalCount: stats.total,
+            finalCount: verificationActualCount,
             accessUpdaterSync: false,
             productCountVerified: '',
             axxessUpdater: ''
           }}
           expectedCount={currentSession.ptlOrder.expectedCount}
-          actualCount={stats.total}
+          actualCount={verificationActualCount}
           firmwareRevision={currentSession.ptlOrder.firmwareRevision}
           onVerificationChange={(verification) => 
             setCurrentSession({ ...currentSession, postTestVerification: verification })
           }
           onComplete={handlePostTestComplete}
         />
-      )}
+        );
+      })()}
 
       {currentSession?.status === 'completed' && (
         <div className="text-center p-8 border rounded-lg bg-green-50">

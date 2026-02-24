@@ -113,6 +113,16 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
                     </div>
                     <Progress value={100} className="h-1.5" />
                   </div>
+
+                  {selectedOrder?.id === order.id && onVerifyOrder && (
+                    <Button 
+                      onClick={(e) => { e.stopPropagation(); onVerifyOrder(order); }} 
+                      className="w-full mt-3 bg-amber-600 hover:bg-amber-700"
+                    >
+                      <ClipboardCheck className="h-4 w-4 mr-2" />
+                      Complete Verification
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -174,19 +184,13 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
           </div>
         )}
 
-        {selectedOrder && (
+        {selectedOrder && !selectedOrder.needsVerification && (
           <div className="border rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">{selectedOrder.orderNumber}</h3>
-              {selectedOrder.needsVerification ? (
-                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-                  Verification Required
-                </Badge>
-              ) : (
-                <Badge variant={getPriorityColor(selectedOrder.priority)}>
-                  {selectedOrder.priority} priority
-                </Badge>
-              )}
+              <Badge variant={getPriorityColor(selectedOrder.priority)}>
+                {selectedOrder.priority} priority
+              </Badge>
             </div>
             
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -221,24 +225,7 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
               </div>
             </div>
 
-            {/* Show verification notice for completed orders */}
-            {selectedOrder.needsVerification && (
-              <div className="border-t pt-3 mt-3">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
-                    <ClipboardCheck className="h-4 w-4" />
-                    <span>Post-Test Verification Required</span>
-                  </div>
-                  <div className="text-xs text-amber-700 mt-1">
-                    This order has completed testing but still needs verification from a technician.
-                    Click below to complete the verification process.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Show progress if there's any (for non-verification orders) */}
-            {!selectedOrder.needsVerification && (selectedOrder.scannedCount || 0) > 0 && (
+            {(selectedOrder.scannedCount || 0) > 0 && (
               <div className="border-t pt-3 mt-3">
                 <div className="text-sm font-medium mb-2">Current Progress:</div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
@@ -276,19 +263,12 @@ const PTLOrderSelector: React.FC<PTLOrderSelectorProps> = ({
               </span>
             </div>
 
-            {selectedOrder.needsVerification && onVerifyOrder ? (
-              <Button onClick={() => onVerifyOrder(selectedOrder)} className="w-full bg-amber-600 hover:bg-amber-700">
-                <ClipboardCheck className="h-4 w-4 mr-2" />
-                Complete Verification
-              </Button>
-            ) : (
-              <Button onClick={onConfirm} className="w-full">
-                {(selectedOrder.scannedCount || 0) > 0 
-                  ? `Continue PTL Order (${Math.max(0, selectedOrder.expectedCount - (selectedOrder.scannedCount || 0))} boards remaining)`
-                  : 'Start PTL Order'
-                }
-              </Button>
-            )}
+            <Button onClick={onConfirm} className="w-full">
+              {(selectedOrder.scannedCount || 0) > 0 
+                ? `Continue PTL Order (${Math.max(0, selectedOrder.expectedCount - (selectedOrder.scannedCount || 0))} boards remaining)`
+                : 'Start PTL Order'
+              }
+            </Button>
           </div>
         )}
       </CardContent>
