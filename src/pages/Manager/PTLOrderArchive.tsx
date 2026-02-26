@@ -88,7 +88,7 @@ const PTLOrderArchive: React.FC = () => {
       if (rows.length === 0) {
         const { data: progRows, error: progError } = await supabase
           .from('ptl_order_progress')
-          .select('id, scanned_count, passed_count, failed_count, total_time_minutes');
+          .select('id, scanned_count, passed_count, failed_count, total_time_minutes, active_time_minutes');
         if (progError) throw progError;
         rows = progRows || [];
       }
@@ -99,7 +99,7 @@ const PTLOrderArchive: React.FC = () => {
           scanned: Number(row.scanned_count) || 0,
           passed: Number(row.passed_count) || 0,
           failed: Number(row.failed_count) || 0,
-          totalTime: Number(row.total_time_minutes) || 0,
+          totalTime: Number(row.active_time_minutes || row.total_time_minutes) || 0,
         };
       });
 
