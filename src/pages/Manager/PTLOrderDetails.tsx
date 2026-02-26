@@ -163,7 +163,7 @@ const PTLOrderDetails: React.FC = () => {
         const progressRow = rpcRows.find((r: any) => r.id === id);
         if (progressRow) {
           // Use the time from the RPC function which properly aggregates session times
-          totalTime = Number(progressRow.total_time_minutes || progressRow.active_time_minutes || 0);
+          totalTime = Number(progressRow.active_time_minutes || progressRow.total_time_minutes || 0);
         }
       }
       
@@ -175,7 +175,7 @@ const PTLOrderDetails: React.FC = () => {
           .eq('id', id)
           .maybeSingle();
         if (progressData) {
-          totalTime = Number(progressData.total_time_minutes || progressData.active_time_minutes || 0);
+          totalTime = Number(progressData.active_time_minutes || progressData.total_time_minutes || 0);
         }
       }
 
@@ -394,7 +394,7 @@ const PTLOrderDetails: React.FC = () => {
             <div className="text-2xl font-bold text-purple-600">
               {stats.totalTime > 0 ? `${Math.floor(stats.totalTime / 60)}h ${stats.totalTime % 60}m` : '0m'}
             </div>
-            <div className="text-sm text-muted-foreground">Total Time</div>
+            <div className="text-sm text-muted-foreground">Active Time</div>
           </CardContent>
         </Card>
       </div>
