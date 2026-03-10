@@ -239,6 +239,9 @@ const PTLOrderArchive: React.FC = () => {
                         <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/app/ptl-orders/${order.id}`)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
