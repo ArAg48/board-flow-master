@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Clipboard, Eye, Search, Archive } from 'lucide-react';
+import { Clipboard, Eye, Search, Archive, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -238,6 +238,9 @@ const PTLOrderArchive: React.FC = () => {
                       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                         <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
                           <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/app/ptl-orders/${order.id}`)}>
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
