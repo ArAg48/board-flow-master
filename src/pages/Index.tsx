@@ -189,7 +189,7 @@ const Index = () => {
                         <TableCell className="font-mono">{boardDetails.firmwareVersion}</TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell className="font-medium">PTL Order</TableCell>
+                        <TableCell className="font-medium">Finished Goods<br/>Tested Assembly</TableCell>
                         <TableCell className="font-mono">{boardDetails.ptlOrderNumber}</TableCell>
                       </TableRow>
                       <TableRow>
