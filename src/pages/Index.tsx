@@ -173,6 +173,10 @@ const Index = () => {
                     </TableHeader>
                     <TableBody>
                       <TableRow>
+                        <TableCell className="font-medium">Finished Goods<br/>Tested Assembly</TableCell>
+                        <TableCell className="font-mono">{boardDetails.ptlOrderNumber}</TableCell>
+                      </TableRow>
+                      <TableRow>
                         <TableCell className="font-medium">Board ID</TableCell>
                         <TableCell className="font-mono">{boardDetails.boardId}</TableCell>
                       </TableRow>
@@ -187,10 +191,6 @@ const Index = () => {
                       <TableRow>
                         <TableCell className="font-medium">Firmware Version</TableCell>
                         <TableCell className="font-mono">{boardDetails.firmwareVersion}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Finished Goods<br/>Tested Assembly</TableCell>
-                        <TableCell className="font-mono">{boardDetails.ptlOrderNumber}</TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-medium">Serial Number</TableCell>
