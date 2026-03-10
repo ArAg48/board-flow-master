@@ -71,12 +71,24 @@ const Index = () => {
         const board = data[0];
         const serialNumber = board.sequence_number ? board.sequence_number.slice(-7) : 'N/A';
         
+        // Extract PTL order number starting from "257", show 10 chars (pad with space if needed)
+        let ptlDisplay = 'N/A';
+        if (board.ptl_order_number) {
+          const idx = board.ptl_order_number.indexOf('257');
+          if (idx !== -1) {
+            ptlDisplay = board.ptl_order_number.substring(idx, idx + 10).padEnd(10, ' ');
+          } else {
+            ptlDisplay = board.ptl_order_number;
+          }
+        }
+        
         setBoardDetails({
           boardId: board.qr_code,
           serialNumber: serialNumber,
           productId: board.board_type || 'N/A',
           dateCode: board.date_code || 'N/A',
-          firmwareVersion: board.firmware_revision || 'N/A'
+          firmwareVersion: board.firmware_revision || 'N/A',
+          ptlOrderNumber: ptlDisplay
         });
       } else {
         setBoardDetails(null);
@@ -175,6 +187,10 @@ const Index = () => {
                       <TableRow>
                         <TableCell className="font-medium">Firmware Version</TableCell>
                         <TableCell className="font-mono">{boardDetails.firmwareVersion}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">PTL Order</TableCell>
+                        <TableCell className="font-mono">{boardDetails.ptlOrderNumber}</TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-medium">Serial Number</TableCell>
