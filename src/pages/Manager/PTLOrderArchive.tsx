@@ -7,13 +7,29 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Clipboard, Eye, Search, Archive, Pencil } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { Clipboard, Eye, Search, Archive, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
 type PTLOrder = Database['public']['Tables']['ptl_orders']['Row'];
 type HardwareOrder = Database['public']['Tables']['hardware_orders']['Row'];
+
+interface PTLOrderForm {
+  hardware_order_id?: string;
+  ptl_order_number: string;
+  board_type: string;
+  quantity: number;
+  sale_code: string;
+  firmware_revision: string;
+  date_code: string;
+  notes?: string;
+  test_parameters?: any;
+}
 
 const PTLOrderArchive: React.FC = () => {
   const navigate = useNavigate();
@@ -23,7 +39,23 @@ const PTLOrderArchive: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<PTLOrder | null>(null);
   const [viewOrderDetails, setViewOrderDetails] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<PTLOrder | null>(null);
   const { toast } = useToast();
+
+  const form = useForm<PTLOrderForm>({
+    defaultValues: {
+      hardware_order_id: '',
+      ptl_order_number: '',
+      board_type: '',
+      quantity: 1,
+      sale_code: '',
+      firmware_revision: '',
+      date_code: '',
+      notes: '',
+      test_parameters: {},
+    },
+  });
 
   useEffect(() => {
     fetchHardwareOrders();
@@ -51,16 +83,14 @@ const PTLOrderArchive: React.FC = () => {
 
   const fetchCompletedPTLOrders = async () => {
     try {
-      // Fetch all completed orders
       const { data: allCompleted, error } = await supabase
         .from('ptl_orders')
         .select('*')
         .eq('status', 'completed')
-        .order('updated_at', { ascending: false }); // Sort by completion date
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
       
-      // Only show orders that have been properly verified (post-test verification complete)
       const verifiedOrders = (allCompleted || []).filter(order =>
         order.verifier_initials && 
         order.product_count_verified && 
@@ -79,7 +109,6 @@ const PTLOrderArchive: React.FC = () => {
 
   const fetchOrderCounts = async () => {
     try {
-      // Prefer RPC for live derived progress; fallback to ptl_order_progress table
       const { data: rpcData, error: rpcError } = await supabase.rpc('get_ptl_order_progress');
       if (rpcError) console.warn('RPC get_ptl_order_progress error:', rpcError);
 
@@ -114,6 +143,78 @@ const PTLOrderArchive: React.FC = () => {
     setViewOrderDetails(true);
   };
 
+  const handleEdit = (order: PTLOrder) => {
+    setEditingOrder(order);
+    form.reset({
+      hardware_order_id: order.hardware_order_id || '',
+      ptl_order_number: order.ptl_order_number,
+      board_type: order.board_type,
+      quantity: order.quantity,
+      sale_code: order.sale_code || '',
+      firmware_revision: order.firmware_revision || '',
+      date_code: order.date_code || '',
+      notes: order.notes || '',
+      test_parameters: order.test_parameters || {},
+    });
+    setEditDialogOpen(true);
+  };
+
+  const onEditSubmit = async (data: PTLOrderForm) => {
+    if (!editingOrder) return;
+    try {
+      const currentPassedCount = orderCounts[editingOrder.id]?.passed || 0;
+      const newQuantity = data.quantity;
+      const wasCompleted = editingOrder.status === 'completed';
+      
+      let newStatus = editingOrder.status;
+      if (wasCompleted && newQuantity > currentPassedCount) {
+        newStatus = 'pending';
+        toast({
+          title: 'Status Updated',
+          description: `Order quantity increased. Status changed from completed to pending as more boards need to be tested.`,
+        });
+      }
+
+      const { error } = await supabase
+        .from('ptl_orders')
+        .update({
+          ...data,
+          status: newStatus
+        })
+        .eq('id', editingOrder.id);
+
+      if (error) throw error;
+
+      const { error: progressError } = await supabase.rpc('update_ptl_progress', {
+        p_ptl_order_id: editingOrder.id
+      });
+      if (progressError) console.error('Error updating PTL progress:', progressError);
+
+      toast({
+        title: 'PTL Order Updated',
+        description: `Order ${data.ptl_order_number} has been updated successfully.`,
+      });
+
+      setEditDialogOpen(false);
+      setEditingOrder(null);
+      form.reset();
+      await fetchCompletedPTLOrders();
+      await fetchOrderCounts();
+    } catch (error: any) {
+      let errorMessage = 'Failed to update PTL order.';
+      if (error?.message) {
+        if (error.message.includes('duplicate key')) {
+          errorMessage = 'This PTL order number already exists. Please choose a different number.';
+        }
+      }
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -124,7 +225,6 @@ const PTLOrderArchive: React.FC = () => {
     }
   };
 
-  // Filter orders based on search term - same as main PTL Orders page
   const filteredOrders = orders.filter(order =>
     order.ptl_order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.board_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -184,7 +284,6 @@ const PTLOrderArchive: React.FC = () => {
             </TableHeader>
             <TableBody>
               {filteredOrders.map((order) => {
-                const hardwareOrder = hardwareOrders.find(h => h.id === order.hardware_order_id);
                 const counts = orderCounts[order.id] || { scanned: 0, passed: 0, failed: 0, totalTime: 0 };
                 return (
                   <TableRow 
@@ -208,7 +307,7 @@ const PTLOrderArchive: React.FC = () => {
                         <div className="w-full bg-secondary rounded-full h-1.5 mt-1">
                           <div 
                             className="bg-green-500 h-1.5 rounded-full transition-all duration-300" 
-                            style={{ width: '100%' }} // Completed orders are 100%
+                            style={{ width: '100%' }}
                           ></div>
                         </div>
                       </div>
@@ -239,8 +338,8 @@ const PTLOrderArchive: React.FC = () => {
                         <Button size="sm" variant="outline" onClick={() => handleViewDetails(order)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/app/ptl-orders/${order.id}`)}>
-                          <Pencil className="h-4 w-4" />
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(order)}>
+                          <Edit className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -258,7 +357,7 @@ const PTLOrderArchive: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Order Details Dialog - Same as main PTL Orders page */}
+      {/* Order Details Dialog */}
       <Dialog open={viewOrderDetails} onOpenChange={setViewOrderDetails}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -343,7 +442,6 @@ const PTLOrderArchive: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Progress bar - 100% for completed */}
                 <div className="w-full bg-secondary rounded-full h-3">
                   <div 
                     className="bg-green-500 h-3 rounded-full transition-all duration-500 flex items-center justify-center text-xs text-white font-medium" 
@@ -359,6 +457,177 @@ const PTLOrderArchive: React.FC = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit PTL Order Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        setEditDialogOpen(open);
+        if (!open) {
+          setEditingOrder(null);
+          form.reset();
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit PTL Order</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="hardware_order_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hardware Order</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select hardware order" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {hardwareOrders.map((order) => (
+                          <SelectItem key={order.id} value={order.id}>
+                            {order.po_number} - {order.assembly_number}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="ptl_order_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>PTL Order Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="board_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Board Type</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Main Board, Control Board" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Number of Boards to Test</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="sale_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sale Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 1234-ABC or 1234" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="firmware_revision"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Firmware Revision</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 1.3 or 14" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="date_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date Code (4 digits)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., 2501" 
+                        maxLength={4}
+                        pattern="[0-9]{4}"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Additional notes or comments..." 
+                        className="resize-none"
+                        rows={3}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => {
+                  setEditDialogOpen(false);
+                  setEditingOrder(null);
+                  form.reset();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">Update Order</Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
